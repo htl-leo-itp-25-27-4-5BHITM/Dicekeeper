@@ -1,0 +1,48 @@
+# docker compose file for our standalone postgres database
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:16-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data:Z
+      - setup:/docker-entrypoint-initdb.d:Z
+    #      - ./postgres/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql volume mounts don't work on windoze
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+    healthcheck:
+      test: pg_isready --dbname=demo --username=demo
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    depends_on:
+      init-container:
+        condition:
+          service_completed_successfully
+  init-container:
+    container_name: init-postgresql
+    image: busybox:latest
+    volumes:
+      - setup:/srv/data:Z
+    command:
+      - sh
+      - -c
+      - |
+        cat <<EOF > /srv/data/initdb.sql
+          DROP DATABASE if exists keycloak;
+          DROP USER if exists keycloak;
+          CREATE USER keycloak WITH PASSWORD 'keycloak' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION CONNECTION LIMIT -1;
+          CREATE DATABASE keycloak WITH OWNER=keycloak ENCODING='UTF8' CONNECTION LIMIT=-1;
+          DROP DATABASE if exists demo;
+          DROP USER if exists demo;
+          CREATE USER demo WITH PASSWORD 'demo' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION CONNECTION LIMIT -1;
+          CREATE DATABASE demo WITH OWNER=demo ENCODING='UTF8' CONNECTION LIMIT=-1;
+        EOF
+volumes:
+  postgres:
+  setup:
