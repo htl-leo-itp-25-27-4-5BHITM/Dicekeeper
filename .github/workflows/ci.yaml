@@ -17,3 +17,4 @@ jobs:
           cache-dependency-path: 'code/backend/pom.xml'
       - name: Build with Maven
         run: java Hello.java
+        working-directory: code/backend
