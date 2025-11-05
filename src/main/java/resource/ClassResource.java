@@ -2,7 +2,7 @@ package resource;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import model.classes;
+import model.Class;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
 public class ClassResource {
 
     @GET
-    public List<classes> getCharacterClasses() {
-        return classes.listAll();
+    public List<Class> getCharacterClasses() {
+        return Class.listAll();
     }
 }
