@@ -217,3 +217,18 @@ const attrsAbility = [
     });
 
     updateAbility();
+
+
+
+
+    //Background Seite 
+  const toggleBtnBackground = document.getElementById('toggleBackground');
+    const descBackground = document.getElementById('descriptionBackground');
+
+    toggleBtnBackground.addEventListener('click', () => {
+      const isHidden = descBackground.classList.contains('hiddenBackground');
+      descBackground.classList.toggle('hiddenBackground');
+      toggleBtnBackground.textContent = isHidden ? '− Hide Description' : '+ Show Description';
+    });
+
+    

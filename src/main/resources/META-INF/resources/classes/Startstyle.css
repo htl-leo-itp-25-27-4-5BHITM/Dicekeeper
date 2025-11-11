@@ -178,3 +178,83 @@
       .rowAbility { grid-template-columns: 1fr 1fr; }
       .controlsAbility input[type=number] { width: 48px; }
     }
+
+
+/*Background Seite*/
+    #backgroundPage {
+      font-family: 'Georgia', serif;
+      background: #f5f3ef;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
+
+    .containerBackground {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 24px 36px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .containerBackground h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .subtitleBackground {
+      color: #777;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+
+    .topInfoBackground {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+
+    .topInfoBackground div {
+      margin-right: 10px;
+    }
+
+    .contentBackground {
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    hr.backgroundHR {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 24px 0;
+    }
+
+    .detailsBackground strong {
+      display: inline-block;
+      width: 180px;
+    }
+
+    .detailsBackground p {
+      margin: 4px 0 12px 0;
+    }
+
+    button.backgroundBtn {
+      background: none;
+      border: 1px solid #999;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    button.backgroundBtn:hover {
+      background: #eee;
+    }
+
+    .hiddenBackground {
+      display: none;
+    }
