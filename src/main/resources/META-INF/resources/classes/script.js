@@ -1,3 +1,25 @@
+  const startSection = document.getElementById("startSection");
+    const sliderSection = document.getElementById("sliderSection");
+
+    function showSlider() {
+      startSection.classList.add("fadeOut");
+      setTimeout(() => {
+        startSection.style.display = "none";
+        sliderSection.style.display = "flex";
+        sliderSection.classList.add("fadeIn");
+      }, 500);
+    }
+
+    function goBack() {
+      sliderSection.classList.remove("fadeIn");
+      sliderSection.classList.add("fadeOut");
+      setTimeout(() => {
+        sliderSection.style.display = "none";
+        startSection.style.display = "flex";
+        startSection.classList.remove("fadeOut");
+      }, 500);
+    }
+
 async function loadClasses() {
     try {
         const res = await fetch('/api/classes');
