@@ -5,10 +5,12 @@ import jakarta.persistence.Entity;
 
 @Entity
 public class Character extends PanacheEntity {
-    public int playerId;
+//    public int playerId;
     public String name;
-    public int raceId;
+//    public int raceId;
     public int classId;
     public int backgroundId;
-    public String description;
+    public int level;
+    public boolean isCreated;
+    public String info;
 }
