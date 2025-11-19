@@ -8,6 +8,6 @@ import jakarta.persistence.Entity;
 public class Class extends PanacheEntity {
     public String name;
 
-    @Column(length = 1000)
+    @Column(length = 1500)
     public String description;
 }
