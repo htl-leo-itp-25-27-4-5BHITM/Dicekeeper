@@ -4,9 +4,7 @@ const output = document.getElementById("output");
 let isOpen = false;
 let backgroundData = null;
 
-// ----------------------------------
-// API laden
-// ----------------------------------
+
 async function loadBackground() {
     try {
         const res = await fetch("/api/background/all"); // API → JSON
