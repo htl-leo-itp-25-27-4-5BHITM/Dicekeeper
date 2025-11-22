@@ -127,11 +127,11 @@ body {
 /* --- Detailansicht --- */
 .detail {
   display: none;
-  background: var(--card);
+  background: #426d65d1;
   padding: 18px;
   border-radius: 12px;
   margin-top: 12px;
-  width: 100%;
+  width: 94%;
   max-width: 980px;
 }
 
