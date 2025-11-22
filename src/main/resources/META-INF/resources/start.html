@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Page</title>
+    <script src="./script.js" defer></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div>
+        <div id="upperBox">
+            <div id="imgDiv">
+                <div id="imgBox">
+                    <img id="accImg" src="images/account-template.png">
+                </div>
+            </div>
+            <div>
+                <div id="charakterDetails">
+                    <div id="row1">
+                        <p class="text_white"> Name</p>
+                        <div class="box_round">
+                            <input id="nameInput" type="text" placeholder="Enter Name">
+                            <img id="cross" src="images/cross.png" onclick="clearField()">
+                        </div>
+                    </div>
+
+                    <div id="row2">
+                        <p class="text_white">Class</p>
+                        <div class="box_round">
+                            <div id="nextPage">
+                                <!-- hier soll man dann auf die nächsten Seiten gelangen -->
+                                <img src="images/plus.png" class="plus" onclick="openPage()">
+                            </div>
+                            <img id="cross" src="images/cross.png" onclick="clearField()">
+                        </div>
+                    </div>
+                    
+                    <div id="row3">
+                        <p class="text_white">Background</p>
+                        <div class="box_round">
+                            <div id="nextPage">
+                                <!-- hier soll man dann auf die nächsten Seiten gelangen -->
+                                <img src="images/plus.png" class="plus" onclick="openPage()">
+                            </div>
+                            <img id="cross" src="images/cross.png" onclick="clearField()">
+                        </div>
+                    </div>
+                </div>
+                <div id="charakterInfos">
+                    <p id="infoHeadline">Info</p>
+                    <div>
+                        <input type="text" placeholder="Enter your Charakters Info" id="charakterInfoInput">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="containerAbility">
+            <h1 id="attrHeadliner">Attribute — Punkte vergeben</h1>
+            <div class="topAbility">
+            <div class="budgetAbility">
+                <label for="totalBudgetAbility">Gesamtpunkte:</label>
+                <input type="number" id="totalBudgetAbility" value="27" min="0" />
+            </div>
+            <div style="margin-left:auto; color:rgba(255,255,255,0.6)">Verwende die +/- Knöpfe oder trage eine Zahl ein.</div>
+            </div>
+
+            <div class="summaryAbility">
+            <div>Verwendet: <span id="usedAbility">0</span></div>
+            <div>Verbleibend: <span id="remainingAbility">27</span></div>
+            </div>
+
+            <div id="attributesAbility"></div>
+
+            <div class="footerAbility">Attribute: Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma.</div>
+        </div>
+    </div>
+</body>
+</html>
