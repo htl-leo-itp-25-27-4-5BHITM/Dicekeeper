@@ -250,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function turnGreen() {
     document.getElementById('selectButton').style.backgroundColor = 'green';
 }
-
 function turnGreenClass() {
     document.getElementById('selectButtonClass').style.backgroundColor = 'green';
 }

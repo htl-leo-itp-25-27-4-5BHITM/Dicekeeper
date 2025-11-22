@@ -3,73 +3,103 @@
   --card: #0b1220;
   --accent: #06b6d4;
   --text: #e6eef6;
+  --selected: #00e676;
 }
 
 body {
-    overflow: hidden;
   margin: 0;
   font-family: Inter, system-ui, Arial;
-  background: linear-gradient(180deg, #071226 0%, #07192b 100%);
-  color: var(--text);
-  min-height: 100vh;
+  background-image: url(Firefly_Enchanted\ Dungeons\ &\ Dragons\ scene\ with\ green\ magical\ accents-\ an\ overgrown\,\ moss-cov\ 39064\ \(3\).jpg);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-color: #ffffff78;
+  background-blend-mode: lighten;
+
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  flex-direction: column;   /* wichtig für oben Mitte */
+  align-items: center;       /* horizontal zentriert */
+  justify-content: flex-start; /* Elemente nach oben */
+  height: 100vh;
+  padding-top: 24px;
+  color: var(--text);
 }
 
-.app { width: 100%; max-width: 980px; }
+.app { 
+  width: 100%; 
+  max-width: 980px; 
+}
 
+/* --- Slider Bereich --- */
 .slider-wrap {
-    position: relative;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 12px;
-    border-radius: 12px;
-    overflow: hidden;
-    width: 105%;
-    height: 29vw;
+  position: relative;
+  background: #004c3677;
+  padding: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 95%;
+  height: 23vw;
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
 .slider {
-    padding-top: 2vw;
-    width: 241%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    transition: all 0.5s ease;
+  width: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.5s ease;
+  padding-top: 7vw;
 }
 
+/* --- Alle Thumbnails gleich groß --- */
 .thumb {
-  border: none;
-  background: none;
+  width: 260px;
+  height: 360px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  background: none;        /* kein weißer Hintergrund */
+  border: none;            /* kein weißer Rand */
+  overflow: visible;
   cursor: pointer;
-  transition: all 0.4s ease;
-  transform-origin: center center;
+  transition: 0.3s;
+}
+.thumb img {
+  width: 70%;
+  height: 70%;
+  object-fit: cover;       /* füllt den sichtbaren Bereich schön aus */
   border-radius: 8px;
-  overflow: hidden;
-  position: relative;
+  display: block;
 }
 
-.thumb img {
-  display: block;
-  border-radius: 8px;
-  width: 100%;
-  height: auto;
+/* --- Grüner Rahmen bei aktivem Bild --- */
+.thumb.active-thumb {
+  border-color: var(--selected);
+  box-shadow: 0 0 12px var(--selected);
+  transform: scale(1.03);
 }
 
 .thumb .label {
-  text-align: center;
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+  padding: 0;
+  background: none;
   color: white;
-  font-size: 14px;
+  font-size: 16px;
+  text-align: center;
+}
+.thumb .label {
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  color: white;
+  font-size: 16px;
+  text-align: center;
 }
 
-.thumb.small { transform: scale(0.6); opacity: 0.5; }
-.thumb.medium { transform: scale(0.8); opacity: 0.8; }
-.thumb.large { transform: scale(1.2); opacity: 1; z-index: 2; }
-
+/* --- Pfeile --- */
 .nav-btn {
   position: absolute;
   top: 50%;
@@ -94,12 +124,15 @@ body {
 .nav-left { left: 8px; }
 .nav-right { right: 8px; }
 
+/* --- Detailansicht --- */
 .detail {
   display: none;
   background: var(--card);
   padding: 18px;
   border-radius: 12px;
   margin-top: 12px;
+  width: 100%;
+  max-width: 980px;
 }
 
 .detail.active { display: block; }
@@ -112,6 +145,7 @@ body {
   background: white;
   cursor: pointer;
   color: #000;
+  margin-left: 55vw;
 }
 
 .detail .hero {
@@ -121,17 +155,21 @@ body {
 }
 
 .detail .hero img {
-  width: 320px;
+  width: 30%;
   max-width: 40%;
-  height: 480px;
+  height: 400px;
   object-fit: cover;
   border-radius: 8px;
 }
 
 .detail .meta { flex: 1; }
 
+/* --- Mobile --- */
 @media (max-width: 700px) {
-  .thumb.small, .thumb.medium, .thumb.large { transform: scale(0.9); }
+  .thumb {
+    width: 160px;
+    height: 220px;
+  }
   .detail .hero { flex-direction: column; }
   .detail .hero img { width: 100%; height: 200px; }
 }

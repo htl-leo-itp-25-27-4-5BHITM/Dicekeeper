@@ -110,7 +110,6 @@ function buildSlider(items) {
         detailImg.src = `../images/${it.name}.png`;
         detailTitle.textContent = it.name;
         detailText.textContent = it.description || '';
-        detailIndex.textContent = it.id;
         detail.classList.add('active');
     }
 
