@@ -6,8 +6,8 @@ import model.Ability;
 
 import java.util.List;
 
-@Path("/api/ability-score")
-public class AbilityScoreResource {
+@Path("/api/ability")
+public class AbilityResource {
 
     @GET
     @Path("/all")

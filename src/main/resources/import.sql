@@ -27,3 +27,35 @@ Some Rogues began their careers as criminals, while others used their cunning to
 INSERT INTO public.class (id, name, description) VALUES (10, 'Sorcerer', e'Sorcerers wield innate magic that is stamped into their being. Some Sorcerers can’t name the origin of their power, while others trace it to strange events in their personal or family history. The blessing of a dragon or a dryad at a baby’s birth or the strike of lightning from a clear sky might spark a Sorcerer’s gift. So too might the gift of a deity, exposure to the strange magic of another plane of existence, or a glimpse into the inner workings of reality. Whatever the origin, the result is an indelible mark on the Sorcerer, a churning magic that can be passed down through generations.<br><br>
 Sorcerers don’t learn magic; the raw, roiling power of magic is part of them. The essential art of a Sorcerer is learning to harness and channel that innate magic, allowing the Sorcerer to discover new and staggering ways to unleash their power. As Sorcerers master their innate magic, they grow more attuned to its origin, developing distinct powers that reflect its source.<br><br>
 Sorcerers are rare. Some family lines produce exactly one Sorcerer in every generation, but most of the time, the talents of sorcery appear as a fluke. People who have this magical power soon discover that it doesn’t like to stay quiet. A Sorcerer’s magic wants to be wielded.');
+
+
+insert into character (id, name, classid, backgroundid, level, isCreated, info) values (1, 'Arin', 2, 1, 0, false, 'This is a test character. Additional info can go here. Background story, personality traits, ideals, bonds, and flaws can be detailed in this section.');
+
+
+INSERT INTO Background
+(id, name, feat, skills, tool_proficiencies, equipment, description)
+VALUES
+    (
+        1,
+        'Acolyte',
+        'Magic Initiate (Cleric)',
+        'Insight, Religion',
+        'Calligraphers Supplies,
+    Choose A or B:
+     (A) Calligraphers Supplies, Book (prayers), Holy Symbol,
+         Parchment (10 sheets), Robe, 8 GP;
+     OR
+     (B) 50 GP',
+        'You devoted yourself to service in a temple, either nestled in a town or secluded in a sacred grove. There you performed rites in honor of a god or pantheon. You served under a priest and studied religion. Thanks to your priest’s instruction and your own devotion, you learned how to channel a modicum of divine power in service to your place of worship and the people who prayed there.',
+        'Intelligence, Wisdom, Charisma'
+    );
+
+
+insert into Ability (id, name, description) values (1, 'Strength', 'measuring physical power');
+insert into Ability (id, name, description) values (2, 'Dexterity', 'measuring agility');
+insert into Ability (id, name, description) values (3, 'Constitution', 'measuring endurance');
+insert into Ability (id, name, description) values (4, 'Intelligence', 'measuring reasoning and memory');
+insert into Ability (id, name, description) values (5, 'Wisdom', 'measuring perception and insight');
+insert into Ability (id, name, description) values (6, 'Charisma', 'measuring force of personality');
+
+insert into character_ability (id, character_id, ability_id, score) values (1, 1, 1, 15);

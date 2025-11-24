@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>characters</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 16px; background: #f5f5f5; }
+        .container { max-width: 720px; margin: 0 auto; background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        h1 { margin-top: 0; }
+        ul { list-style: none; padding: 0; }
+        li { padding: 12px 10px; border-bottom: 1px solid #eee; display:flex; align-items:center; justify-content:space-between; }
+        li:last-child { border-bottom: none; }
+        button.linklike { background: none; border: none; color: #007acc; cursor: pointer; font-size: 1rem; text-decoration: underline; }
+        .muted { color:#666; }
+        .actions { display:flex; gap:8px; }
+        .createBtn { background:#007acc; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+        .createBtn:disabled { opacity:0.6; cursor:not-allowed; }
+        .error { color: #b00020; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Your Characters</h1>
+    <div id="status" class="muted">Loading...</div>
+    <ul id="characters"></ul>
+    <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="muted">Click a character to continue editing</div>
+        <div class="actions">
+            <button id="createBtn" class="createBtn">Create new</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API endpoints
+    const listUrl = '/api/character/all'; // NOTE: backend uses singular /api/character
+    const createUrl = '/api/character/createInitialCharacter';
+
+    const statusEl = document.getElementById('status');
+    const listEl = document.getElementById('characters');
+    const createBtn = document.getElementById('createBtn');
+
+    function setStatus(text, isError) {
+        statusEl.textContent = text;
+        statusEl.className = isError ? 'error' : 'muted';
+    }
+
+    async function loadCharacters() {
+        setStatus('Loading...');
+        listEl.innerHTML = '';
+        try {
+            const res = await fetch(listUrl, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Failed to load characters: ' + res.status);
+            const data = await res.json();
+            if (!Array.isArray(data) || data.length === 0) {
+                setStatus('No characters found. Create a new one.');
+                return;
+            }
+            setStatus('');
+            for (const ch of data) {
+                const li = document.createElement('li');
+                const left = document.createElement('div');
+                const name = document.createElement('button');
+                name.className = 'linklike';
+                name.textContent = ch.name || ('Character ' + (ch.id ?? ''));
+                name.onclick = () => openCharacter(ch.id);
+                left.appendChild(name);
+                const meta = document.createElement('div');
+                meta.className = 'muted';
+                meta.textContent = 'id: ' + (ch.id ?? '—') + (ch.level ? (' · lvl ' + ch.level) : '');
+                li.appendChild(left);
+                li.appendChild(meta);
+                listEl.appendChild(li);
+            }
+        } catch (err) {
+            console.error(err);
+            setStatus('Could not load characters. See console for details.', true);
+        }
+    }
+
+    function openCharacter(id) {
+        if (!id) return alert('Character id missing');
+        // navigate to start.html with query param id
+        window.location.href = './start.html?id=' + encodeURIComponent(id);
+    }
+
+    async function createCharacter() {
+        createBtn.disabled = true;
+        createBtn.textContent = 'Creating...';
+        setStatus('Creating new character...');
+        try {
+            const res = await fetch(createUrl, { method: 'POST' });
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error('Create failed: ' + res.status + ' ' + text);
+            }
+            // Expect created character JSON in response
+            const created = await res.json();
+            const id = created && (created.id ?? created.ID ?? created.Id);
+            if (!id) {
+                // if backend returns no body, try to refresh list and pick latest item
+                await loadCharacters();
+                setStatus('Created — but server did not return id. Pick the new character from the list.');
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create new';
+                return;
+            }
+            // go to start page for the new character
+            window.location.href = './start.html?id=' + encodeURIComponent(id);
+        } catch (err) {
+            console.error(err);
+            setStatus('Failed to create character: ' + err.message, true);
+            createBtn.disabled = false;
+            createBtn.textContent = 'Create new';
+        }
+    }
+
+    createBtn.addEventListener('click', createCharacter);
+
+    // initial load
+    loadCharacters();
+
+</script>
+</body>
+</html>

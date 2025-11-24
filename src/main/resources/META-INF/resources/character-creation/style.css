@@ -26,7 +26,8 @@ body{
     border-radius: 1vw;
     display: flex;
     align-items: center;
-    padding-left: 4vw;
+    justify-content: center;
+    padding: 0 1.5vw;
     margin-top: 2vh;
 }
 #accImg{
@@ -79,7 +80,7 @@ body{
     margin-left: 4.5vw;
     cursor: pointer;
 }
-#nextPage{
+.nextPage{
     width: 12vw;
     height: 4vh;
     margin-top: 4.5vh;

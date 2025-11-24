@@ -1,11 +1,45 @@
-const attrsAbility = [
-    {key:'strength', label:'Strength', desc:'measuring physical power'},
-    {key:'dexterity', label:'Dexterity', desc:'measuring agility'},
-    {key:'constitution', label:'Constitution', desc:'measuring endurance'},
-    {key:'intelligence', label:'Intelligence', desc:'measuring reasoning and memory'},
-    {key:'wisdom', label:'Wisdom', desc:'measuring perception and insight'},
-    {key:'charisma', label:'Charisma', desc:'measuring force of personality'}
-];
+// const attrsAbility = [
+//     {key:'strength', label:'Strength', desc:'measuring physical power'},
+//     {key:'dexterity', label:'Dexterity', desc:'measuring agility'},
+//     {key:'constitution', label:'Constitution', desc:'measuring endurance'},
+//     {key:'intelligence', label:'Intelligence', desc:'measuring reasoning and memory'},
+//     {key:'wisdom', label:'Wisdom', desc:'measuring perception and insight'},
+//     {key:'charisma', label:'Charisma', desc:'measuring force of personality'}
+// ];
+let attrsAbility
+const inputsAbility = [];
+fetchAbilities();
+
+async function fetchAbilities() {
+    attrsAbility = await fetch('/api/ability/all')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            return data.map(ability => ({
+                key: ability.id,
+                label: ability.name,
+                desc: ability.description
+            }));
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+            return [];
+        });
+
+    attrsAbility.forEach(a=>{
+        const {row,input} = createRowAbility(a);
+        attributesDiv.appendChild(row);
+        inputsAbility.push(input);
+    });
+
+    console.log(attrsAbility);
+}
+
+
 
 const attributesDiv = document.getElementById('attributesAbility');
 const totalBudgetInput = document.getElementById('totalBudgetAbility');
@@ -25,6 +59,88 @@ right.className = 'controlsAbility';
 const dec = document.createElement('button'); dec.type='button'; dec.textContent='−';
 const input = document.createElement('input'); input.type='number'; input.min='0'; input.value='0'; input.step='1'; input.dataset.key = attr.key; input.className='counterField';
 const inc = document.createElement('button'); inc.type='button'; inc.textContent='+';
+
+
+//DONE: load character data from backend
+
+loadCharacterData();
+
+async function loadCharacterData(){
+    const params = new URLSearchParams(window.location.search);
+    let characterId = params.get('id');
+
+    const response = await fetch('/api/character/' + characterId);
+
+    if (!response.ok) {
+        console.error('Failed to fetch character data:', response.statusText);
+        return;
+    }
+
+    const characterData = await response.json();
+
+    console.log('Character Data:', characterData.backgroundId);
+
+    fetch('/api/classes/' + characterData.classId)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch class data: ' + res.statusText);
+            }
+            return res.json();
+        })
+        .then(classData => {
+            // console.log('Class Data:', classData);
+            document.getElementsByClassName('class').item(0).textContent = classData.name || '';
+            document.getElementById('imgBox').innerHTML = `<img src="/images/${classData.name || ''}.png" alt="Accent Image" style="max-width: 100%; max-height: 100%;">`;
+        })
+        .catch(error => {
+            console.error(error);
+        });
+
+    fetch('/api/background/' + characterData.backgroundId)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch background data: ' + res.statusText);
+            }
+            return res.json();
+        })
+        .then(backgroundData => {
+            // console.log('Background Data:', backgroundData);
+            document.getElementsByClassName('background').item(0).textContent = backgroundData.name || '';
+        })
+        .catch(error => {
+            console.error(error);
+        });
+
+    // populate fields (name, class, background, info)
+    document.getElementById('nameInput').value = characterData.name || '';
+    document.getElementById('charakterInfoInput').value = characterData.info || '';
+
+    // populate ability scores
+    fetch('/api/character/' + characterId + '/getAbilityScores')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch ability scores: ' + res.statusText);
+            }
+            return res.json();
+        })
+        .then(abilityScores => {
+            // console.log('Ability Scores:', abilityScores[0].abilityId);
+            // console.log('Current Attribute:', attr.key);
+            abilityScores.forEach(score => {
+                if (score.abilityId === attr.key) {
+                    input.value = score.score;
+                }
+            });
+            updateAbility();
+        })
+        .catch(error => {
+            console.error(error);
+        });
+
+}
+
+// TODO: save character data to backend
+
 
 dec.addEventListener('click', ()=>{ 
     input.value = Math.max(0, parseInt(input.value||0)-1); 
@@ -50,12 +166,7 @@ row.appendChild(left); row.appendChild(right);
 return {row, input};
 }
 
-const inputsAbility = [];
-attrsAbility.forEach(a=>{
-const {row,input} = createRowAbility(a);
-attributesDiv.appendChild(row);
-inputsAbility.push(input);
-});
+
 
 function getUsedPointsAbility(){
 return inputsAbility.reduce((s,i)=> s + Math.max(0, Math.floor(Number(i.value)||0)), 0);
