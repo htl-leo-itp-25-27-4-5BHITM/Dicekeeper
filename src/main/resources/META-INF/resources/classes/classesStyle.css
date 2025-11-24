@@ -145,7 +145,8 @@ body {
   background: white;
   cursor: pointer;
   color: #000;
-  margin-left: 55vw;
+  margin-left: 2vw;
+  margin-top: 25vw;
 }
 
 .detail .hero {
