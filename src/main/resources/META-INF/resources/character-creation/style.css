@@ -1,5 +1,5 @@
 #landingPage{
-    background-image: url("images/HintergrundPC.jpg");
+    background-image: url("../images/HintergrundPC.jpg");
     background-size: cover;
     background-position: fixed;
     overflow-x: hidden;
