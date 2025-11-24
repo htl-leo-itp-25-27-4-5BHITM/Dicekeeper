@@ -11,6 +11,6 @@ public class Background extends PanacheEntity {
     public String skills;
     public String tool_proficiencies;
     public String equipment;
-    public String languages;
+//    public String languages;
     public String feat;
 }
