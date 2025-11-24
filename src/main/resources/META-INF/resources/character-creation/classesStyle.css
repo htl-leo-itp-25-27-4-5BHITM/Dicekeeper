@@ -22,6 +22,7 @@ body {
   height: 100vh;
   padding-top: 24px;
   color: var(--text);
+  user-select: none;
 }
 
 .app { 

@@ -1,4 +1,7 @@
 /* Background Seite */
+body{
+  user-select: none;
+}
 
 #backgroundPage {
   font-family: 'Georgia', serif;
