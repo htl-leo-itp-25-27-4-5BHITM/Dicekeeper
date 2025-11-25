@@ -124,24 +124,24 @@ public class CharacterResource {
 
 
     // Update any fields
-//    @PATCH
-//    @Path("/{id}")
-//    @Transactional
-//    public Response updateCharacter(@PathParam("id") Long id, Character updated) {
-//        Character existing = Character.findById(id);
-//        if (existing == null) {
-//            return Response.status(Response.Status.NOT_FOUND).build();
-//        }
-//
-//        // Only update fields that are not null in the request
-//        if (updated.name != null) existing.name = updated.name;
-////        if (updated.raceId != 0) existing.raceId = updated.raceId;
-//        if (updated.classId != 0) existing.classId = updated.classId;
-//        if (updated.backgroundId != 0) existing.backgroundId = updated.backgroundId;
-//        if (updated.info != null) existing.info = updated.info;
-//
-//        return Response.ok(existing).build();
-//    }
+    @PATCH
+    @Path("/{id}")
+    @Transactional
+    public Response updateCharacter(@PathParam("id") Long id, Character updated) {
+        Character existing = Character.findById(id);
+        if (existing == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+
+        // Only update fields that are not null in the request
+        if (updated.name != null) existing.name = updated.name;
+//        if (updated.raceId != 0) existing.raceId = updated.raceId;
+        if (updated.classId != 0) existing.classId = updated.classId;
+        if (updated.backgroundId != 0) existing.backgroundId = updated.backgroundId;
+        if (updated.info != null) existing.info = updated.info;
+
+        return Response.ok(existing).build();
+    }
 
 
 }
