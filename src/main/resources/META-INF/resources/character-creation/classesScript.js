@@ -1,111 +1,120 @@
-const startSection = document.getElementById("startSection");
-const sliderSection = document.getElementById("sliderSection");
 let selectedClassId = null;
 
-function showSlider() {
-    startSection.classList.add("fadeOut");
-    setTimeout(() => {
-        startSection.style.display = "none";
-        sliderSection.style.display = "flex";
-        sliderSection.classList.add("fadeIn");
-    }, 500);
-}
-
-function goBack() {
-    sliderSection.classList.remove("fadeIn");
-    sliderSection.classList.add("fadeOut");
-    setTimeout(() => {
-        sliderSection.style.display = "none";
-        startSection.style.display = "flex";
-        startSection.classList.remove("fadeOut");
-    }, 500);
+function getCharacterId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("id");
 }
 
 async function loadClasses() {
     try {
-        const res = await fetch('/api/classes');
-        if (!res.ok) throw new Error('API error ' + res.status);
+        const res = await fetch("/api/classes");
+        if (!res.ok) throw new Error("API error " + res.status);
         const items = await res.json();
         buildSlider(items);
     } catch (err) {
-        console.error('Failed to load classes:', err);
-        const slider = document.getElementById('slider');
-        slider.innerHTML = '<p style="padding:1em">Fehler beim Laden der Daten.</p>';
+        console.error("Failed to load classes:", err);
+        const slider = document.getElementById("slider");
+        if (slider) {
+            slider.innerHTML = '<p style="padding:1em">Fehler beim Laden der Daten.</p>';
+        }
     }
 }
 
-// Save selected class
+// called from onclick="save()" in classes.html
 async function save() {
-    const res = await fetch('/api/character/saveClass', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({classId: selectedClassId})
+    const characterId = getCharacterId();
+    if (!characterId) {
+        alert("Kein ?id= Parameter in der URL – Charakter unbekannt.");
+        return;
+    }
+    if (!selectedClassId) {
+        alert("Bitte zuerst eine Klasse auswählen.");
+        return;
+    }
+
+    const res = await fetch(`/api/character/${characterId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId: selectedClassId }),
     });
+
+    if (!res.ok) {
+        console.error("Failed to save class:", await res.text());
+        alert("Fehler beim Speichern der Klasse.");
+        return;
+    }
+
+    // back to main page
+    window.location.href = `./start.html?id=${encodeURIComponent(characterId)}`;
 }
 
 function buildSlider(items) {
-    const slider = document.getElementById('slider');
-    const detail = document.getElementById('detail');
-    const detailImg = document.getElementById('detailImg');
-    const detailTitle = document.getElementById('detailTitle');
-    const detailText = document.getElementById('detailText');
-    const detailIndex = document.getElementById('detailIndex');
-    const backBtn = document.getElementById('backBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
+    const slider = document.getElementById("slider");
+    const detail = document.getElementById("detail");
+    const detailImg = document.getElementById("detailImg");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailText = document.getElementById("detailText");
+    const backBtn = document.getElementById("backBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
 
-    slider.innerHTML = '';
+    if (!slider || !detail || !detailImg || !detailTitle || !detailText) return;
 
-    items.forEach(it => {
-        const btn = document.createElement('button');
-        btn.className = 'thumb';
+    slider.innerHTML = "";
+
+    items.forEach((it) => {
+        const btn = document.createElement("button");
+        btn.className = "thumb";
         btn.innerHTML = `
             <img src="../images/${it.name}.png" alt="${it.name}">
             <div class="label">${it.name}</div>`;
-        btn.addEventListener('click', () => location.hash = `photo-${it.id}`);
+        btn.addEventListener("click", () => {
+            location.hash = `photo-${it.id}`;
+        });
         slider.appendChild(btn);
     });
 
-    let offset = 0;
-
     function updateView() {
-        const thumbs = [...slider.querySelectorAll('.thumb')];
-        thumbs.forEach((thumb, i) => {
-            thumb.classList.remove('small', 'medium', 'large');
+        const thumbs = Array.from(slider.querySelectorAll(".thumb"));
+        thumbs.forEach((thumb) => {
+            thumb.classList.remove("small", "medium", "large");
         });
+        if (thumbs.length === 0) return;
 
-        const center = (offset + 2) % items.length;
-
-        thumbs[(center - 2 + items.length) % items.length].classList.add('small');
-        thumbs[(center - 1 + items.length) % items.length].classList.add('medium');
-        thumbs[(center + 0) % items.length].classList.add('large');
-        thumbs[(center + 1) % items.length].classList.add('medium');
-        thumbs[(center + 2) % items.length].classList.add('small');
+        // center = index 2 (visual center of 5)
+        const center = 2;
+        thumbs.forEach((thumb, i) => {
+            if (i === center) thumb.classList.add("large");
+            else if (i === center - 1 || i === center + 1) thumb.classList.add("medium");
+            else thumb.classList.add("small");
+        });
     }
 
-    function move(dir) {
-        offset = (offset + dir + items.length) % items.length;
-        slider.appendChild(slider.firstElementChild);
-        updateView();
-    }
-
-    prevBtn.addEventListener('click', () => {
-        items.unshift(items.pop());
-        rebuild();
+    prevBtn?.addEventListener("click", () => {
+        if (items.length > 0) {
+            items.unshift(items.pop());
+            rebuild();
+        }
     });
-    nextBtn.addEventListener('click', () => {
-        items.push(items.shift());
-        rebuild();
+
+    nextBtn?.addEventListener("click", () => {
+        if (items.length > 0) {
+            items.push(items.shift());
+            rebuild();
+        }
     });
 
     function rebuild() {
-        slider.innerHTML = '';
-        items.forEach(it => {
-            const btn = document.createElement('button');
-            btn.className = 'thumb';
-            btn.innerHTML = `<img src="../images/${it.name}.png" alt="${it.name}">
-                             <div class="label">${it.name}</div>`;
-            btn.addEventListener('click', () => location.hash = `photo-${it.id}`);
+        slider.innerHTML = "";
+        items.forEach((it) => {
+            const btn = document.createElement("button");
+            btn.className = "thumb";
+            btn.innerHTML = `
+                <img src="../images/${it.name}.png" alt="${it.name}">
+                <div class="label">${it.name}</div>`;
+            btn.addEventListener("click", () => {
+                location.hash = `photo-${it.id}`;
+            });
             slider.appendChild(btn);
         });
         updateView();
@@ -113,144 +122,32 @@ function buildSlider(items) {
 
     updateView();
 
-    // Detail-Ansicht
     function showDetail(id) {
-        const it = items.find(x => x.id === id);
+        const it = items.find((x) => x.id === id);
         if (!it) return;
         selectedClassId = it.id;
-        console.log('Selected class ID:', selectedClassId);
+        console.log("Selected class ID:", selectedClassId);
         detailImg.src = `../images/${it.name}.png`;
         detailTitle.textContent = it.name;
-        detailText.textContent = it.description || '';
-        detail.classList.add('active');
+        detailText.textContent = it.description || "";
+        detail.classList.add("active");
     }
 
     function hideDetail() {
-        detail.classList.remove('active');
-        history.replaceState(null, '', location.pathname);
+        detail.classList.remove("active");
+        history.replaceState(null, "", location.pathname);
     }
 
-    window.addEventListener('hashchange', () => {
-        const h = location.hash.match(/^#photo-(\d{1,3})$/);
-        if (h) showDetail(Number(h[1]));
-        else hideDetail();
+    window.addEventListener("hashchange", () => {
+        const match = location.hash.match(/^#photo-(\d{1,3})$/);
+        if (match) {
+            showDetail(Number(match[1]));
+        } else {
+            hideDetail();
+        }
     });
 
-    backBtn.addEventListener('click', hideDetail);
+    backBtn?.addEventListener("click", hideDetail);
 }
 
-loadClasses();
-
-
-// Ability Scores
-const attrsAbility = [
-    {key: 'strength', label: 'Strength', desc: 'measuring physical power'},
-    {key: 'dexterity', label: 'Dexterity', desc: 'measuring agility'},
-    {key: 'constitution', label: 'Constitution', desc: 'measuring endurance'},
-    {key: 'intelligence', label: 'Intelligence', desc: 'measuring reasoning and memory'},
-    {key: 'wisdom', label: 'Wisdom', desc: 'measuring perception and insight'},
-    {key: 'charisma', label: 'Charisma', desc: 'measuring force of personality'}
-];
-
-const attributesDiv = document.getElementById('attributesAbility');
-const totalBudgetInput = document.getElementById('totalBudgetAbility');
-const usedSpan = document.getElementById('usedAbility');
-const remainingSpan = document.getElementById('remainingAbility');
-
-function createRowAbility(attr) {
-    const row = document.createElement('div');
-    row.className = 'rowAbility';
-
-    const left = document.createElement('div');
-    left.innerHTML = `<div class="attrNameAbility">${attr.label}</div><span class="attrDescAbility">${attr.desc}</span>`;
-
-    const right = document.createElement('div');
-    right.className = 'controlsAbility';
-
-    const dec = document.createElement('button');
-    dec.type = 'button';
-    dec.textContent = '−';
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.value = '0';
-    input.step = '1';
-    input.dataset.key = attr.key;
-    const inc = document.createElement('button');
-    inc.type = 'button';
-    inc.textContent = '+';
-
-    dec.addEventListener('click', () => {
-        input.value = Math.max(0, parseInt(input.value || 0) - 1);
-        updateAbility();
-    });
-    inc.addEventListener('click', () => {
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
-        const used = getUsedPointsAbility();
-        if (used < totalBudget) input.value = Math.max(0, parseInt(input.value || 0) + 1);
-        updateAbility();
-    });
-    input.addEventListener('input', () => {
-        if (input.value === '') return;
-        input.value = Math.max(0, Math.floor(Number(input.value) || 0));
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
-        let used = getUsedPointsAbility();
-        if (used > totalBudget) input.value = Math.max(0, input.value - (used - totalBudget));
-        updateAbility();
-    });
-
-    right.appendChild(dec);
-    right.appendChild(input);
-    right.appendChild(inc);
-    row.appendChild(left);
-    row.appendChild(right);
-    return {row, input};
-}
-
-const inputsAbility = [];
-attrsAbility.forEach(a => {
-    const {row, input} = createRowAbility(a);
-    attributesDiv.appendChild(row);
-    inputsAbility.push(input);
-});
-
-function getUsedPointsAbility() {
-    return inputsAbility.reduce((s, i) => s + Math.max(0, Math.floor(Number(i.value) || 0)), 0);
-}
-
-function updateAbility() {
-    const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
-    const used = getUsedPointsAbility();
-    const remaining = totalBudget - used;
-    usedSpan.textContent = used;
-    remainingSpan.textContent = remaining;
-
-    // Disable plus buttons if budget reached
-    document.querySelectorAll('.controlsAbility button:last-child').forEach(btn => {
-        btn.disabled = remaining <= 0;
-        btn.style.opacity = remaining <= 0 ? 0.4 : 1;
-        btn.style.cursor = remaining <= 0 ? 'not-allowed' : 'pointer';
-    });
-
-    remainingSpan.style.color = remaining < 0 ? '#ff7b7b' : '';
-}
-
-totalBudgetInput.addEventListener('input', () => {
-    totalBudgetInput.value = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
-    updateAbility();
-});
-
-updateAbility();
-
-
-//Background Seite
-const toggleBtnBackground = document.getElementById('toggleBackground');
-const descBackground = document.getElementById('descriptionBackground');
-
-toggleBtnBackground.addEventListener('click', () => {
-    const isHidden = descBackground.classList.contains('hiddenBackground');
-    descBackground.classList.toggle('hiddenBackground');
-    toggleBtnBackground.textContent = isHidden ? '− Hide Description' : '+ Show Description';
-});
-
-    
+document.addEventListener("DOMContentLoaded", loadClasses);

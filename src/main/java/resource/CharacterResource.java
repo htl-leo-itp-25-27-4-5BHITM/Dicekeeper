@@ -123,25 +123,41 @@ public class CharacterResource {
     }
 
 
+    public static class CharacterPatchDTO {
+        public String name;
+        public Long classId;
+        public Integer backgroundId;
+        public String info;
+    }
+
+
     // Update any fields
     @PATCH
     @Path("/{id}")
     @Transactional
-    public Response updateCharacter(@PathParam("id") Long id, Character updated) {
+    public Response updateCharacter(@PathParam("id") Long id, CharacterPatchDTO updated) {
         Character existing = Character.findById(id);
         if (existing == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
-        // Only update fields that are not null in the request
-        if (updated.name != null) existing.name = updated.name;
-//        if (updated.raceId != 0) existing.raceId = updated.raceId;
-        if (updated.classId != 0) existing.classId = updated.classId;
-        if (updated.backgroundId != 0) existing.backgroundId = updated.backgroundId;
-        if (updated.info != null) existing.info = updated.info;
+        // Only update fields that are present (non-null) in the request
+        if (updated.name != null) {
+            existing.name = updated.name;
+        }
+        if (updated.classId != null) {
+            existing.classId = updated.classId;      // 0 means "no class" now
+        }
+        if (updated.backgroundId != null) {
+            existing.backgroundId = updated.backgroundId;  // 0 means "no background"
+        }
+        if (updated.info != null) {
+            existing.info = updated.info;
+        }
 
         return Response.ok(existing).build();
     }
+
 
 
 }

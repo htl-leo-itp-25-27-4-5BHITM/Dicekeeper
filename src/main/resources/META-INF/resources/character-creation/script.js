@@ -1,235 +1,120 @@
-// const attrsAbility = [
-//     {key:'strength', label:'Strength', desc:'measuring physical power'},
-//     {key:'dexterity', label:'Dexterity', desc:'measuring agility'},
-//     {key:'constitution', label:'Constitution', desc:'measuring endurance'},
-//     {key:'intelligence', label:'Intelligence', desc:'measuring reasoning and memory'},
-//     {key:'wisdom', label:'Wisdom', desc:'measuring perception and insight'},
-//     {key:'charisma', label:'Charisma', desc:'measuring force of personality'}
-// ];
-let attrsAbility
+// --------- Helpers ---------
+function getCharacterId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("id");
+}
+
+async function patchCharacter(data) {
+    const characterId = getCharacterId();
+    if (!characterId) {
+        console.error("No character ID in URL, cannot PATCH character.");
+        return;
+    }
+
+    const res = await fetch(`/api/character/${characterId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        console.error("Failed to PATCH character:", await res.text());
+    } else {
+        console.log("Saved character fields:", data);
+    }
+}
+
+// --------- Ability Scores UI ---------
+let attrsAbility = [];
 const inputsAbility = [];
-fetchAbilities();
+
+const attributesDiv = document.getElementById("attributesAbility");
+const totalBudgetInput = document.getElementById("totalBudgetAbility");
+const usedSpan = document.getElementById("usedAbility");
+const remainingSpan = document.getElementById("remainingAbility");
 
 async function fetchAbilities() {
-    attrsAbility = await fetch('/api/ability/all')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            return data.map(ability => ({
-                key: ability.id,
-                label: ability.name,
-                desc: ability.description
-            }));
-        })
-        .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
-            return [];
-        });
+    if (!attributesDiv) return; // page without ability UI
 
-    attrsAbility.forEach(a => {
-        const {row, input} = createRowAbility(a);
+    try {
+        const response = await fetch("/api/ability/all");
+        if (!response.ok) {
+            throw new Error("Network response was not ok " + response.statusText);
+        }
+        const data = await response.json();
+        attrsAbility = data.map((ability) => ({
+            key: ability.id,
+            label: ability.name,
+            desc: ability.description,
+        }));
+    } catch (err) {
+        console.error("There has been a problem with your fetch operation:", err);
+        attrsAbility = [];
+    }
+
+    attrsAbility.forEach((a) => {
+        const { row, input } = createRowAbility(a);
         attributesDiv.appendChild(row);
         inputsAbility.push(input);
     });
 
-    console.log(attrsAbility);
+    const characterId = getCharacterId();
+    if (characterId) {
+        await loadAbilityScores(characterId);
+    }
+
+    updateAbility();
 }
-
-
-function getCharacterId() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('id');
-}
-
-
-const attributesDiv = document.getElementById('attributesAbility');
-const totalBudgetInput = document.getElementById('totalBudgetAbility');
-const usedSpan = document.getElementById('usedAbility');
-const remainingSpan = document.getElementById('remainingAbility');
 
 function createRowAbility(attr) {
-    const row = document.createElement('div');
-    row.className = 'rowAbility';
+    const row = document.createElement("div");
+    row.className = "rowAbility";
 
-    const left = document.createElement('div');
+    const left = document.createElement("div");
     left.innerHTML = `<div class="attrNameAbility">${attr.label}</div><span class="attrDescAbility">${attr.desc}</span>`;
 
-    const right = document.createElement('div');
-    right.className = 'controlsAbility';
+    const right = document.createElement("div");
+    right.className = "controlsAbility";
 
-    const dec = document.createElement('button');
-    dec.type = 'button';
-    dec.textContent = '−';
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.value = '0';
-    input.step = '1';
-    input.dataset.key = attr.key;
-    input.className = 'counterField';
-    const inc = document.createElement('button');
-    inc.type = 'button';
-    inc.textContent = '+';
+    const dec = document.createElement("button");
+    dec.type = "button";
+    dec.textContent = "−";
 
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.value = "0";
+    input.step = "1";
+    input.dataset.abilityId = String(attr.key);
+    input.className = "counterField";
 
-//DONE: load character data from backend
+    const inc = document.createElement("button");
+    inc.type = "button";
+    inc.textContent = "+";
 
-    loadCharacterData();
-
-    async function loadCharacterData() {
-        const params = new URLSearchParams(window.location.search);
-        let characterId = params.get('id');
-
-        const response = await fetch('/api/character/' + characterId);
-
-        if (!response.ok) {
-            console.error('Failed to fetch character data:', response.statusText);
-            return;
-        }
-
-        const characterData = await response.json();
-
-        console.log('Character Data:', characterData.backgroundId);
-
-        fetch('/api/classes/' + characterData.classId)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Failed to fetch class data: ' + res.statusText);
-                }
-                return res.json();
-            })
-            .then(classData => {
-                // console.log('Class Data:', classData);
-                document.getElementsByClassName('class').item(0).textContent = classData.name || '';
-                document.getElementById('imgBox').innerHTML = `<img src="/images/${classData.name || ''}.png" alt="Accent Image" style="max-width: 100%; max-height: 100%;">`;
-            })
-            .catch(error => {
-                console.error(error);
-            });
-
-        fetch('/api/background/' + characterData.backgroundId)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Failed to fetch background data: ' + res.statusText);
-                }
-                return res.json();
-            })
-            .then(backgroundData => {
-                // console.log('Background Data:', backgroundData);
-                document.getElementsByClassName('background').item(0).textContent = backgroundData.name || '';
-            })
-            .catch(error => {
-                console.error(error);
-            });
-
-        // populate fields (name, class, background, info)
-        document.getElementById('nameInput').value = characterData.name || '';
-        document.getElementById('charakterInfoInput').value = characterData.info || '';
-
-        // populate ability scores
-        fetch('/api/character/' + characterId + '/getAbilityScores')
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Failed to fetch ability scores: ' + res.statusText);
-                }
-                return res.json();
-            })
-            .then(abilityScores => {
-                // console.log('Ability Scores:', abilityScores[0].abilityId);
-                // console.log('Current Attribute:', attr.key);
-                abilityScores.forEach(score => {
-                    if (score.abilityId === attr.key) {
-                        input.value = score.score;
-                    }
-                });
-                updateAbility();
-            })
-            .catch(error => {
-                console.error(error);
-            });
-
-    }
-
-// TODO: save character data to backend
-
-    document.getElementById('nameInput').addEventListener('blur', saveName);
-    document.getElementById('nameInput').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission
-            this.blur(); // Remove focus from input
-        }
-    })
-
-    async function saveName() {
-        const newName = document.getElementById('nameInput').value.trim();
-
-        await patchCharacter({
-            name: newName
-        });
-    }
-
-    document.getElementById('charakterInfoInput').addEventListener('blur', saveInfo);
-    document.getElementById('charakterInfoInput').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission
-            this.blur(); // Remove focus from input
-        }
-    })
-
-    async function saveInfo() {
-        const newInfo = document.getElementById('charakterInfoInput').value.trim();
-
-        await patchCharacter({
-            info: newInfo
-        });
-    }
-
-
-    async function patchCharacter(data) {
-        const characterId = getCharacterId();
-        if (!characterId) {
-            console.error("No character ID found in URL.");
-            return;
-        }
-
-        const response = await fetch(`/api/character/${characterId}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            console.error("Failed to PATCH character:", await response.text());
-        } else {
-            console.log("Saved:", data);
-        }
-    }
-
-
-
-
-
-
-    dec.addEventListener('click', () => {
-        input.value = Math.max(0, parseInt(input.value || 0) - 1);
+    dec.addEventListener("click", () => {
+        input.value = Math.max(0, parseInt(input.value || "0", 10) - 1);
         updateAbility();
     });
-    inc.addEventListener('click', () => {
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
+
+    inc.addEventListener("click", () => {
+        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput?.value || 0)));
         const used = getUsedPointsAbility();
-        if (used < totalBudget) input.value = Math.max(0, parseInt(input.value || 0) + 1);
-        updateAbility();
+        if (used < totalBudget) {
+            input.value = Math.max(0, parseInt(input.value || "0", 10) + 1);
+            updateAbility();
+        }
     });
-    input.addEventListener('input', () => {
-        if (input.value === '') return;
-        input.value = Math.max(0, Math.floor(Number(input.value) || 0));
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
+
+    input.addEventListener("input", () => {
+        if (input.value === "") return;
+        input.value = String(Math.max(0, Math.floor(Number(input.value) || 0)));
+        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput?.value || 0)));
         let used = getUsedPointsAbility();
-        if (used > totalBudget) input.value = Math.max(0, input.value - (used - totalBudget));
+        if (used > totalBudget) {
+            const diff = used - totalBudget;
+            input.value = String(Math.max(0, Number(input.value) - diff));
+        }
         updateAbility();
     });
 
@@ -238,74 +123,230 @@ function createRowAbility(attr) {
     right.appendChild(inc);
     row.appendChild(left);
     row.appendChild(right);
-    return {row, input};
+    return { row, input };
 }
 
-
 function getUsedPointsAbility() {
-    return inputsAbility.reduce((s, i) => s + Math.max(0, Math.floor(Number(i.value) || 0)), 0);
+    return inputsAbility.reduce(
+        (sum, i) => sum + Math.max(0, Math.floor(Number(i.value) || 0)),
+        0
+    );
 }
 
 function updateAbility() {
+    if (!totalBudgetInput || !usedSpan || !remainingSpan) return;
+
     const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
     const used = getUsedPointsAbility();
     const remaining = totalBudget - used;
-    usedSpan.textContent = used;
-    remainingSpan.textContent = remaining;
 
-// Disable plus buttons if budget reached
-    document.querySelectorAll('.controlsAbility button:last-child').forEach(btn => {
+    usedSpan.textContent = String(used);
+    remainingSpan.textContent = String(remaining);
+
+    // Disable plus buttons if budget reached
+    document.querySelectorAll(".controlsAbility button:last-child").forEach((btn) => {
         btn.disabled = remaining <= 0;
-        btn.style.opacity = remaining <= 0 ? 0.4 : 1;
-        btn.style.cursor = remaining <= 0 ? 'not-allowed' : 'pointer';
+        btn.style.opacity = remaining <= 0 ? "0.4" : "1";
+        btn.style.cursor = remaining <= 0 ? "not-allowed" : "pointer";
     });
 
-    remainingSpan.style.color = remaining < 0 ? '#ff7b7b' : '';
+    remainingSpan.style.color = remaining < 0 ? "#ff7b7b" : "";
 }
 
-totalBudgetInput.addEventListener('input', () => {
-    totalBudgetInput.value = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
-    updateAbility();
-});
+async function loadAbilityScores(characterId) {
+    try {
+        const res = await fetch(`/api/character/${characterId}/getAbilityScores`);
+        if (!res.ok) throw new Error("Failed to fetch ability scores: " + res.statusText);
+        const abilityScores = await res.json();
 
-updateAbility();
+        abilityScores.forEach((score) => {
+            const input = inputsAbility.find(
+                (i) => Number(i.dataset.abilityId) === score.abilityId
+            );
+            if (input) {
+                input.value = String(score.score);
+            }
+        });
 
-function openPage(url) {
+        updateAbility();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// --------- Character meta (name, class, background, info) ---------
+
+async function loadCharacterMeta(characterId) {
+    try {
+        const res = await fetch(`/api/character/${characterId}`);
+        if (!res.ok) {
+            console.error("Failed to fetch character data:", res.statusText);
+            return;
+        }
+        const characterData = await res.json();
+
+        const nameInput = document.getElementById("nameInput");
+        const infoInput = document.getElementById("charakterInfoInput");
+
+        if (nameInput) nameInput.value = characterData.name || "";
+        if (infoInput) infoInput.value = characterData.info || "";
+
+        // Class text & image
+        if (characterData.classId) {
+            fetch(`/api/classes/${characterData.classId}`)
+                .then((r) => {
+                    if (!r.ok) throw new Error("Failed to fetch class data: " + r.statusText);
+                    return r.json();
+                })
+                .then((classData) => {
+                    const classBox = document.querySelector(".nextPage.class");
+                    if (classBox) {
+                        classBox.textContent = classData.name || "";
+                    }
+                    const imgBox = document.getElementById("imgBox");
+                    if (imgBox && classData.name) {
+                        imgBox.innerHTML = `<img src="../images/${classData.name}.png" alt="Accent Image" style="max-width:100%;max-height:100%;">`;
+                    }
+                })
+                .catch(console.error);
+        }
+
+        // Background text
+        if (characterData.backgroundId) {
+            fetch(`/api/background/${characterData.backgroundId}`)
+                .then((r) => {
+                    if (!r.ok)
+                        throw new Error("Failed to fetch background data: " + r.statusText);
+                    return r.json();
+                })
+                .then((bgData) => {
+                    const bgBox = document.querySelector(".nextPage.background");
+                    if (bgBox) {
+                        bgBox.textContent = bgData.name || "";
+                    }
+                })
+                .catch(console.error);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// --------- Navigation & clear buttons on start.html ---------
+
+function openPage(relativeUrl) {
+    const id = getCharacterId();
+    const url = id
+        ? `${relativeUrl}?id=${encodeURIComponent(id)}`
+        : relativeUrl;
     window.location.href = url;
 }
 
-function clearField(divId) {
-    const target = document.getElementsByClassName(divId);
-    if (!target) {
-        console.error("Element mit dieser ID wurde nicht gefunden:", divId);
-        return;
+function initNavigation() {
+    document.querySelectorAll(".nextPage").forEach((box) => {
+        const target = box.dataset.target;
+        if (target) {
+            box.addEventListener("click", () => openPage(target));
+        }
+    });
+}
+
+function initNameAndInfoHandlers() {
+    const nameInput = document.getElementById("nameInput");
+    if (nameInput) {
+        nameInput.addEventListener("blur", async () => {
+            const newName = nameInput.value.trim();
+            await patchCharacter({ name: newName });
+        });
+        nameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                nameInput.blur();
+            }
+        });
     }
 
-    // Beispiel: Neue Box mit Bild erzeugen
-    const newContent = `
-         <div class="box_round enterName">
-            <input id="nameInput" type="text" placeholder="Enter Name">
-            <img id="cross" src="../images/cross.png" onclick="clearField('enterName')">
-        </div>
-    `;
-
-    const newContent2 = `
-         <div class="nextPage class">
-            <img src="../images/plus.png" class="plus" onclick="openPage('./classes.html')">
-        </div>
-    `;
-
-    const newContent3 = `
-         <div class="nextPage background">
-            <img src="../images/plus.png" class="plus" onclick="openPage('./background.html')">
-        </div>
-    `;
-
-    if(divId == 'enterName'){
-        target.innerHTML = newContent;
-    } else if (divId == 'class'){
-        target.innerHTML = newContent2;
-    } else if (divId == 'background'){
-        target.innerHTML = newContent3;
+    const infoInput = document.getElementById("charakterInfoInput");
+    if (infoInput) {
+        infoInput.addEventListener("blur", async () => {
+            const newInfo = infoInput.value.trim();
+            await patchCharacter({ info: newInfo });
+        });
+        infoInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                infoInput.blur();
+            }
+        });
     }
 }
+
+function initClearButtons() {
+    // Name X
+    const clearName = document.getElementById("clearName");
+    if (clearName) {
+        clearName.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const nameInput = document.getElementById("nameInput");
+            if (nameInput) {
+                nameInput.value = "";
+                await patchCharacter({ name: "" });
+            }
+        });
+    }
+
+    // Class X
+    const clearClass = document.getElementById("clearClass");
+    if (clearClass) {
+        clearClass.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const classBox = document.querySelector(".nextPage.class");
+            if (classBox) {
+                classBox.innerHTML = '<img src="../images/plus.png" class="plus">';
+            }
+            const imgBox = document.getElementById("imgBox");
+            if (imgBox) {
+                imgBox.innerHTML =
+                    '<img id="accImg" src="../images/account-template.png">';
+            }
+            await patchCharacter({ classId: 0 }); // backend: 0 = no class
+        });
+    }
+
+    // Background X
+    const clearBackground = document.getElementById("clearBackground");
+    if (clearBackground) {
+        clearBackground.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const bgBox = document.querySelector(".nextPage.background");
+            if (bgBox) {
+                bgBox.innerHTML = '<img src="../images/plus.png" class="plus">';
+            }
+            await patchCharacter({ backgroundId: 0 }); // backend: 0 = no background
+        });
+    }
+}
+
+// --------- Init ---------
+document.addEventListener("DOMContentLoaded", async () => {
+    const characterId = getCharacterId();
+
+    initNavigation();
+    initNameAndInfoHandlers();
+    initClearButtons();
+
+    if (characterId) {
+        await loadCharacterMeta(characterId);
+    }
+
+    if (totalBudgetInput) {
+        totalBudgetInput.addEventListener("input", () => {
+            totalBudgetInput.value = String(
+                Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0))
+            );
+            updateAbility();
+        });
+    }
+
+    await fetchAbilities();
+});
