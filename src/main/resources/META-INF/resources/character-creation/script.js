@@ -199,3 +199,39 @@ updateAbility();
 function openPage(url){
     window.location.href = url;
 }
+
+function clearField(divId) {
+    const target = document.getElementsByClassName(divId);
+    if (!target) {
+        console.error("Element mit dieser ID wurde nicht gefunden:", divId);
+        return;
+    }
+
+    // Beispiel: Neue Box mit Bild erzeugen
+    const newContent = `
+         <div class="box_round enterName">
+            <input id="nameInput" type="text" placeholder="Enter Name">
+            <img id="cross" src="../images/cross.png" onclick="clearField('enterName')">
+        </div>
+    `;
+
+    const newContent2 = `
+         <div class="nextPage class">
+            <img src="../images/plus.png" class="plus" onclick="openPage('./classes.html')">
+        </div>
+    `;
+
+    const newContent3 = `
+         <div class="nextPage background">
+            <img src="../images/plus.png" class="plus" onclick="openPage('./background.html')">
+        </div>
+    `;
+
+    if(divId == 'enterName'){
+        target.innerHTML = newContent;
+    } else if (divId == 'class'){
+        target.innerHTML = newContent2;
+    } else if (divId == 'background'){
+        target.innerHTML = newContent3;
+    }
+}

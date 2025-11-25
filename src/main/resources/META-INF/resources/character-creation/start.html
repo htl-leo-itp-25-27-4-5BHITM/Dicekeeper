@@ -20,9 +20,9 @@
                     <a href="./"></a>
                     <div id="row1">
                         <p class="text_white"> Name</p>
-                        <div class="box_round">
+                        <div class="box_round enterName">
                             <input id="nameInput" type="text" placeholder="Enter Name">
-                            <img id="cross" src="../images/cross.png" onclick="clearField()">
+                            <img id="cross" src="../images/cross.png" onclick="clearField('enterName')">
                         </div>
                     </div>
 
@@ -30,10 +30,9 @@
                         <p class="text_white">Class</p>
                         <div class="box_round">
                             <div class="nextPage class">
-                                <!-- hier soll man dann auf die nächsten Seiten gelangen -->
                                 <img src="../images/plus.png" class="plus" onclick="openPage('./classes.html')">
                             </div>
-                            <img id="cross" src="../images/cross.png" onclick="clearField()">
+                            <img id="cross" src="../images/cross.png" onclick="clearField('class')">
                         </div>
                     </div>
                     
@@ -41,10 +40,9 @@
                         <p class="text_white">Background</p>
                         <div class="box_round">
                             <div class="nextPage background">
-                                <!-- hier soll man dann auf die nächsten Seiten gelangen -->
                                 <img src="../images/plus.png" class="plus" onclick="openPage('./background.html')">
                             </div>
-                            <img id="cross" src="../images/cross.png" onclick="clearField()">
+                            <img id="cross" src="../images/cross.png" onclick="clearField('background')">
                         </div>
                     </div>
                 </div>
