@@ -8,13 +8,6 @@ body {
     overscroll-behavior: none;
 }
 
-body::before{
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.26); /* 0.5 = 50% transparent */
-}
-
 .container {
     max-width: 720px;
     margin: 0 auto;
