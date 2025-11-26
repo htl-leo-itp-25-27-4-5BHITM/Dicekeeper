@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./src/main/docker/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql:ro
+    environment:
+      POSTGRES_USER: rulerofall
+      POSTGRES_PASSWORD: rulerofall
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "postgres", "-U", "rulerofall"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres:
