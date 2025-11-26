@@ -24,6 +24,29 @@ async function patchCharacter(data) {
     }
 }
 
+async function saveAbilityScore(abilityId, score) {
+    const characterId = getCharacterId();
+    if (!characterId) {
+        console.warn("No character id in URL, not saving ability score.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/character-ability/${characterId}/${abilityId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: Number(score) || 0 })
+        });
+
+        if (!res.ok) {
+            console.error('Failed to save ability score:', await res.text());
+        }
+    } catch (err) {
+        console.error('Error while saving ability score:', err);
+    }
+}
+
+
 // --------- Ability Scores UI ---------
 let attrsAbility = [];
 const inputsAbility = [];
@@ -92,31 +115,34 @@ function createRowAbility(attr) {
     inc.type = "button";
     inc.textContent = "+";
 
-    dec.addEventListener("click", () => {
-        input.value = Math.max(0, parseInt(input.value || "0", 10) - 1);
+    dec.addEventListener('click', () => {
+        input.value = Math.max(0, parseInt(input.value || 0) - 1);
         updateAbility();
+        saveAbilityScore(attr.key, input.value);
     });
 
-    inc.addEventListener("click", () => {
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput?.value || 0)));
+    inc.addEventListener('click', () => {
+        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
         const used = getUsedPointsAbility();
         if (used < totalBudget) {
-            input.value = Math.max(0, parseInt(input.value || "0", 10) + 1);
+            input.value = Math.max(0, parseInt(input.value || 0) + 1);
             updateAbility();
+            saveAbilityScore(attr.key, input.value);
         }
     });
 
-    input.addEventListener("input", () => {
-        if (input.value === "") return;
-        input.value = String(Math.max(0, Math.floor(Number(input.value) || 0)));
-        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput?.value || 0)));
+    input.addEventListener('input', () => {
+        if (input.value === '') return;
+        input.value = Math.max(0, Math.floor(Number(input.value) || 0));
+        const totalBudget = Math.max(0, Math.floor(Number(totalBudgetInput.value) || 0));
         let used = getUsedPointsAbility();
         if (used > totalBudget) {
-            const diff = used - totalBudget;
-            input.value = String(Math.max(0, Number(input.value) - diff));
+            input.value = Math.max(0, input.value - (used - totalBudget));
         }
         updateAbility();
+        saveAbilityScore(attr.key, input.value);
     });
+
 
     right.appendChild(dec);
     right.appendChild(input);
