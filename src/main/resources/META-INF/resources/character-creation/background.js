@@ -37,7 +37,7 @@ function renderOpen() {
             </div>
             <hr class="backgroundHR">
             <div class="detailsBackground">
-                <p><strong>Ability Scores:</strong> ${backgroundData.ability_scores}</p>
+               <p><strong>Ability Scores:</strong> ${backgroundData.ability_scores}</p>
                 <p><strong>Feat:</strong> ${backgroundData.feat}</p>
                 <p><strong>Skill Proficiencies:</strong> ${backgroundData.skills}</p>
                 <p><strong>Tool Proficiencies:</strong> ${backgroundData.tool_proficiencies}</p>
