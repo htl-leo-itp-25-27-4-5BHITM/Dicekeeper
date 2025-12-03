@@ -1,0 +1,177 @@
+:root {
+    --bg: #0f1724;
+    --card: #0b1220;
+    --accent: #06b6d4;
+    --text: #e6eef6;
+    --selected: #00e676;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, system-ui, Arial;
+    background-image: url(Firefly_Enchanted\ Dungeons\ &\ Dragons\ scene\ with\ green\ magical\ accents-\ an\ overgrown\,\ moss-cov\ 39064\ \(3\).jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-color: #ffffff78;
+    background-blend-mode: lighten;
+
+    display: flex;
+    flex-direction: column;   /* wichtig für oben Mitte */
+    align-items: center;       /* horizontal zentriert */
+    justify-content: flex-start; /* Elemente nach oben */
+    height: 100vh;
+    padding-top: 24px;
+    color: var(--text);
+    user-select: none;
+}
+
+.app {
+    width: 100%;
+    max-width: 980px;
+}
+
+/* --- Slider Bereich --- */
+.slider-wrap {
+    position: relative;
+    background: #004c3677;
+    padding: 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 95%;
+    height: 23vw;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.slider {
+    width: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.5s ease;
+    padding-top: 7vw;
+}
+
+/* --- Alle Thumbnails gleich groß --- */
+.thumb {
+    width: 260px;
+    height: 360px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background: none;        /* kein weißer Hintergrund */
+    border: none;            /* kein weißer Rand */
+    overflow: visible;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.thumb img {
+    width: 70%;
+    height: 70%;
+    object-fit: cover;       /* füllt den sichtbaren Bereich schön aus */
+    border-radius: 8px;
+    display: block;
+}
+
+/* --- Grüner Rahmen bei aktivem Bild --- */
+.thumb.active-thumb {
+    border-color: var(--selected);
+    box-shadow: 0 0 12px var(--selected);
+    transform: scale(1.03);
+}
+
+.thumb .label {
+    margin-top: 8px;
+    padding: 0;
+    background: none;
+    color: white;
+    font-size: 16px;
+    text-align: center;
+}
+.thumb .label {
+    margin-top: 8px;
+    padding: 0;
+    background: none;
+    color: white;
+    font-size: 16px;
+    text-align: center;
+}
+
+/* --- Pfeile --- */
+.nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.45);
+    border: 0;
+    color: var(--text);
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    z-index: 10;
+    transition: 0.3s;
+}
+
+.nav-btn:hover {
+    background: rgba(0,0,0,0.6);
+    color: var(--accent);
+}
+
+.nav-left { left: 8px; }
+.nav-right { right: 8px; }
+
+/* --- Detailansicht --- */
+.detail {
+    display: none;
+    background: #426d65d1;
+    padding: 18px;
+    border-radius: 12px;
+    margin-top: 12px;
+    width: 94%;
+    max-width: 980px;
+}
+
+.detail.active { display: block; }
+
+.detail .back {
+    display: inline-block;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    color: #000;
+    margin-left: 2vw;
+    margin-top: 25vw;
+}
+
+.detail .hero {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.detail .hero img {
+    width: 30%;
+    max-width: 40%;
+    height: 400px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.detail .meta { flex: 1; }
+
+/* --- Mobile --- */
+@media (max-width: 700px) {
+    .thumb {
+        width: 160px;
+        height: 220px;
+    }
+    .detail .hero { flex-direction: column; }
+    .detail .hero img { width: 100%; height: 200px; }
+}

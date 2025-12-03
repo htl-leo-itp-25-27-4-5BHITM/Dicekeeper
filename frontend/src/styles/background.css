@@ -1,0 +1,72 @@
+/* Background Seite */
+body{
+    user-select: none;
+}
+
+#backgroundPage {
+    font-family: 'Georgia', serif;
+    color: #ffff;
+    margin: 0;
+    padding: 40px;
+    background-image: url("Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+    background-color: #ffffff78;
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: lighten;
+}
+
+.containerBackground {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #004c369e;
+    padding: 24px 36px;
+    border-radius: 10px;
+}
+
+.containerBackground h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.subtitleBackground {
+    color: #ffffffc0;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.topInfoBackground {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+.topInfoBackground div {
+    margin-right: 10px;
+}
+
+.contentBackground {
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+button.backgroundBtn {
+    background-color: #D9D9D9;
+    border-radius: 70%;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+}
+
+button.backgroundBtn:hover {
+    background-color: rgb(175, 174, 174);
+}
+
+#saveBtn {
+    border-radius: 10%;
+    padding: 6px 10px;
+    border: none;
+}

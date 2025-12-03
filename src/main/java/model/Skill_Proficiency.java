@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 
 @Entity
 public class Skill_Proficiency extends PanacheEntity {
+    public int backgroundId;
     public int skillId;
     public String proficiencyLevel;
 }

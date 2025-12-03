@@ -21,4 +21,6 @@ public class BackgroundResource {
     public Background getBackgroundById(@PathParam("id") int id) {
         return Background.findById((long) id);
     }
+
+    
 }

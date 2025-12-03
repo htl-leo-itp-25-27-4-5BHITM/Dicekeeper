@@ -1,0 +1,260 @@
+/* Startseit*/
+#bagroundboxStart{
+    font-family: cabaret;
+    background-image: url(HintergrundPC.jpg);
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    margin: 0;
+}
+#overboxStart{
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 251, 251, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#startboxStart{
+    width: 400px;
+    height: 200px;
+    background-color: white;
+    text-align: center;
+    padding-top: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+#chnameStart{
+    width: 80%;
+    padding: 10px;
+    margin: 15px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+}
+#buttonstartStart{
+    padding: 10px 20px;
+    background-color: #258128;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+#buttonstartStart:hover {
+    background-color: #7caf7e;
+}
+@media (max-width: 500px) {
+    #bagroundboxStart {
+        background-image: url(Header_Background\ .jpg);
+    }
+    #startboxStart {
+        width: 75%;
+        height: auto;
+        padding: 20px;
+    }
+    #chnameStart {
+        width: 94%;
+    }
+}
+
+
+/* Wrapper der Ability-Seite */
+#startboxAbility {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    margin: 0;
+    background: linear-gradient(180deg,#071022 0%, #071633 100%);
+    color: #e6eef8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Container für alle Attribute */
+.containerAbility {
+    width: 100%;
+    max-width: 760px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(2,6,23,0.6);
+}
+
+/* Überschrift */
+.containerAbility h1 {
+    margin: 0 0 12px 0;
+    font-size: 20px;
+}
+
+/* Zeilen für Attribute */
+.rowAbility {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.attrNameAbility {
+    font-weight: 600;
+}
+
+.attrDescAbility {
+    display: block;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+}
+
+.controlsAbility {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.controlsAbility button {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 0;
+    background: rgba(255,255,255,0.03);
+    color: inherit;
+    cursor: pointer;
+}
+
+.controlsAbility input[type=number] {
+    width: 60px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: transparent;
+    color: inherit;
+    text-align: center;
+}
+
+.summaryAbility {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+}
+
+.badgeAbility {
+    font-weight: 700;
+}
+
+.footerAbility {
+    margin-top: 14px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+}
+
+.topAbility {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.budgetAbility {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.budgetAbility input {
+    width: 80px;
+    padding: 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: transparent;
+    color: inherit;
+}
+
+@media (max-width:600px) {
+    .rowAbility { grid-template-columns: 1fr 1fr; }
+    .controlsAbility input[type=number] { width: 48px; }
+}
+
+
+/*Background Seite*/
+#backgroundPage {
+    font-family: 'Georgia', serif;
+    background: #f5f3ef;
+    margin: 0;
+    padding: 40px;
+    color: #222;
+}
+
+.containerBackground {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 24px 36px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.containerBackground h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.subtitleBackground {
+    color: #777;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.topInfoBackground {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+.topInfoBackground div {
+    margin-right: 10px;
+}
+
+.contentBackground {
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+hr.backgroundHR {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 24px 0;
+}
+
+.detailsBackground strong {
+    display: inline-block;
+    width: 180px;
+}
+
+.detailsBackground p {
+    margin: 4px 0 12px 0;
+}
+
+button.backgroundBtn {
+    background: none;
+    border: 1px solid #999;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+button.backgroundBtn:hover {
+    background: #eee;
+}
+
+.hiddenBackground {
+    display: none;
+}
