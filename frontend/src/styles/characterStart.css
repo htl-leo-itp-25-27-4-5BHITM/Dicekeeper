@@ -63,7 +63,6 @@
 #startboxAbility {
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     margin: 0;
-    background: linear-gradient(180deg,#071022 0%, #071633 100%);
     color: #e6eef8;
     display: flex;
     align-items: center;

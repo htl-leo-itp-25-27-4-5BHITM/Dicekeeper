@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+
+// API helpers
 import {
     getCharacter,
     patchCharacter,
@@ -10,22 +12,44 @@ import {
     saveCharacterAbilityScore,
 } from '../api/client'
 
+// Bring in the stylesheet that defines all the classes and IDs used by
+// the original HTML. Without importing this file the markup below
+// would not be styled correctly.  The base.css corresponds to
+// resources/character-creation/style.css.
+import '../styles/base.css'
+
+// Import the static assets used on the start page.  Vite will process
+// these imports and make the images available at runtime.
+import accountImg from '../images/account-template.png'
+import crossImg from '../images/cross.png'
+import plusImg from '../images/plus.png'
+
+/**
+ * The start page for editing a character.  This component mirrors
+ * the structure of the reference start.html provided in the resources
+ * folder.  IDs and class names are preserved so that the imported CSS
+ * applies correctly.
+ */
 function CharacterStart() {
     const { id } = useParams()
     const navigate = useNavigate()
 
+    // page state
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [character, setCharacter] = useState(null)
 
+    // character fields
     const [name, setName] = useState('')
     const [info, setInfo] = useState('')
     const [clazz, setClazz] = useState(null)
     const [background, setBackground] = useState(null)
 
+    // ability scores
     const [totalBudget, setTotalBudget] = useState(27)
-    const [abilities, setAbilities] = useState([]) // {id, name, description, value}
+    const [abilities, setAbilities] = useState([])
 
+    // compute derived values
     const usedPoints = useMemo(
         () =>
             abilities.reduce(
@@ -36,20 +60,21 @@ function CharacterStart() {
     )
     const remaining = totalBudget - usedPoints
 
+    // fetch character and related data
     useEffect(() => {
         if (!id) return
-            ;(async () => {
+        ;(async () => {
             try {
                 setLoading(true)
                 setError('')
 
-                // base character
+                // load the base character
                 const c = await getCharacter(id)
                 setCharacter(c)
                 setName(c.name || '')
                 setInfo(c.info || '')
 
-                // load class / background names if set
+                // fetch class and background names if defined
                 if (c.classId) {
                     getClassById(c.classId)
                         .then(setClazz)
@@ -57,7 +82,6 @@ function CharacterStart() {
                 } else {
                     setClazz(null)
                 }
-
                 if (c.backgroundId) {
                     getBackgroundById(c.backgroundId)
                         .then(setBackground)
@@ -66,19 +90,17 @@ function CharacterStart() {
                     setBackground(null)
                 }
 
-                // abilities + scores
+                // load all abilities and the current character ability scores
                 const [allAbilities, scores] = await Promise.all([
                     getAllAbilities(),
                     getCharacterAbilityScores(id),
                 ])
-
                 const byId = new Map(
                     (Array.isArray(scores) ? scores : []).map((s) => [
                         s.abilityId,
                         s.score,
                     ]),
                 )
-
                 setAbilities(
                     (Array.isArray(allAbilities) ? allAbilities : []).map((a) => ({
                         id: a.id,
@@ -96,6 +118,7 @@ function CharacterStart() {
         })()
     }, [id])
 
+    // save name on blur
     async function handleNameBlur() {
         if (!id) return
         try {
@@ -106,6 +129,7 @@ function CharacterStart() {
         }
     }
 
+    // save info on blur
     async function handleInfoBlur() {
         if (!id) return
         try {
@@ -116,39 +140,57 @@ function CharacterStart() {
         }
     }
 
+    // clear class selection
+    async function clearClass() {
+        if (!id) return
+        try {
+            await patchCharacter(id, { classId: null })
+            setClazz(null)
+        } catch (e) {
+            console.error(e)
+            setError(`Failed to clear class: ${e.message}`)
+        }
+    }
+
+    // clear background selection
+    async function clearBackgroundSelection() {
+        if (!id) return
+        try {
+            await patchCharacter(id, { backgroundId: null })
+            setBackground(null)
+        } catch (e) {
+            console.error(e)
+            setError(`Failed to clear background: ${e.message}`)
+        }
+    }
+
+    // ensure ability values are integers and within the total budget
     function normalizeAbilities(list, total, changedId) {
         const totalBudgetLocal = Math.max(0, Math.floor(Number(total) || 0))
         let normalized = list.map((a) => ({
             ...a,
             value: Math.max(0, Math.floor(Number(a.value) || 0)),
         }))
-
         const used = normalized.reduce((sum, a) => sum + a.value, 0)
-        if (used <= totalBudgetLocal || changedId == null) {
-            return normalized
-        }
-
+        if (used <= totalBudgetLocal || changedId == null) return normalized
         const diff = used - totalBudgetLocal
-        normalized = normalized.map((a) => {
+        return normalized.map((a) => {
             if (a.id === changedId) {
                 return { ...a, value: Math.max(0, a.value - diff) }
             }
             return a
         })
-
-        return normalized
     }
 
+    // update an ability value and persist it via the API
     function updateAbility(changedId, newRawValue) {
         setAbilities((prev) => {
             let updated = prev.map((a) =>
                 a.id === changedId ? { ...a, value: newRawValue } : a,
             )
             updated = normalizeAbilities(updated, totalBudget, changedId)
-
             const changed = updated.find((a) => a.id === changedId)
             if (id && changed) {
-                // fire and forget
                 saveCharacterAbilityScore(id, changedId, changed.value).catch((e) =>
                     console.error('Failed to save ability score', e),
                 )
@@ -183,6 +225,7 @@ function CharacterStart() {
     }
 
     if (!id) {
+        // Without an id there is no context for the page
         return <div>No character id in URL.</div>
     }
 
@@ -191,290 +234,195 @@ function CharacterStart() {
     }
 
     return (
-        <div>
+        <div id="landingPage">
+            {/* display error if present */}
             {error && (
-                <div style={{ color: '#f97373', fontSize: '13px', marginBottom: '10px' }}>
+                <div
+                    style={{ color: '#f97373', fontSize: '13px', marginBottom: '10px' }}
+                >
                     {error}
                 </div>
             )}
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)',
-                    gap: '24px',
-                    marginBottom: '28px',
-                }}
-            >
+            {/* Upper section: avatar and character fields */}
+            <div id="upperBox">
+                <div id="imgDiv">
+                    <div id="imgBox">
+                        <img id="accImg" src={accountImg} alt="account" />
+                    </div>
+                </div>
                 <div>
-                    <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>
-                        Character #{id}
-                    </h2>
-
-                    <div style={{ marginBottom: '10px' }}>
-                        <label
-                            htmlFor="name"
-                            style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}
-                        >
-                            Name
-                        </label>
-                        <div style={{ position: 'relative' }}>
+                    <div id="charakterDetails">
+                        {/* Name row */}
+                        <div id="row1">
+                            <p className="text_white">Name</p>
+                            <div className="box_round">
+                                <input
+                                    id="nameInput"
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    onBlur={handleNameBlur}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') e.currentTarget.blur()
+                                    }}
+                                    placeholder="Enter Name"
+                                />
+                                {name && (
+                                    <img
+                                        id="clearName"
+                                        className="clearIcon"
+                                        src={crossImg}
+                                        alt="clear"
+                                        onClick={() => {
+                                            setName('')
+                                            // persist empty name
+                                            handleNameBlur()
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                        {/* Class row */}
+                        <div id="row2">
+                            <p className="text_white">Class</p>
+                            <div className="box_round">
+                                <div
+                                    className="nextPage class"
+                                    onClick={() => navigate(`/characters/${id}/classes`)}
+                                >
+                                    {clazz?.name ? (
+                                        <span>{clazz.name}</span>
+                                    ) : (
+                                        <img
+                                            src={plusImg}
+                                            className="plus"
+                                            alt="select class"
+                                        />
+                                    )}
+                                </div>
+                                {clazz && (
+                                    <img
+                                        id="clearClass"
+                                        className="clearIcon"
+                                        src={crossImg}
+                                        alt="clear class"
+                                        onClick={clearClass}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                        {/* Background row */}
+                        <div id="row3">
+                            <p className="text_white">Background</p>
+                            <div className="box_round">
+                                <div
+                                    className="nextPage background"
+                                    onClick={() => navigate(`/characters/${id}/background`)}
+                                >
+                                    {background?.name ? (
+                                        <span>{background.name}</span>
+                                    ) : (
+                                        <img
+                                            src={plusImg}
+                                            className="plus"
+                                            alt="select background"
+                                        />
+                                    )}
+                                </div>
+                                {background && (
+                                    <img
+                                        id="clearBackground"
+                                        className="clearIcon"
+                                        src={crossImg}
+                                        alt="clear background"
+                                        onClick={clearBackgroundSelection}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {/* Info input */}
+                    <div id="charakterInfos">
+                        <p id="infoHeadline">Info</p>
+                        <div>
                             <input
-                                id="name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                onBlur={handleNameBlur}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') e.currentTarget.blur()
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(148,163,184,0.5)',
-                                    background: 'rgba(15,23,42,0.9)',
-                                    color: '#e5e7eb',
-                                    fontSize: '14px',
-                                }}
-                                placeholder="Enter name"
+                                type="text"
+                                placeholder="Enter your Charakters Info"
+                                id="charakterInfoInput"
+                                value={info}
+                                onChange={(e) => setInfo(e.target.value)}
+                                onBlur={handleInfoBlur}
                             />
                         </div>
                     </div>
-
-                    <div style={{ marginBottom: '10px' }}>
-                        <label
-                            htmlFor="info"
-                            style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}
-                        >
-                            Info
-                        </label>
-                        <textarea
-                            id="info"
-                            value={info}
-                            onChange={(e) => setInfo(e.target.value)}
-                            onBlur={handleInfoBlur}
-                            rows={4}
-                            style={{
-                                width: '100%',
-                                padding: '6px 10px',
-                                borderRadius: '8px',
-                                border: '1px solid rgba(148,163,184,0.5)',
-                                background: 'rgba(15,23,42,0.9)',
-                                color: '#e5e7eb',
-                                fontSize: '14px',
-                                resize: 'vertical',
-                            }}
-                            placeholder="Enter your character's info"
-                        />
-                    </div>
-
-                    <div style={{ marginTop: '16px' }}>
-                        <div style={{ marginBottom: '6px', fontSize: '13px' }}>Class</div>
-                        <button
-                            type="button"
-                            onClick={() => navigate(`/characters/${id}/classes`)}
-                            style={{
-                                width: '100%',
-                                padding: '8px 10px',
-                                borderRadius: '999px',
-                                border: '1px dashed rgba(148,163,184,0.6)',
-                                background: 'rgba(15,23,42,0.7)',
-                                color: '#e5e7eb',
-                                fontSize: '14px',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            {clazz?.name || character?.classId ? (
-                                <>
-                                    <strong>{clazz?.name ?? `Class #${character.classId}`}</strong>
-                                </>
-                            ) : (
-                                'Select class…'
-                            )}
-                        </button>
-
-                        <div style={{ marginTop: '12px' }}>
-                            <div style={{ marginBottom: '6px', fontSize: '13px' }}>Background</div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/characters/${id}/background`)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 10px',
-                                    borderRadius: '999px',
-                                    border: '1px dashed rgba(148,163,184,0.6)',
-                                    background: 'rgba(15,23,42,0.7)',
-                                    color: '#e5e7eb',
-                                    fontSize: '14px',
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {background?.name || character?.backgroundId ? (
-                                    <>
-                                        <strong>
-                                            {background?.name ?? `Background #${character.backgroundId}`}
-                                        </strong>
-                                    </>
-                                ) : (
-                                    'Select background…'
-                                )}
-                            </button>
-                        </div>
-                    </div>
                 </div>
+            </div>
 
-                <div>
-                    <h3 style={{ marginTop: 0, marginBottom: '10px', fontSize: '18px' }}>
-                        Ability Scores
-                    </h3>
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '8px',
-                            fontSize: '13px',
-                        }}
-                    >
-                        <label htmlFor="totalBudgetAbility">Total points:</label>
+            {/* Ability scores section */}
+            <div className="containerAbility">
+                <h1 id="attrHeadliner">Attribute — Punkte vergeben</h1>
+                <div className="topAbility">
+                    <div className="budgetAbility">
+                        <label htmlFor="totalBudgetAbility">Gesamtpunkte:</label>
                         <input
                             type="number"
                             id="totalBudgetAbility"
                             min={0}
                             value={totalBudget}
                             onChange={handleBudgetChange}
-                            style={{
-                                width: '70px',
-                                padding: '4px 6px',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(148,163,184,0.7)',
-                                background: '#020617',
-                                color: '#e5e7eb',
-                            }}
                         />
-                        <span style={{ marginLeft: 'auto', color: '#94a3b8' }}>
-              Used: {usedPoints} · Remaining:{' '}
-                            <span style={{ color: remaining < 0 ? '#f97373' : '#bbf7d0' }}>
-                {remaining}
-              </span>
-            </span>
                     </div>
-
-                    <div
-                        style={{
-                            maxHeight: '320px',
-                            overflowY: 'auto',
-                            paddingRight: '4px',
-                            marginTop: '8px',
-                        }}
-                    >
-                        {abilities.map((a) => {
-                            const value = Math.max(0, Math.floor(Number(a.value) || 0))
-                            return (
-                                <div
-                                    key={a.id}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        justifyContent: 'space-between',
-                                        gap: '12px',
-                                        padding: '8px 0',
-                                        borderBottom: '1px solid rgba(30, 64, 175, 0.4)',
-                                    }}
-                                >
-                                    <div style={{ flex: '1 1 auto' }}>
-                                        <div
-                                            style={{
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                marginBottom: '3px',
-                                            }}
-                                        >
-                                            {a.name}
-                                        </div>
-                                        {a.description && (
-                                            <div
-                                                style={{
-                                                    fontSize: '12px',
-                                                    color: '#9ca3af',
-                                                    whiteSpace: 'pre-wrap',
-                                                }}
-                                            >
-                                                {a.description}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            flexShrink: 0,
-                                        }}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDec(a.id)}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '999px',
-                                                border: 'none',
-                                                background: '#1f2937',
-                                                color: '#e5e7eb',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            −
-                                        </button>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            value={Number.isNaN(value) ? 0 : value}
-                                            onChange={(e) => handleInputChange(a.id, e.target.value)}
-                                            style={{
-                                                width: '52px',
-                                                padding: '4px 6px',
-                                                borderRadius: '6px',
-                                                border: '1px solid rgba(148,163,184,0.7)',
-                                                background: '#020617',
-                                                color: '#e5e7eb',
-                                                textAlign: 'center',
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => handleInc(a.id)}
-                                            disabled={remaining <= 0}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '999px',
-                                                border: 'none',
-                                                background:
-                                                    remaining <= 0 ? '#111827' : '#4f46e5',
-                                                color: '#e5e7eb',
-                                                cursor: remaining <= 0 ? 'not-allowed' : 'pointer',
-                                                opacity: remaining <= 0 ? 0.5 : 1,
-                                            }}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                </div>
-                            )
-                        })}
+                    <div style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.6)' }}>
+                        Verwende die +/- Knöpfe oder trage eine Zahl ein.
                     </div>
                 </div>
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#64748b' }}>
-                <Link to="/characters" style={{ color: '#a5b4fc' }}>
-                    ← Back to list
-                </Link>
+                <div className="summaryAbility">
+                    <div>
+                        Verwendet: <span id="usedAbility">{usedPoints}</span>
+                    </div>
+                    <div>
+                        Verbleibend: <span id="remainingAbility">{remaining}</span>
+                    </div>
+                </div>
+                <div id="attributesAbility">
+                    {abilities.map((a) => {
+                        const value = Math.max(0, Math.floor(Number(a.value) || 0))
+                        return (
+                            <div key={a.id} className="rowAbility">
+                                <div>
+                                    <div className="attrNameAbility">{a.name}</div>
+                                    {a.description && (
+                                        <span className="attrDescAbility">{a.description}</span>
+                                    )}
+                                </div>
+                                <div className="controlsAbility">
+                                    <button type="button" onClick={() => handleDec(a.id)}>
+                                        −
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={Number.isNaN(value) ? 0 : value}
+                                        onChange={(e) =>
+                                            handleInputChange(a.id, e.target.value)
+                                        }
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleInc(a.id)}
+                                        disabled={remaining <= 0}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+                <div className="footerAbility">
+                    Attribute: Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma.
+                </div>
             </div>
         </div>
     )

@@ -1,36 +1,52 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getBackgrounds, getCharacter, patchCharacter } from '../api/client'
 
+// Bring in the CSS for the background page.  This stylesheet defines
+// #backgroundPage, .containerBackground, .backgroundBtn and other
+// selectors used below so that the page aligns with the reference HTML.
+import '../styles/background.css'
+
+/**
+ * The background selection page.  This component mirrors the markup
+ * found in character-creation/background.html from the resources
+ * folder: a simple page showing a single background with a toggle to
+ * reveal details and a save button.
+ */
 function BackgroundPage() {
     const { id } = useParams()
     const navigate = useNavigate()
 
     const [backgrounds, setBackgrounds] = useState([])
-    const [selected, setSelected] = useState(null) // full object
+    const [selected, setSelected] = useState(null) // the background currently displayed
     const [status, setStatus] = useState('Loading…')
     const [error, setError] = useState('')
+    const [open, setOpen] = useState(false)
     const [saving, setSaving] = useState(false)
 
+    // Load all backgrounds and the current character.  Preselect the
+    // character's existing background if set, otherwise use the first
+    // background returned by the API.
     useEffect(() => {
         if (!id) return
-            ;(async () => {
+        ;(async () => {
             try {
                 setStatus('Loading…')
                 setError('')
-                const [bgs, char] = await Promise.all([
-                    getBackgrounds(),
-                    getCharacter(id),
-                ])
+                const [bgs, char] = await Promise.all([getBackgrounds(), getCharacter(id)])
                 const list = Array.isArray(bgs) ? bgs : []
                 setBackgrounds(list)
-                setStatus(list.length === 0 ? 'No backgrounds found.' : '')
-
-                const current =
-                    char?.backgroundId != null
-                        ? list.find((b) => b.id === char.backgroundId) || null
-                        : null
+                // Choose the character's background if available
+                let current = null
+                if (char?.backgroundId != null) {
+                    current = list.find((b) => b.id === char.backgroundId) || null
+                }
+                // Fallback to the first item
+                if (!current && list.length > 0) {
+                    current = list[0]
+                }
                 setSelected(current)
+                setStatus(list.length === 0 ? 'No backgrounds found.' : '')
             } catch (e) {
                 console.error(e)
                 setError(e.message || 'Failed to load backgrounds')
@@ -39,12 +55,14 @@ function BackgroundPage() {
         })()
     }, [id])
 
+    // Toggle the detail view
+    function handleToggle() {
+        setOpen((prev) => !prev)
+    }
+
+    // Persist selected background and return to character page
     async function handleSave() {
-        if (!id) return
-        if (!selected) {
-            alert('Bitte zuerst einen Background auswählen.')
-            return
-        }
+        if (!id || !selected) return
         try {
             setSaving(true)
             await patchCharacter(id, { backgroundId: selected.id })
@@ -58,146 +76,91 @@ function BackgroundPage() {
     }
 
     return (
-        <div>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    marginBottom: '16px',
-                }}
-            >
-                <h2 style={{ margin: 0, fontSize: '20px' }}>Choose Background</h2>
-                <Link to={`/characters/${id}`} style={{ fontSize: '13px', color: '#a5b4fc' }}>
-                    Cancel
-                </Link>
-            </div>
-
-            {status && (
-                <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}>
-                    {status}
+        <div id="backgroundPage">
+            <div className="containerBackground">
+                {/* Display errors or status */}
+                {status && (
+                    <div
+                        style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}
+                    >
+                        {status}
+                    </div>
+                )}
+                {error && (
+                    <div
+                        style={{ fontSize: '13px', color: '#f97373', marginBottom: '8px' }}
+                    >
+                        {error}
+                    </div>
+                )}
+                {/* Title */}
+                <h1 id="bg-title">{selected ? selected.name : 'Loading…'}</h1>
+                <div className="subtitleBackground">Player’s Handbook</div>
+                {/* Top info bar with feat/skills and toggle */}
+                <div className="topInfoBackground">
+                    <div>
+                        <strong>Feat:</strong>{' '}
+                        <span id="bg-feat">{selected?.feat || ''}</span>
+                    </div>
+                    <div>
+                        <strong>Skills:</strong>{' '}
+                        <span id="bg-skills">{selected?.skills || ''}</span>
+                    </div>
+                    <button className="backgroundBtn" onClick={handleToggle}>
+                        {open ? '–' : '+'}
+                    </button>
                 </div>
-            )}
-            {error && (
-                <div style={{ fontSize: '13px', color: '#f97373', marginBottom: '8px' }}>
-                    {error}
-                </div>
-            )}
-
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 3fr)',
-                    gap: '16px',
-                }}
-            >
-                <div
-                    style={{
-                        maxHeight: '340px',
-                        overflowY: 'auto',
-                        paddingRight: '4px',
-                    }}
-                >
-                    {backgrounds.map((b) => {
-                        const isSelected = selected?.id === b.id
-                        return (
-                            <button
-                                key={b.id}
-                                type="button"
-                                onClick={() => setSelected(b)}
-                                style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '8px 10px',
-                                    borderRadius: '10px',
-                                    border: isSelected
-                                        ? '1px solid rgba(129,140,248,0.9)'
-                                        : '1px solid rgba(30,64,175,0.4)',
-                                    background: isSelected ? '#1e293b' : '#020617',
-                                    color: '#e5e7eb',
-                                    cursor: 'pointer',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                <div style={{ fontWeight: 600, marginBottom: '4px' }}>{b.name}</div>
-                                {b.feat && (
-                                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-                                        Feat: {b.feat}
-                                    </div>
-                                )}
-                                {b.skills && (
-                                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-                                        Skills: {b.skills}
-                                    </div>
-                                )}
-                            </button>
-                        )
-                    })}
-                </div>
-
-                <div>
-                    {selected ? (
-                        <div>
-                            <h3 style={{ marginTop: 0, fontSize: '18px' }}>{selected.name}</h3>
-                            {selected.description && (
-                                <p style={{ fontSize: '13px', color: '#cbd5f5', whiteSpace: 'pre-wrap' }}>
-                                    {selected.description}
-                                </p>
-                            )}
-                            <hr style={{ borderColor: 'rgba(148,163,184,0.4)' }} />
-                            <div style={{ fontSize: '13px', color: '#e5e7eb' }}>
+                {/* Detail output area */}
+                <div id="output">
+                    {open && selected && (
+                        <div id="descriptionBackground">
+                            <div className="contentBackground">
+                                {selected.description}
+                            </div>
+                            <hr className="backgroundHR" />
+                            <div className="detailsBackground">
                                 {selected.ability_scores && (
                                     <p>
-                                        <strong>Ability Scores:</strong> {selected.ability_scores}
+                                        <strong>Ability Scores:</strong>{' '}
+                                        {selected.ability_scores}
                                     </p>
                                 )}
                                 {selected.feat && (
                                     <p>
-                                        <strong>Feat:</strong> {selected.feat}
+                                        <strong>Feat:</strong>{' '}
+                                        {selected.feat}
                                     </p>
                                 )}
                                 {selected.skills && (
                                     <p>
-                                        <strong>Skill Proficiencies:</strong> {selected.skills}
+                                        <strong>Skill Proficiencies:</strong>{' '}
+                                        {selected.skills}
                                     </p>
                                 )}
                                 {selected.tool_proficiencies && (
                                     <p>
-                                        <strong>Tool Proficiencies:</strong> {selected.tool_proficiencies}
+                                        <strong>Tool Proficiencies:</strong>{' '}
+                                        {selected.tool_proficiencies}
                                     </p>
                                 )}
                                 {selected.equipment && (
                                     <p>
-                                        <strong>Equipment:</strong> {selected.equipment}
+                                        <strong>Equipment:</strong>{' '}
+                                        {selected.equipment}
                                     </p>
                                 )}
                             </div>
-                        </div>
-                    ) : (
-                        <div style={{ fontSize: '13px', color: '#9ca3af' }}>
-                            Select a background on the left to see details.
+                            <button
+                                id="saveBtn"
+                                className="saveBackgroundBtn"
+                                onClick={handleSave}
+                                disabled={saving}
+                            >
+                                {saving ? 'Saving…' : 'Save'}
+                            </button>
                         </div>
                     )}
                 </div>
-            </div>
-
-            <div style={{ marginTop: '16px' }}>
-                <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || !selected}
-                    style={{
-                        padding: '8px 16px',
-                        borderRadius: '999px',
-                        border: 'none',
-                        background: saving || !selected ? '#111827' : '#4f46e5',
-                        color: '#e5e7eb',
-                        fontSize: '14px',
-                        cursor: saving || !selected ? 'not-allowed' : 'pointer',
-                    }}
-                >
-                    {saving ? 'Saving…' : 'Save'}
-                </button>
             </div>
         </div>
     )
