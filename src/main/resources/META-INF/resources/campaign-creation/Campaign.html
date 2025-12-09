@@ -176,8 +176,18 @@
       <p id="mapFileName" style="margin-top:8px; font-size:0.9rem; color:#98a2b3;"></p>
     </div>
 
-    <button type="button" id="createBtn" class="btn">Erstellen</button>
-    <div id="status" style="margin-top:12px; color: #98a2b3; font-size:0.95rem"></div>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+          <button type="button" id="backBtn" class="btn" style="background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4);">
+              Zurück
+          </button>
+
+          <button type="button" id="createBtn" class="btn">
+              Erstellen
+          </button>
+      </div>
+
+      <div id="status" style="margin-top:12px; color: #98a2b3; font-size:0.95rem"></div>
+
   </div>
 
   <script>
@@ -227,6 +237,7 @@
     // Handle campaign creation/editing
     (function () {
         const btn = document.getElementById('createBtn')
+        const backBtn = document.getElementById('backBtn')
         const nameInput = document.getElementById('name')
         const storyInput = document.getElementById('story')
         const mapInput = document.getElementById('map')
@@ -403,6 +414,14 @@
       loadCampaign()
 
       btn.addEventListener('click', saveCampaign)
+
+        if (backBtn) {
+            backBtn.addEventListener('click', function () {
+                window.location.href = './Campaigns.html'
+            })
+        }
+
+
     })()
    </script>
 </body>
