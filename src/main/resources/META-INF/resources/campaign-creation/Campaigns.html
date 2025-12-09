@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Campaigns</title>
+  <style>
+    body {
+        font-family: system-ui, sans-serif;
+        color:#e6eef3;
+        padding:24px;
+        background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+        background-color: #ffffff78;
+        background-size: cover;
+        background-attachment: fixed;
+        background-blend-mode: lighten;
+    }
+    .top { display:flex; justify-content:space-between; align-items:center }
+    h1 { margin:0 }
+    .list { margin-top:18px }
+    .card { background:#042f22; padding:12px 16px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center }
+    .card .meta { color:#9fbfaf }
+    .empty { color:#94a3b8 }
+    .btn { background:#fff; color:#064e3b; border:none; padding:8px 12px; border-radius:8px; cursor:pointer }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1>Meine Kampagnen</h1>
+    <div>
+      <button id="newBtn" class="btn">Neu erstellen</button>
+      <button id="backLogin" class="btn" style="margin-left:8px">Logout</button>
+    </div>
+  </div>
+
+  <div id="status" style="margin-top:12px; color:#98a2b3"></div>
+  <div id="list" class="list"></div>
+
+  <script>
+    (function(){
+      const listEl = document.getElementById('list')
+      const status = document.getElementById('status')
+      const newBtn = document.getElementById('newBtn')
+      const backLogin = document.getElementById('backLogin')
+
+      function setStatus(msg, isErr){ status.textContent = msg || ''; status.style.color = isErr ? '#f97373' : '#98a2b3' }
+
+      function requirePlayer(){
+        try{
+          const raw = sessionStorage.getItem('player')
+          if (!raw) return null
+          return JSON.parse(raw)
+        }catch(e){ console.warn(e); return null }
+      }
+
+      async function load(){
+        const player = requirePlayer()
+        if (!player){ setStatus('Not logged in — please sign in', true); return }
+        setStatus('Loading campaigns...')
+        try{
+          const res = await fetch('/api/campaign/player/' + encodeURIComponent(player.id), { cache:'no-store' })
+          if (!res.ok){
+            let txt = null
+            try { txt = await res.text() } catch (e) {}
+            setStatus('Failed to load campaigns: ' + (txt || res.statusText || ('HTTP ' + res.status)), true)
+            return
+          }
+          const data = await res.json()
+          if (!Array.isArray(data) || data.length === 0){ listEl.innerHTML = '<div class="empty">No campaigns yet.</div>'; setStatus(''); return }
+          listEl.innerHTML = ''
+          for(const c of data){
+            const card = document.createElement('div')
+            card.className = 'card'
+            card.style.cursor = 'pointer'
+            card.innerHTML = `<div><div style="font-weight:700">${escapeHtml(c.name)}</div><div class="meta">${escapeHtml(c.description || '')}</div></div><div class="meta">id:${c.id}</div>`
+            card.addEventListener('click', ()=>{ window.location.href = './Campaign.html?id=' + encodeURIComponent(c.id) })
+            card.addEventListener('mouseenter', ()=>{ card.style.opacity = '0.8' })
+            card.addEventListener('mouseleave', ()=>{ card.style.opacity = '1' })
+            listEl.appendChild(card)
+          }
+          setStatus('')
+        }catch(err){ console.error(err); setStatus('Failed to load campaigns: ' + (err.message||''), true) }
+      }
+
+      newBtn.addEventListener('click', ()=>{ window.location.href = './Campaign.html' })
+      backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = './Login.html' })
+
+      function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
+
+      load()
+    })()
+  </script>
+</body>
+</html>

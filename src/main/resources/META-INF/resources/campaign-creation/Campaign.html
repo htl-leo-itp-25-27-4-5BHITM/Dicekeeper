@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kampagne erstellen</title>
+  <style>
+    :root {
+      --green-600:   #004c3685;
+      --green-700: #256628;
+      --green-300: #81c784;
+      --white: #ffffff;
+    }
+
+    body {
+    background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+    background-color: #ffffff78;
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: lighten;
+
+    /* Hier wird die login-box zentriert */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    min-height: 100vh;
+    margin: 0;
+}
+
+    .campaign-box {
+      width: 35vw;
+      background: var(--green-600);
+      color: var(--white);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+      padding: 24px 22px;
+    }
+
+    .campaign-box h1 {
+    text-align: center;
+      margin-top: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    textarea,
+    input[type="file"] {
+      width: 95%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--white);
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--green-300);
+      background: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 0 3px rgba(129, 199, 132, 0.35);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .btn {
+      width: 100%;
+      height: 44px;
+      border: none;
+      border-radius: 10px;
+      background: var(--white);
+      color: var(--green-700);
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+      background: #f9f9f9;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+    }
+
+    /* Top-right profile widget */
+    .profile-widget {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 999;
+      cursor: pointer;
+      color: var(--white);
+    }
+
+    .profile-pic {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #064e3b;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      flex-shrink: 0;
+    }
+
+    .profile-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--white);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Profile widget; populated from sessionStorage 'player' by script below -->
+  <div id="profileWidget" class="profile-widget" title="Profile / Click to manage">
+    <div id="profilePic" class="profile-pic">?</div>
+    <div id="profileName" class="profile-name">Guest</div>
+  </div>
+
+  <div class="campaign-box">
+    <h1>Kampagne</h1>
+
+    <div class="form-group">
+      <label for="name">Gib einen Namen ein:</label>
+      <input type="text" id="name" name="name" placeholder="z.B. Schattenwald" required />
+    </div>
+
+    <div class="form-group">
+      <label for="story">Gib die Hintergrundgeschichte für die Kampagne ein:</label>
+      <textarea id="story" name="story" placeholder="Die Legende beginnt..." required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="map">Lade die Karte für die Kampagne hoch:</label>
+      <input type="file" id="map" name="map" accept=".jpg,.png,.svg" />
+    </div>
+
+    <button type="button" id="createBtn" class="btn">Erstellen</button>
+    <div id="status" style="margin-top:12px; color: #98a2b3; font-size:0.95rem"></div>
+  </div>
+
+  <script>
+    // Populate profile widget from sessionStorage 'player'
+    (function () {
+      function initialsFromName(name) {
+        if (!name) return '?'
+        const parts = name.trim().split(/\s+/)
+        if (parts.length === 1) return parts[0].slice(0,2).toUpperCase()
+        return (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+      }
+
+      var widget = document.getElementById('profileWidget')
+      var pic = document.getElementById('profilePic')
+      var nameEl = document.getElementById('profileName')
+
+      try {
+        var raw = sessionStorage.getItem('player')
+        if (raw) {
+          var player = JSON.parse(raw)
+          nameEl.textContent = player.username || player.email || 'Player'
+          pic.textContent = initialsFromName(player.username || player.email)
+        } else {
+          // no player stored
+          nameEl.textContent = 'Guest'
+          pic.textContent = '?'
+        }
+      } catch (e) {
+        console.warn('Failed to read player from sessionStorage', e)
+        nameEl.textContent = 'Guest'
+        pic.textContent = '?'
+      }
+
+      // Clicking the widget returns to Login page (or open profile management)
+      widget.addEventListener('click', function () {
+        // If no logged-in player, go to Login; otherwise go to Login for now as placeholder
+        var raw2 = sessionStorage.getItem('player')
+        if (!raw2) {
+          window.location.href = './Login.html'
+          return
+        }
+        // Could open a profile page; for now go to Login to allow switching user
+        window.location.href = './Login.html'
+      })
+    })();
+
+    // Handle campaign creation/editing
+    (function () {
+      const btn = document.getElementById('createBtn')
+      const nameInput = document.getElementById('name')
+      const storyInput = document.getElementById('story')
+      const status = document.getElementById('status')
+      let currentCampaignId = null
+
+      function setStatus(msg, isError) {
+        status.textContent = msg || ''
+        status.style.color = isError ? '#f97373' : '#98a2b3'
+      }
+
+      function getUrlParam(param) {
+        const params = new URLSearchParams(window.location.search)
+        return params.get(param)
+      }
+
+      async function loadCampaign() {
+        const campaignId = getUrlParam('id')
+        if (!campaignId) return // No campaign to load, creating new one
+
+        currentCampaignId = campaignId
+        setStatus('Loading campaign...')
+        try {
+          const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+          if (!res.ok) {
+            let txt = null
+            try { txt = await res.text() } catch (e) {}
+            throw new Error(txt || res.statusText || ('HTTP ' + res.status))
+          }
+          const campaign = await res.json()
+          // Pre-fill form
+          nameInput.value = campaign.name || ''
+          storyInput.value = campaign.description || ''
+          // Change button text
+          btn.textContent = 'Aktualisieren'
+          setStatus('')
+        } catch (err) {
+          console.error('Load campaign failed', err)
+          setStatus('Failed to load campaign: ' + (err.message || 'Unknown'), true)
+        }
+      }
+
+      async function saveCampaign() {
+        const name = (nameInput.value || '').trim()
+        const description = (storyInput.value || '').trim()
+        if (!name) {
+          setStatus('Campaign name is required.', true)
+          nameInput.focus()
+          return
+        }
+        // require player
+        let player = null
+        try { player = JSON.parse(sessionStorage.getItem('player')) } catch (e) { player = null }
+        if (!player || !player.id) {
+          setStatus('You must be signed in to create a campaign. Go to Login.', true)
+          return
+        }
+        btn.disabled = true
+        const orig = btn.textContent
+        btn.textContent = currentCampaignId ? 'Updating...' : 'Creating...'
+        setStatus(currentCampaignId ? 'Updating campaign...' : 'Creating campaign...')
+        try {
+          const payload = { name: name, description: description, playerId: Number(player.id) }
+          let res
+
+          if (currentCampaignId) {
+            // Update existing campaign
+            res = await fetch('/api/campaign/' + encodeURIComponent(currentCampaignId), {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            })
+          } else {
+            // Create new campaign
+            res = await fetch('/api/campaign', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            })
+          }
+
+          if (!res.ok) {
+            let txt = null
+            try { txt = await res.text() } catch (e) {}
+            throw new Error(txt || res.statusText || ('HTTP ' + res.status))
+          }
+          const campaign = await res.json()
+          setStatus(currentCampaignId ? 'Campaign updated! Redirecting…' : 'Campaign created! Redirecting…')
+          // Redirect to campaigns overview
+          window.location.href = './Campaigns.html'
+        } catch (err) {
+          console.error('Save campaign failed', err)
+          setStatus('Failed to save campaign: ' + (err.message || 'Unknown'), true)
+        } finally {
+          btn.disabled = false
+          btn.textContent = orig
+        }
+      }
+
+      // Load existing campaign if ID provided
+      loadCampaign()
+
+      btn.addEventListener('click', saveCampaign)
+    })()
+   </script>
+</body>
+</html>
