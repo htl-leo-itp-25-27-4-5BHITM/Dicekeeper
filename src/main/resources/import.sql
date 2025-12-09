@@ -63,6 +63,6 @@ insert into character_ability (id, character_id, ability_id, score) values (1, 1
 insert into Player (id, email, username) values (1, 'test@gmail.com', 'testuser');
 insert into Player (id, email, username) values (2, 'fredl@htl.at', 'Fredl');
 
--- sample campaigns for testing
---insert into campaign (name, description, player_id) values ('Schattenwald', 'A haunted forest campaign', 2);
---insert into campaign (name, description, player_id) values ('Versunkene Ruinen', 'Explore the ruins beneath the sea', 2);
+-- sample campaigns for testing (commented out for now)
+-- insert into campaign (name, description, player_id) values ('Schattenwald', 'A haunted forest campaign', 2);
+-- insert into campaign (name, description, player_id) values ('Versunkene Ruinen', 'Explore the ruins beneath the sea', 2);

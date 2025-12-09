@@ -6,102 +6,158 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import model.Campaign;
 import model.Player;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
-
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
+import java.util.UUID;
 
 @Path("/api/campaign")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class CampaignResource {
 
-    @Inject
-    EntityManager em;
+    private static final java.nio.file.Path UPLOAD_DIR = Paths.get("src/main/resources/META-INF/resources/campaign-creation/uploads");
 
-    @POST
-    @Transactional
-    public Response createCampaign(Campaign c) {
-        if (c == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Request body is required")
-                    .build();
-        }
-        if (c.name == null || c.name.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Campaign name is required")
-                    .build();
-        }
-        if (c.description == null) c.description = "";
-        // if a playerId is provided, verify player exists
-        if (c.playerId != null) {
-            Player p = Player.findById(c.playerId);
-            if (p == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Player with id " + c.playerId + " not found")
-                        .build();
-            }
-        }
-        try {
-            // ensure we don't try to insert with a pre-set id (which can collide with seeded data)
-            c.id = null;
-            c.persist();
-            // force flush so DB constraint violations are thrown here
-            em.flush();
-            return Response.status(Response.Status.CREATED).entity(c).build();
-        } catch (Exception e) {
-            String msg = "Failed to create campaign: " + e.getMessage();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(msg).build();
-        }
-    }
+    // ---- basic CRUD ----
 
     @GET
-    public List<Campaign> listCampaigns() {
+    public List<Campaign> list() {
         return Campaign.listAll();
     }
 
     @GET
     @Path("{id}")
-    public Response getCampaign(@PathParam("id") Long id) {
-        Campaign c = Campaign.findById(id);
-        if (c == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+    public Response get(@PathParam("id") Long id) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
         }
-        return Response.ok(c).build();
+        return Response.ok(campaign).build();
     }
 
-    @PATCH
-    @Path("{id}")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
-    public Response updateCampaign(@PathParam("id") Long id, Campaign update) {
-        Campaign c = Campaign.findById(id);
-        if (c == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        if (update.name == null || update.name.isBlank()) {
+    public Response create(Campaign campaign) {
+        if (campaign == null || campaign.name == null || campaign.name.trim().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Campaign name is required")
                     .build();
         }
-        c.name = update.name;
-        c.description = update.description == null ? "" : update.description;
-        // Optionally update playerId if provided
-        if (update.playerId != null) {
-            Player p = Player.findById(update.playerId);
-            if (p == null) {
+
+        // Optional: validate playerId if provided
+        if (campaign.playerId != null) {
+            Player player = Player.findById(campaign.playerId);
+            if (player == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Player with id " + update.playerId + " not found")
+                        .entity("Player with id " + campaign.playerId + " not found")
                         .build();
             }
-            c.playerId = update.playerId;
         }
+
+        campaign.id = null; // always create a new one
+        campaign.persist();
+
+        return Response.status(Response.Status.CREATED).entity(campaign).build();
+    }
+
+    @PATCH
+    @Path("{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response update(@PathParam("id") Long id, Campaign updated) {
+        Campaign existing = Campaign.findById(id);
+        if (existing == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+
+        if (updated.name != null) {
+            existing.name = updated.name;
+        }
+        if (updated.description != null) {
+            existing.description = updated.description;
+        }
+        if (updated.playerId != null) {
+            // could validate Player here if you want
+            existing.playerId = updated.playerId;
+        }
+
+        return Response.ok(existing).build();
+    }
+
+    @DELETE
+    @Path("{id}")
+    @Transactional
+    public Response delete(@PathParam("id") Long id) {
+        Campaign existing = Campaign.findById(id);
+        if (existing == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+        existing.delete();
+        return Response.noContent().build();
+    }
+
+    // ---- file upload for map image ----
+
+    @POST
+    @Path("{id}/upload-map")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional
+    public Response uploadMap(@PathParam("id") Long id,
+                              @RestForm("file") FileUpload fileUpload) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+
+        if (fileUpload == null || fileUpload.fileName() == null || fileUpload.fileName().isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("No file uploaded")
+                    .build();
+        }
+
+        String originalFileName = fileUpload.fileName();
+        if (!isValidImageType(originalFileName)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Only JPG, PNG or SVG images are allowed")
+                    .build();
+        }
+
         try {
-            c.persist();
-            em.flush();
-            return Response.ok(c).build();
-        } catch (Exception e) {
-            String msg = "Failed to update campaign: " + e.getMessage();
+            // ensure ./uploads exists
+            Files.createDirectories(UPLOAD_DIR);
+
+            // build new filename: campaign-<id>-<uuid>.<ext>
+            String extension = "";
+            int dot = originalFileName.lastIndexOf('.');
+            if (dot >= 0) {
+                extension = originalFileName.substring(dot);
+            }
+            String newFileName = "campaign-" + id + "-" + UUID.randomUUID() + extension;
+
+            java.nio.file.Path target = UPLOAD_DIR.resolve(newFileName).normalize();
+
+            // move temporary upload to ./uploads/
+            Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
+
+            // store HTTP path in DB so frontend can use it
+            campaign.mapImagePath = "/uploads/" + newFileName;
+
+            return Response.ok(campaign).build();
+        } catch (IOException e) {
+            String msg = "Failed to upload map: " + e.getMessage();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(msg).build();
         }
     }
@@ -110,5 +166,12 @@ public class CampaignResource {
     @Path("/player/{playerId}")
     public List<Campaign> getCampaignsByPlayer(@PathParam("playerId") Long playerId) {
         return Campaign.list("playerId", playerId);
+    }
+
+    private boolean isValidImageType(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                lower.endsWith(".png") || lower.endsWith(".svg");
     }
 }

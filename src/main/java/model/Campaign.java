@@ -8,7 +8,12 @@ import jakarta.persistence.Entity;
 public class Campaign extends PanacheEntity {
     public String name;
     public String description;
+
     // owner player id (nullable)
     @Column(name = "player_id", nullable = true)
     public Long playerId;
+
+    // path to uploaded map image (nullable)
+    @Column(name = "map_image_path", nullable = true)
+    public String mapImagePath;
 }

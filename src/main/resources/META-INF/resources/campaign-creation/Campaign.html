@@ -171,6 +171,11 @@
       <input type="file" id="map" name="map" accept=".jpg,.png,.svg" />
     </div>
 
+    <div id="mapPreview" style="margin-top:12px; display:none;">
+      <img id="mapImage" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);" />
+      <p id="mapFileName" style="margin-top:8px; font-size:0.9rem; color:#98a2b3;"></p>
+    </div>
+
     <button type="button" id="createBtn" class="btn">Erstellen</button>
     <div id="status" style="margin-top:12px; color: #98a2b3; font-size:0.95rem"></div>
   </div>
@@ -221,13 +226,43 @@
 
     // Handle campaign creation/editing
     (function () {
-      const btn = document.getElementById('createBtn')
-      const nameInput = document.getElementById('name')
-      const storyInput = document.getElementById('story')
-      const status = document.getElementById('status')
-      let currentCampaignId = null
+        const btn = document.getElementById('createBtn')
+        const nameInput = document.getElementById('name')
+        const storyInput = document.getElementById('story')
+        const mapInput = document.getElementById('map')
+        const status = document.getElementById('status')
+        let currentCampaignId = null
 
-      function setStatus(msg, isError) {
+        // Live preview when a file is selected
+        if (mapInput) {
+            mapInput.addEventListener('change', function (e) {
+                const file = e.target.files && e.target.files[0]
+                const preview = document.getElementById('mapPreview')
+                const mapImage = document.getElementById('mapImage')
+                const mapFileName = document.getElementById('mapFileName')
+
+                if (!file) {
+                    // No file selected -> hide preview
+                    if (preview) preview.style.display = 'none'
+                    if (mapImage) mapImage.src = ''
+                    if (mapFileName) mapFileName.textContent = ''
+                    return
+                }
+
+                const reader = new FileReader()
+                reader.onload = function (evt) {
+                    if (mapImage) mapImage.src = evt.target.result
+                    if (mapFileName) {
+                        const sizeKb = Math.round(file.size / 1024)
+                        mapFileName.textContent = file.name + ' (' + sizeKb + ' KB)'
+                    }
+                    if (preview) preview.style.display = 'block'
+                }
+                reader.readAsDataURL(file)
+            })
+        }
+
+        function setStatus(msg, isError) {
         status.textContent = msg || ''
         status.style.color = isError ? '#f97373' : '#98a2b3'
       }
@@ -254,6 +289,10 @@
           // Pre-fill form
           nameInput.value = campaign.name || ''
           storyInput.value = campaign.description || ''
+          // Show existing map if present
+          if (campaign.mapImagePath) {
+            showMapPreview(campaign.mapImagePath)
+          }
           // Change button text
           btn.textContent = 'Aktualisieren'
           setStatus('')
@@ -263,7 +302,24 @@
         }
       }
 
-      async function saveCampaign() {
+        function showMapPreview(imageUrl) {
+            const preview = document.getElementById('mapPreview')
+            const mapImage = document.getElementById('mapImage')
+            const mapFileName = document.getElementById('mapFileName')
+
+            // Normalize to ./uploads/... if backend returns /uploads/...
+            let resolvedUrl = imageUrl
+            if (resolvedUrl && resolvedUrl.startsWith('/uploads/')) {
+                resolvedUrl = '.' + resolvedUrl   // => "./uploads/..."
+            }
+
+            mapImage.src = resolvedUrl
+            mapFileName.textContent = 'Map loaded'
+            preview.style.display = 'block'
+        }
+
+
+        async function saveCampaign() {
         const name = (nameInput.value || '').trim()
         const description = (storyInput.value || '').trim()
         if (!name) {
@@ -308,6 +364,29 @@
             throw new Error(txt || res.statusText || ('HTTP ' + res.status))
           }
           const campaign = await res.json()
+
+          // Handle file upload if file was selected
+          const mapInput = document.getElementById('map')
+          if (mapInput.files && mapInput.files.length > 0) {
+            const formData = new FormData()
+            formData.append('file', mapInput.files[0])
+
+            const uploadRes = await fetch('/api/campaign/' + campaign.id + '/upload-map', {
+              method: 'POST',
+              body: formData,
+            })
+
+            if (!uploadRes.ok) {
+              let txt = null
+              try { txt = await uploadRes.text() } catch (e) {}
+              console.warn('File upload warning: ' + (txt || uploadRes.statusText))
+              // Don't fail completely, just warn the user
+              setStatus('Campaign saved but file upload failed')
+              setTimeout(() => { window.location.href = './Campaigns.html' }, 2000)
+              return
+            }
+          }
+
           setStatus(currentCampaignId ? 'Campaign updated! Redirecting…' : 'Campaign created! Redirecting…')
           // Redirect to campaigns overview
           window.location.href = './Campaigns.html'
