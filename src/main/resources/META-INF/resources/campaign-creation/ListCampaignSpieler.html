@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Deine Kampagne</title>
+
+    <style>
+        :root {
+            --green-600: #004c3685;
+            --green-700: #256628;
+            --green-300: #81c784;
+            --white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-image: url(Firefly_Enchanted\ Dungeons\ &\ Dragons\ scene\ with\ green\ magical\ accents-\ an\ overgrown\,\ moss-cov\ 39064\ \(3\).jpg);
+            background-color: #ffffff78;
+            background-size: cover;
+            background-attachment: fixed;
+            background-blend-mode: lighten;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            width: 720px;
+            padding: 30px;
+            border-radius: 14px;
+            background: var(--green-600);
+            backdrop-filter: blur(12px);
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .add-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            background-color: #4f8f7a;
+            color: white;
+            font-size: 26px;
+            cursor: pointer;
+        }
+
+        .campaign {
+            background-color: rgba(0, 0, 0, 0.25);
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            font-weight: bold;
+            transition: 0.2s;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .campaign:hover {
+            background-color: rgba(0, 0, 0, 0.35);
+        }
+
+        .join-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: none;
+            background-color: var(--green-300);
+            color: #1b3a2a;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 13px;
+        }
+
+        .join-btn:hover {
+            background-color: #a5d6a7;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0 20px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .divider span {
+            margin: 0 12px;
+            font-size: 14px;
+            opacity: 0.85;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Deine Kampagne</h1>
+
+    <div class="top-bar">
+        <button class="add-btn">+</button>
+    </div>
+
+    <div id="private-campaigns"></div>
+
+    <div class="divider">
+        <span>Öffentlich</span>
+    </div>
+
+    <div id="public-campaigns"></div>
+</div>
+
+<script>
+    // ==========================
+    // TESTDATEN (später DB)
+    // ==========================
+    const campaigns = [
+        { id: 1, title: "Gandalf's Love Story", isPublic: false },
+        { id: 2, title: "The Lost Wizard", isPublic: false },
+        { id: 3, title: "Gandalf's Love Story", isPublic: true },
+        { id: 4, title: "Shadows of Rivendell", isPublic: true }
+    ];
+
+    const privateContainer = document.getElementById("private-campaigns");
+    const publicContainer = document.getElementById("public-campaigns");
+
+    function renderCampaigns() {
+        privateContainer.innerHTML = "";
+        publicContainer.innerHTML = "";
+
+        campaigns.forEach(campaign => {
+            const div = document.createElement("div");
+            div.className = "campaign";
+
+            const title = document.createElement("span");
+            title.textContent = campaign.title;
+
+            const joinBtn = document.createElement("button");
+            joinBtn.className = "join-btn";
+            joinBtn.textContent = "JOIN";
+
+            joinBtn.addEventListener("click", () => {
+                alert(`Du bist der Kampagne "${campaign.title}" beigetreten!`);
+            });
+
+            div.appendChild(title);
+            div.appendChild(joinBtn);
+
+            if (campaign.isPublic) {
+                publicContainer.appendChild(div);
+            } else {
+                privateContainer.appendChild(div);
+            }
+        });
+    }
+
+    renderCampaigns();
+</script>
+
+</body>
+</html>
