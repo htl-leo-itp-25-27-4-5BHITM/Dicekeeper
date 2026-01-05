@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Kampagne – Vorschau</title>
+
+<style>
+:root {
+  --green-600: #004c3685;
+  --white: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  background-image: url(Firefly_Enchanted\ Dungeons\ &\ Dragons\ scene\ with\ green\ magical\ accents-\ an\ overgrown\,\ moss-cov\ 39064\ \(3\).jpg);
+  background-size: cover;
+  background-attachment: fixed;
+  background-blend-mode: lighten;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.card {
+  background: var(--green-600);
+  border-radius: 24px;
+  padding: 26px;
+  max-width: 720px;
+  width: 100%;
+  color: white;
+  backdrop-filter: blur(12px);
+}
+
+
+
+.preview {
+  background: rgba(0,0,0,0.25);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.preview-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.preview-desc {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.preview-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.4);
+  margin: 16px 0;
+}
+
+
+.players {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.15);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.player img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  
+  <div class="preview">
+    <div class="preview-title" id="campaignTitle"></div>
+    <div class="preview-desc" id="campaignDescription"></div>
+
+    <div class="preview-divider"></div>
+
+    <div class="players" id="playerList"></div>
+  </div>
+</div>
+
+<script>
+/* ================================
+   FAKE-DATEN (später aus DB)
+================================ */
+const campaignData = {
+  title: "Shadows of Rivendell",
+  description: "Eine düstere Kampagne voller alter Magie, vergessener Pfade und gefährlicher Entscheidungen. Nur jene mit Mut werden das Ende erleben.",
+  players: [
+    {
+      id: 1,
+      name: "Elena",
+      avatar: "https://i.pravatar.cc/40?img=12"
+    },
+    {
+      id: 2,
+      name: "Marcus",
+      avatar: "https://i.pravatar.cc/40?img=34"
+    },
+    {
+      id: 3,
+      name: "Lina",
+      avatar: "https://i.pravatar.cc/40?img=45"
+    }
+  ]
+};
+
+/* ================================
+   RENDER-FUNKTION (DB-ready)
+================================ */
+function renderCampaign(data) {
+  document.getElementById("campaignTitle").textContent = data.title;
+  document.getElementById("campaignDescription").textContent = data.description;
+
+  const playerList = document.getElementById("playerList");
+  playerList.innerHTML = "";
+
+  data.players.forEach(player => {
+    const div = document.createElement("div");
+    div.className = "player";
+
+    div.innerHTML = `
+      <img src="${player.avatar}" alt="${player.name}">
+      <span>${player.name}</span>
+    `;
+
+    playerList.appendChild(div);
+  });
+}
+
+/* ================================
+   FAKE "LOAD FROM DB"
+================================ */
+renderCampaign(campaignData);
+</script>
+
+</body>
+</html>
