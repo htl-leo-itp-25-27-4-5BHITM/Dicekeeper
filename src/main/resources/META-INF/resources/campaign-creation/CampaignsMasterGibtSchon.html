@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>Kampagne bearbeiten (DM)</title>
+
+<style>
+:root {
+  --green-600: #004c3685;
+  --white: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  background-image: url(../images/HintergrundPC.jpg);
+   background-color: #ffffff78;
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: lighten;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    min-height: 100vh;
+    margin: 0;
+}
+
+.card {
+  background: var(--green-600);
+  border-radius: 24px;
+  padding: 26px;
+  max-width: 720px;
+  width: 100%;
+  color: white;
+  backdrop-filter: blur(12px);
+}
+
+/* ===== FORM ===== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+label {
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+input, textarea {
+  background: rgba(0,0,0,0.25);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.7);
+  padding: 8px 14px;
+  color: white;
+}
+
+textarea {
+  border-radius: 16px;
+  resize: vertical;
+}
+
+.story {
+  min-height: 160px;
+}
+
+
+.players-section {
+  margin-top: 28px;
+}
+
+.players-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 10px;
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.15);
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.player-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.kick-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.6);
+  color: white;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.kick-btn:hover {
+  background: rgba(255,0,0,0.25);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.save-btn {
+  background: #7708c7b8;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <div class="form-group">
+    <label>Titel</label>
+    <input id="title">
+  </div>
+
+  <div class="form-group">
+    <label>Beschreibung</label>
+    <textarea id="description"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Story</label>
+    <textarea id="story" class="story"></textarea>
+  </div>
+
+
+  <div class="players-section">
+    <div class="players-title">Beigetretene Spieler</div>
+    <div class="players" id="playerList"></div>
+  </div>
+
+  <div class="footer">
+    <button class="save-btn" id="saveBtn">Speichern</button>
+  </div>
+
+</div>
+
+<script>
+/* =========================
+   FAKE-DATEN (später DB)
+========================= */
+let campaign = {
+  title: "Shadows of Rivendell",
+  description: "Eine düstere Reise durch alte Wälder und vergessene Ruinen.",
+  story: "Die Helden erreichen Rivendell kurz vor Einbruch der Nacht. Doch etwas stimmt nicht...",
+  players: [
+    { id: 1, name: "Elena", avatar: "https://i.pravatar.cc/40?img=12" },
+    { id: 2, name: "Marcus", avatar: "https://i.pravatar.cc/40?img=32" },
+    { id: 3, name: "Lina", avatar: "https://i.pravatar.cc/40?img=45" }
+  ]
+};
+
+
+function renderCampaign() {
+  title.value = campaign.title;
+  description.value = campaign.description;
+  story.value = campaign.story;
+
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+
+  campaign.players.forEach(player => {
+    const div = document.createElement("div");
+    div.className = "player";
+
+    div.innerHTML = `
+      <div class="player-left">
+        <img src="${player.avatar}">
+        <span>${player.name}</span>
+      </div>
+      <button class="kick-btn" onclick="kickPlayer(${player.id})">KICK</button>
+    `;
+
+    list.appendChild(div);
+  });
+}
+
+/* =========================
+   SPIELER KICKEN (DEMO)
+========================= */
+function kickPlayer(id) {
+  campaign.players = campaign.players.filter(p => p.id !== id);
+  renderCampaign();
+}
+
+/* =========================
+   SPEICHERN (DEMO)
+========================= */
+document.getElementById("saveBtn").addEventListener("click", () => {
+  campaign.title = title.value;
+  campaign.description = description.value;
+  campaign.story = story.value;
+
+  console.log("Gespeicherte Kampagne:", campaign);
+  alert("Kampagne (Demo) gespeichert – siehe Konsole");
+});
+
+/* INIT */
+renderCampaign();
+</script>
+
+</body>
+</html>
