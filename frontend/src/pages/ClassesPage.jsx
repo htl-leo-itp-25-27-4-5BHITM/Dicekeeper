@@ -118,11 +118,11 @@ function ClassesPage() {
                         return (
                             <button
                                 key={c.id}
-                                className={`thumb${isSelected ? ' active-thumb' : ''}`}
+                                className={`thumb`}
                                 onClick={() => setSelected(c)}
                                 aria-label={c.name}
                             >
-                                <img src={imgSrc} alt={c.name} />
+                                <img src={imgSrc} alt={c.name} className={`thumb${isSelected ? ' active-thumb' : ''}`} />
                                 <div className="label">{c.name}</div>
                             </button>
                         )

@@ -54,85 +54,52 @@ function CharacterList() {
         }
     }
 
-    const statusStyle = {
-        fontSize: '13px',
-        marginBottom: '12px',
-        color: isError ? '#f97373' : '#98a2b3',
-    }
 
     return (
-        <div>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                }}
-            >
-                <h2 style={{ margin: 0, fontSize: '22px' }}>Your Characters</h2>
-                <button
-                    onClick={handleCreate}
-                    disabled={isCreating}
-                    style={{
-                        padding: '8px 14px',
-                        borderRadius: '999px',
-                        border: 'none',
-                        cursor: isCreating ? 'default' : 'pointer',
-                        background: isCreating ? '#334155' : '#4f46e5',
-                        color: 'white',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        boxShadow: '0 10px 20px rgba(79,70,229,0.35)',
-                        opacity: isCreating ? 0.8 : 1,
-                    }}
-                >
-                    {isCreating ? 'Creating…' : 'Create new'}
-                </button>
-            </div>
+        <div className="container">
+                <h1 style={{textAlign: 'center'}}>Your Characters</h1>
 
-            {status && <div style={statusStyle}>{status}</div>}
-
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {characters.map((ch) => (
-                    <li
-                        key={ch.id}
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '10px 0',
-                            borderBottom: '1px solid rgba(148, 163, 184, 0.25)',
-                        }}
+                <div className="actions">
+                    <button
+                        className="createBtn"
+                        onClick={handleCreate}
+                        disabled={isCreating}
+                        style={{position: 'relative', left: '38vw'}}
                     >
-                        <button
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: 0,
-                                margin: 0,
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                color: '#e5e7eb',
-                                fontSize: '15px',
-                                fontWeight: 500,
-                            }}
-                            onClick={() => {
-                                if (ch.id != null) {
-                                    navigate(`/characters/${ch.id}`)
-                                }
-                            }}
-                        >
-                            {ch.name || `Character ${ch.id ?? ''}`}
-                        </button>
-                        <div style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '12px' }}>
+                        {isCreating ? 'Creating…' : 'Create new'}
+                    </button>
+                </div>
+
+                {status && (
+                    <div className={isError ? 'error' : 'muted'}>
+                        {status}
+                    </div>
+                )}
+
+                <ul>
+                    {characters.map((ch) => (
+                        <li key={ch.id}>
+                            <button
+                                className="linklike"
+                                onClick={() => {
+                                    if (ch.id != null) {
+                                        navigate(`/characters/${ch.id}`)
+                                    }
+                                }}
+                            >
+                                {ch.name || `Character ${ch.id ?? ''}`}
+                            </button>
+
+                            <span className="muted">
                             id: {ch.id ?? '—'}
-                            {ch.level ? ` · lvl ${ch.level}` : ''}
-                        </div>
-                    </li>
-                ))}
-            </ul>
-        </div>
+                                {ch.level ? ` · lvl ${ch.level}` : ''}
+                        </span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
     )
+
 }
 
 export default CharacterList

@@ -38,6 +38,7 @@ function CharacterStart() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [character, setCharacter] = useState(null)
+    const [showAbilities, setShowAbilities] = useState(false)
 
     // character fields
     const [name, setName] = useState('')
@@ -63,7 +64,7 @@ function CharacterStart() {
     // fetch character and related data
     useEffect(() => {
         if (!id) return
-        ;(async () => {
+            ;(async () => {
             try {
                 setLoading(true)
                 setError('')
@@ -182,40 +183,54 @@ function CharacterStart() {
         })
     }
 
-    // update an ability value and persist it via the API
-    function updateAbility(changedId, newRawValue) {
+    // **EINFACHE updateAbility Funktion**
+    function updateAbility(abilityId, newValue) {
         setAbilities((prev) => {
             let updated = prev.map((a) =>
-                a.id === changedId ? { ...a, value: newRawValue } : a,
+                a.id === abilityId ? { ...a, value: newValue } : a
             )
-            updated = normalizeAbilities(updated, totalBudget, changedId)
-            const changed = updated.find((a) => a.id === changedId)
+            // Normalize nach der Änderung
+            updated = normalizeAbilities(updated, totalBudget, abilityId)
+
+            // Speichere die Änderung
+            const changed = updated.find((a) => a.id === abilityId)
             if (id && changed) {
-                saveCharacterAbilityScore(id, changedId, changed.value).catch((e) =>
-                    console.error('Failed to save ability score', e),
+                saveCharacterAbilityScore(id, abilityId, changed.value).catch((e) =>
+                    console.error('Failed to save ability score', e)
                 )
             }
             return updated
         })
     }
 
+    // **EINFACHE handleDec Funktion**
     function handleDec(abilityId) {
-        updateAbility(abilityId, (prevValue) => {
-            const v = Math.max(0, Math.floor(Number(prevValue) || 0))
-            return v - 1
+        setAbilities((prev) => {
+            const ability = prev.find(a => a.id === abilityId)
+            if (!ability) return prev
+
+            const currentValue = Math.max(0, Math.floor(Number(ability.value) || 0))
+            const newValue = Math.max(0, currentValue - 1)
+
+            updateAbility(abilityId, newValue)
+            return prev // WICHTIG: Rückgabe für setState
         })
     }
 
+    // **EINFACHE handleInc Funktion**
     function handleInc(abilityId) {
         if (remaining <= 0) return
-        updateAbility(abilityId, (prevValue) => {
-            const v = Math.max(0, Math.floor(Number(prevValue) || 0))
-            return v + 1
-        })
-    }
 
-    function handleInputChange(abilityId, raw) {
-        updateAbility(abilityId, raw)
+        setAbilities((prev) => {
+            const ability = prev.find(a => a.id === abilityId)
+            if (!ability) return prev
+
+            const currentValue = Math.max(0, Math.floor(Number(ability.value) || 0))
+            const newValue = currentValue + 1
+
+            updateAbility(abilityId, newValue)
+            return prev // WICHTIG: Rückgabe für setState
+        })
     }
 
     function handleBudgetChange(e) {
@@ -225,7 +240,6 @@ function CharacterStart() {
     }
 
     if (!id) {
-        // Without an id there is no context for the page
         return <div>No character id in URL.</div>
     }
 
@@ -245,7 +259,7 @@ function CharacterStart() {
             )}
 
             {/* Upper section: avatar and character fields */}
-            <div id="upperBox">
+            <div id="upperBox" style={{ display: showAbilities ? 'none' : 'flex' }}>
                 <div id="imgDiv">
                     <div id="imgBox">
                         <img id="accImg" src={accountImg} alt="account" />
@@ -276,7 +290,6 @@ function CharacterStart() {
                                         alt="clear"
                                         onClick={() => {
                                             setName('')
-                                            // persist empty name
                                             handleNameBlur()
                                         }}
                                     />
@@ -346,21 +359,54 @@ function CharacterStart() {
                     <div id="charakterInfos">
                         <p id="infoHeadline">Info</p>
                         <div>
-                            <input
-                                type="text"
+                            <textarea
                                 placeholder="Enter your Charakters Info"
                                 id="charakterInfoInput"
                                 value={info}
                                 onChange={(e) => setInfo(e.target.value)}
                                 onBlur={handleInfoBlur}
+                                style={{
+                                    height: "11vh",
+                                    width: "26.5vw",
+                                    boxSizing: "border-box",
+                                    resize: "none",
+                                    overflow: "hidden"
+                                }}
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Toggle Button - nur sichtbar wenn upperBox aktiv ist */}
+            {!showAbilities && (
+                <button
+                    className="attributes"
+                    onClick={() => setShowAbilities(true)}
+                >
+                    Attribute bearbeiten
+                </button>
+            )}
+
             {/* Ability scores section */}
-            <div className="containerAbility">
+            <div className="containerAbility" style={{ display: showAbilities ? 'block' : 'none' }}>
+                {/* Close Button */}
+                <button
+                    onClick={() => setShowAbilities(false)}
+                    style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '24px',
+                        color: 'white'
+                    }}
+                >
+                    ✕
+                </button>
+
                 <h1 id="attrHeadliner">Attribute — Punkte vergeben</h1>
                 <div className="topAbility">
                     <div className="budgetAbility">
@@ -374,7 +420,7 @@ function CharacterStart() {
                         />
                     </div>
                     <div style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.6)' }}>
-                        Verwende die +/- Knöpfe oder trage eine Zahl ein.
+                        Verwende die +/- Knöpfe.
                     </div>
                 </div>
                 <div className="summaryAbility">
@@ -397,16 +443,17 @@ function CharacterStart() {
                                     )}
                                 </div>
                                 <div className="controlsAbility">
-                                    <button type="button" onClick={() => handleDec(a.id)}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDec(a.id)}
+                                    >
                                         −
                                     </button>
                                     <input
                                         type="number"
                                         min={0}
-                                        value={Number.isNaN(value) ? 0 : value}
-                                        onChange={(e) =>
-                                            handleInputChange(a.id, e.target.value)
-                                        }
+                                        value={value}
+                                        readOnly
                                     />
                                     <button
                                         type="button"

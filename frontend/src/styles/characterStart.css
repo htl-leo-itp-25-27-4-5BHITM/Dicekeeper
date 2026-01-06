@@ -1,7 +1,6 @@
 /* Startseit*/
 #bagroundboxStart{
     font-family: cabaret;
-    background-image: url(HintergrundPC.jpg);
     background-size: cover;
     background-position: center;
     height: 100vh;
@@ -44,20 +43,6 @@
 #buttonstartStart:hover {
     background-color: #7caf7e;
 }
-@media (max-width: 500px) {
-    #bagroundboxStart {
-        background-image: url(Header_Background\ .jpg);
-    }
-    #startboxStart {
-        width: 75%;
-        height: auto;
-        padding: 20px;
-    }
-    #chnameStart {
-        width: 94%;
-    }
-}
-
 
 /* Wrapper der Ability-Seite */
 #startboxAbility {
@@ -69,16 +54,6 @@
     justify-content: center;
     min-height: 100vh;
     padding: 20px;
-}
-
-/* Container für alle Attribute */
-.containerAbility {
-    width: 100%;
-    max-width: 760px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 6px 24px rgba(2,6,23,0.6);
 }
 
 /* Überschrift */
