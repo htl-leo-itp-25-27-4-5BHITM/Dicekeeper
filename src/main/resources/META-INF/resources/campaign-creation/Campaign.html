@@ -6,111 +6,300 @@
   <title>Kampagne erstellen</title>
   <style>
     :root {
-      --green-600:   #004c3685;
+      --green-600: #004c3685;
       --green-700: #256628;
       --green-300: #81c784;
       --white: #ffffff;
     }
 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
     body {
-    background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
-    background-color: #ffffff78;
-    background-size: cover;
-    background-attachment: fixed;
-    background-blend-mode: lighten;
+      background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+      background-color: #ffffff78;
+      background-size: cover;
+      background-attachment: fixed;
+      background-blend-mode: lighten;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
 
-    /* Hier wird die login-box zentriert */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    min-height: 100vh;
-    margin: 0;
-}
-
-    .campaign-box {
-      width: 35vw;
+    .card {
       background: var(--green-600);
+      border-radius: 24px;
+      padding: 24px 28px 20px;
+      max-width: 720px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      margin-top: 2vw;
+      margin-bottom: 2vw;
       color: var(--white);
-      border-radius: 14px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-      padding: 24px 22px;
     }
 
-    .campaign-box h1 {
-    text-align: center;
-      margin-top: 0;
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 18px;
+    .card-header {
+      margin-bottom: 20px;
     }
 
-    .form-group {
+    .card-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
       margin-bottom: 16px;
     }
 
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
     label {
-      display: block;
-      font-size: 0.9rem;
-      margin-bottom: 6px;
+      font-size: 13px;
+      color: #e5e7eb;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
     input[type="text"],
-    textarea,
-    input[type="file"] {
-      width: 95%;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.55);
-      background: rgba(255, 255, 255, 0.15);
-      color: var(--white);
-      padding: 10px 12px;
-      font-size: 0.95rem;
+    input[type="number"],
+    textarea {
+      background: #004c3670;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.903);
+      padding: 8px 14px;
+      color: #ffffff;
+      font-size: 14px;
       outline: none;
-      transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     }
 
-    input::placeholder,
-    textarea::placeholder {
-      color: rgba(255, 255, 255, 0.85);
+    textarea {
+      border-radius: 18px;
+      min-height: 80px;
+      resize: vertical;
     }
 
     input:focus,
     textarea:focus {
-      border-color: var(--green-300);
-      background: rgba(255, 255, 255, 0.22);
-      box-shadow: 0 0 0 3px rgba(129, 199, 132, 0.35);
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+      background: #004c36d2;
     }
 
-    textarea {
-      resize: vertical;
-      min-height: 80px;
+    input::placeholder,
+    textarea::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .char-info {
+      text-align: right;
+      font-size: 11px;
+      color: #e7e9ec;
+      margin-top: 2px;
+    }
+
+    .image-upload {
+      border-radius: 20px;
+      border: 1px dashed rgba(255, 255, 255, 0.826);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      margin-bottom: 18px;
+      background: #004c3670;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .image-upload:hover {
+      background: #004c36dc;
+      border-color: #38bdf8;
+    }
+
+    .image-upload-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #e5e7eb;
+    }
+
+    .image-upload-text-main {
+      font-size: 13px;
+      color: var(--white);
+    }
+
+    .image-upload-text-sub {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .story-group textarea {
+      min-height: 200px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    /* Switch */
+    .switch-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #e5e7eb;
+    }
+
+    .switch-label {
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .switch {
+      position: relative;
+      width: 158px;
+      height: 34px;
+      background: #004c3670;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-option {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      z-index: 2;
+      color: #ffffff;
+      transition: color 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .switch-thumb {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      width: 50%;
+      border-radius: 999px;
+      background: #7708c7b8;
+      transition: transform 0.2s;
+      z-index: 1;
+    }
+
+    .switch.public .switch-thumb {
+      transform: translateX(0%);
+    }
+
+    .switch.private .switch-thumb {
+      transform: translateX(100%);
+    }
+
+    .switch.public .option-public {
+      color: #ecedf1;
+      font-weight: 600;
+    }
+
+    .switch.private .option-private {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Buttons */
+    .button-row {
+      display: flex;
+      gap: 10px;
     }
 
     .btn {
-      width: 100%;
-      height: 44px;
-      border: none;
-      border-radius: 10px;
-      background: var(--white);
-      color: var(--green-700);
-      font-weight: 700;
-      letter-spacing: 0.3px;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 13px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #ffffff;
       cursor: pointer;
-      transition: transform 120ms ease, box-shadow 160ms ease, background 160ms ease;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
     }
 
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-      background: #f9f9f9;
+    .btn-secondary {
+      border-color: rgba(255, 255, 255, 0.89);
     }
 
-    .btn:active {
-      transform: translateY(0);
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+    .btn-secondary:hover {
+      background: rgba(15, 23, 42, 0.9);
     }
 
-    /* Top-right profile widget */
+    .btn-primary {
+      background: #7708c7b8;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.05);
+    }
+
+    #status {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #98a2b3;
+    }
+
+    /* Map Preview */
+    #mapPreview {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+    }
+
+    #mapPreview img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #mapFileName {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+
+    /* Profile widget */
     .profile-widget {
       position: fixed;
       top: 16px;
@@ -144,54 +333,92 @@
       text-shadow: 0 1px 2px rgba(0,0,0,0.35);
     }
 
+    @media (max-width: 640px) {
+      .form-row {
+        flex-direction: column;
+      }
+
+      .footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .button-row {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- Profile widget; populated from sessionStorage 'player' by script below -->
+  <!-- Profile widget -->
   <div id="profileWidget" class="profile-widget" title="Profile / Click to manage">
     <div id="profilePic" class="profile-pic">?</div>
     <div id="profileName" class="profile-name">Guest</div>
   </div>
 
-  <div class="campaign-box">
-    <h1>Kampagne</h1>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Kampagne</div>
+    </div>
 
-    <div class="form-group">
-      <label for="name">Gib einen Namen ein:</label>
-      <input type="text" id="name" name="name" placeholder="z.B. Schattenwald" required />
+    <div class="form-row">
+      <div class="form-group">
+        <label for="name">Titel</label>
+        <input type="text" id="name" placeholder="Titel der Kampagne" />
+      </div>
+      <div class="form-group" style="max-width: 140px;">
+        <label for="maxPlayers">Max Spieler</label>
+        <input type="number" id="maxPlayers" min="1" max="99" value="4" />
+      </div>
     </div>
 
     <div class="form-group">
-      <label for="story">Gib die Hintergrundgeschichte für die Kampagne ein:</label>
-      <textarea id="story" name="story" placeholder="Die Legende beginnt..." required></textarea>
+      <label for="story">Beschreibung</label>
+      <textarea id="story" maxlength="1000" placeholder="Kurze Beschreibung deiner Kampagne..."></textarea>
+      <div class="char-info" id="descChars">Zeichen: 1000</div>
     </div>
 
-    <div class="form-group">
-      <label for="map">Lade die Karte für die Kampagne hoch:</label>
-      <input type="file" id="map" name="map" accept=".jpg,.png,.svg" />
+    <label class="image-label" style="font-size: 13px; color: #e5e7eb; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; display: block;">Karte</label>
+    <div class="image-upload" onclick="document.getElementById('map').click()">
+      <span class="image-upload-icon">+</span>
+      <span>
+        <span class="image-upload-text-main">Karte hochladen</span><br>
+        <span class="image-upload-text-sub">Klicke, um eine Karte für deine Kampagne auszuwählen</span>
+      </span>
+      <input type="file" accept="image/*" style="display:none" id="map" />
     </div>
 
-    <div id="mapPreview" style="margin-top:12px; display:none;">
-      <img id="mapImage" style="max-width:100%; max-height:300px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);" />
-      <p id="mapFileName" style="margin-top:8px; font-size:0.9rem; color:#98a2b3;"></p>
+    <div id="mapPreview" style="display:none;">
+      <img id="mapImage" alt="Kampagnenkarte" src="" />
+      <p id="mapFileName"></p>
     </div>
 
-      <div style="display:flex; gap:10px; margin-top:12px;">
-          <button type="button" id="backBtn" class="btn" style="background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4);">
-              Zurück
-          </button>
-
-          <button type="button" id="createBtn" class="btn">
-              Erstellen
-          </button>
+    <div class="footer">
+      <div>
+        <div class="switch-label">Sichtbarkeit</div>
+        <div class="switch-wrapper">
+          <div class="switch public" id="visibilitySwitch">
+            <div class="switch-thumb"></div>
+            <div class="switch-option option-public">Public</div>
+            <div class="switch-option option-private">Private</div>
+          </div>
+          <span id="visibilityText" style="font-size:12px; color:#9ca3af;">Kampagne ist öffentlich</span>
+        </div>
       </div>
 
-      <div id="status" style="margin-top:12px; color: #98a2b3; font-size:0.95rem"></div>
+      <div class="button-row">
+        <button class="btn btn-secondary" type="button" id="backBtn">Abbrechen</button>
+        <button class="btn btn-primary" type="button" id="createBtn">Speichern</button>
+      </div>
+    </div>
 
+    <div id="status"></div>
   </div>
 
   <script>
-    // Populate profile widget from sessionStorage 'player'
+    // Profile widget
     (function () {
       function initialsFromName(name) {
         if (!name) return '?'
@@ -208,10 +435,9 @@
         var raw = sessionStorage.getItem('player')
         if (raw) {
           var player = JSON.parse(raw)
-          nameEl.textContent = player.username || player.email || 'Player'
-          pic.textContent = initialsFromName(player.username || player.email)
+          nameEl.textContent = player.name || player.username || player.email || 'Player'
+          pic.textContent = initialsFromName(player.name || player.username || player.email)
         } else {
-          // no player stored
           nameEl.textContent = 'Guest'
           pic.textContent = '?'
         }
@@ -221,59 +447,75 @@
         pic.textContent = '?'
       }
 
-      // Clicking the widget returns to Login page (or open profile management)
       widget.addEventListener('click', function () {
-        // If no logged-in player, go to Login; otherwise go to Login for now as placeholder
-        var raw2 = sessionStorage.getItem('player')
-        if (!raw2) {
-          window.location.href = './Login.html'
-          return
-        }
-        // Could open a profile page; for now go to Login to allow switching user
         window.location.href = './Login.html'
       })
     })();
 
+    // Character counter for description
+    const storyInput = document.getElementById('story');
+    const descChars = document.getElementById('descChars');
+    storyInput.addEventListener('input', () => {
+      const remaining = storyInput.maxLength - storyInput.value.length;
+      descChars.textContent = 'Zeichen: ' + remaining;
+    });
+
+    // Switch Public / Private
+    const switchEl = document.getElementById('visibilitySwitch');
+    const visibilityText = document.getElementById('visibilityText');
+    let isPublic = true;
+
+    switchEl.addEventListener('click', () => {
+      isPublic = !isPublic;
+      if (isPublic) {
+        switchEl.classList.remove('private');
+        switchEl.classList.add('public');
+        visibilityText.textContent = 'Kampagne ist öffentlich';
+      } else {
+        switchEl.classList.remove('public');
+        switchEl.classList.add('private');
+        visibilityText.textContent = 'Kampagne ist privat';
+      }
+    });
+
     // Handle campaign creation/editing
     (function () {
-        const btn = document.getElementById('createBtn')
-        const backBtn = document.getElementById('backBtn')
-        const nameInput = document.getElementById('name')
-        const storyInput = document.getElementById('story')
-        const mapInput = document.getElementById('map')
-        const status = document.getElementById('status')
-        let currentCampaignId = null
+      const btn = document.getElementById('createBtn')
+      const backBtn = document.getElementById('backBtn')
+      const nameInput = document.getElementById('name')
+      const mapInput = document.getElementById('map')
+      const status = document.getElementById('status')
+      let currentCampaignId = null
 
-        // Live preview when a file is selected
-        if (mapInput) {
-            mapInput.addEventListener('change', function (e) {
-                const file = e.target.files && e.target.files[0]
-                const preview = document.getElementById('mapPreview')
-                const mapImage = document.getElementById('mapImage')
-                const mapFileName = document.getElementById('mapFileName')
+      // Live preview when a file is selected
+      if (mapInput) {
+        mapInput.addEventListener('change', function (e) {
+          const file = e.target.files && e.target.files[0]
+          const preview = document.getElementById('mapPreview')
+          const mapImage = document.getElementById('mapImage')
+          const mapFileName = document.getElementById('mapFileName')
 
-                if (!file) {
-                    // No file selected -> hide preview
-                    if (preview) preview.style.display = 'none'
-                    if (mapImage) mapImage.src = ''
-                    if (mapFileName) mapFileName.textContent = ''
-                    return
-                }
+          if (!file) {
+            if (preview) preview.style.display = 'none'
+            if (mapImage) mapImage.src = ''
+            if (mapFileName) mapFileName.textContent = ''
+            return
+          }
 
-                const reader = new FileReader()
-                reader.onload = function (evt) {
-                    if (mapImage) mapImage.src = evt.target.result
-                    if (mapFileName) {
-                        const sizeKb = Math.round(file.size / 1024)
-                        mapFileName.textContent = file.name + ' (' + sizeKb + ' KB)'
-                    }
-                    if (preview) preview.style.display = 'block'
-                }
-                reader.readAsDataURL(file)
-            })
-        }
+          const reader = new FileReader()
+          reader.onload = function (evt) {
+            if (mapImage) mapImage.src = evt.target.result
+            if (mapFileName) {
+              const sizeKb = Math.round(file.size / 1024)
+              mapFileName.textContent = file.name + ' (' + sizeKb + ' KB)'
+            }
+            if (preview) preview.style.display = 'block'
+          }
+          reader.readAsDataURL(file)
+        })
+      }
 
-        function setStatus(msg, isError) {
+      function setStatus(msg, isError) {
         status.textContent = msg || ''
         status.style.color = isError ? '#f97373' : '#98a2b3'
       }
@@ -285,10 +527,10 @@
 
       async function loadCampaign() {
         const campaignId = getUrlParam('id')
-        if (!campaignId) return // No campaign to load, creating new one
+        if (!campaignId) return
 
         currentCampaignId = campaignId
-        setStatus('Loading campaign...')
+        setStatus('Lade Kampagne...')
         try {
           const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache: 'no-store' })
           if (!res.ok) {
@@ -297,71 +539,94 @@
             throw new Error(txt || res.statusText || ('HTTP ' + res.status))
           }
           const campaign = await res.json()
+
           // Pre-fill form
           nameInput.value = campaign.name || ''
           storyInput.value = campaign.description || ''
+
+          // Set visibility switch
+          isPublic = campaign.isPublic || false
+          if (isPublic) {
+            switchEl.classList.remove('private');
+            switchEl.classList.add('public');
+            visibilityText.textContent = 'Kampagne ist öffentlich';
+          } else {
+            switchEl.classList.remove('public');
+            switchEl.classList.add('private');
+            visibilityText.textContent = 'Kampagne ist privat';
+          }
+
+          if (campaign.maxPlayerCount) {
+            document.getElementById('maxPlayers').value = campaign.maxPlayerCount
+          }
+
           // Show existing map if present
           if (campaign.mapImagePath) {
             showMapPreview(campaign.mapImagePath)
           }
+
           // Change button text
           btn.textContent = 'Aktualisieren'
           setStatus('')
         } catch (err) {
           console.error('Load campaign failed', err)
-          setStatus('Failed to load campaign: ' + (err.message || 'Unknown'), true)
+          setStatus('Kampagne konnte nicht geladen werden: ' + (err.message || 'Unbekannt'), true)
         }
       }
 
-        function showMapPreview(imageUrl) {
-            const preview = document.getElementById('mapPreview')
-            const mapImage = document.getElementById('mapImage')
-            const mapFileName = document.getElementById('mapFileName')
+      function showMapPreview(imageUrl) {
+        const preview = document.getElementById('mapPreview')
+        const mapImage = document.getElementById('mapImage')
+        const mapFileName = document.getElementById('mapFileName')
 
-            // Normalize to ./uploads/... if backend returns /uploads/...
-            let resolvedUrl = imageUrl
-            if (resolvedUrl && resolvedUrl.startsWith('/uploads/')) {
-                resolvedUrl = '.' + resolvedUrl   // => "./uploads/..."
-            }
-
-            mapImage.src = resolvedUrl
-            mapFileName.textContent = 'Map loaded'
-            preview.style.display = 'block'
+        let resolvedUrl = imageUrl
+        if (resolvedUrl && resolvedUrl.startsWith('/uploads/')) {
+          resolvedUrl = '.' + resolvedUrl
         }
 
+        mapImage.src = resolvedUrl
+        mapFileName.textContent = 'Karte geladen'
+        preview.style.display = 'block'
+      }
 
-        async function saveCampaign() {
+      async function saveCampaign() {
         const name = (nameInput.value || '').trim()
         const description = (storyInput.value || '').trim()
         if (!name) {
-          setStatus('Campaign name is required.', true)
+          setStatus('Kampagnenname ist erforderlich.', true)
           nameInput.focus()
           return
         }
-        // require player
+
         let player = null
         try { player = JSON.parse(sessionStorage.getItem('player')) } catch (e) { player = null }
         if (!player || !player.id) {
-          setStatus('You must be signed in to create a campaign. Go to Login.', true)
+          setStatus('Du musst angemeldet sein, um eine Kampagne zu erstellen.', true)
           return
         }
+
         btn.disabled = true
         const orig = btn.textContent
-        btn.textContent = currentCampaignId ? 'Updating...' : 'Creating...'
-        setStatus(currentCampaignId ? 'Updating campaign...' : 'Creating campaign...')
+        btn.textContent = currentCampaignId ? 'Aktualisiere...' : 'Erstelle...'
+        setStatus(currentCampaignId ? 'Aktualisiere Kampagne...' : 'Erstelle Kampagne...')
+
         try {
-          const payload = { name: name, description: description, playerId: Number(player.id) }
+          const payload = {
+            name: name,
+            description: description,
+            playerId: Number(player.id),
+            isPublic: isPublic,
+            maxPlayerCount: document.getElementById('maxPlayers').value ? parseInt(document.getElementById('maxPlayers').value) : null
+          }
           let res
 
           if (currentCampaignId) {
-            // Update existing campaign
             res = await fetch('/api/campaign/' + encodeURIComponent(currentCampaignId), {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
             })
           } else {
-            // Create new campaign
             res = await fetch('/api/campaign', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -377,7 +642,6 @@
           const campaign = await res.json()
 
           // Handle file upload if file was selected
-          const mapInput = document.getElementById('map')
           if (mapInput.files && mapInput.files.length > 0) {
             const formData = new FormData()
             formData.append('file', mapInput.files[0])
@@ -391,38 +655,33 @@
               let txt = null
               try { txt = await uploadRes.text() } catch (e) {}
               console.warn('File upload warning: ' + (txt || uploadRes.statusText))
-              // Don't fail completely, just warn the user
-              setStatus('Campaign saved but file upload failed')
+              setStatus('Kampagne gespeichert, aber Karten-Upload fehlgeschlagen')
               setTimeout(() => { window.location.href = './Campaigns.html' }, 2000)
               return
             }
           }
 
-          setStatus(currentCampaignId ? 'Campaign updated! Redirecting…' : 'Campaign created! Redirecting…')
-          // Redirect to campaigns overview
+          setStatus(currentCampaignId ? 'Kampagne aktualisiert! Weiterleitung…' : 'Kampagne erstellt! Weiterleitung…')
           window.location.href = './Campaigns.html'
         } catch (err) {
           console.error('Save campaign failed', err)
-          setStatus('Failed to save campaign: ' + (err.message || 'Unknown'), true)
+          setStatus('Kampagne konnte nicht gespeichert werden: ' + (err.message || 'Unbekannt'), true)
         } finally {
           btn.disabled = false
           btn.textContent = orig
         }
       }
 
-      // Load existing campaign if ID provided
       loadCampaign()
 
       btn.addEventListener('click', saveCampaign)
 
-        if (backBtn) {
-            backBtn.addEventListener('click', function () {
-                window.location.href = './Campaigns.html'
-            })
-        }
-
-
+      if (backBtn) {
+        backBtn.addEventListener('click', function () {
+          window.location.href = './Campaigns.html'
+        })
+      }
     })()
-   </script>
+  </script>
 </body>
 </html>

@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kampagne – Details</title>
+  <style>
+    :root {
+      --green-600: #004c3685;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+      background-color: #ffffff78;
+      background-size: cover;
+      background-attachment: fixed;
+      background-blend-mode: lighten;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: var(--green-600);
+      border-radius: 24px;
+      padding: 26px;
+      max-width: 720px;
+      width: 100%;
+      color: white;
+      backdrop-filter: blur(12px);
+      margin: 2vw;
+    }
+
+    /* Preview style for player/visitor view */
+    .preview {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 18px;
+      padding: 20px;
+    }
+
+    .preview-title {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .preview-desc {
+      font-size: 14px;
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+
+    .preview-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.4);
+      margin: 16px 0;
+    }
+
+    .preview-info {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    .preview-info-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-info-item strong {
+      opacity: 0.7;
+    }
+
+    /* Players section */
+    .players-section {
+      margin-top: 20px;
+    }
+
+    .players-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+
+    .players {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .players-horizontal {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .player {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .player-compact {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+    }
+
+    .player-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .player-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 11px;
+      color: #064e3b;
+    }
+
+    .player-name {
+      font-size: 14px;
+    }
+
+    .player-role {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .role-dm {
+      background: rgba(255, 193, 7, 0.3);
+      color: #ffc107;
+    }
+
+    .role-player {
+      background: rgba(33, 150, 243, 0.3);
+      color: #64b5f6;
+    }
+
+    .kick-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      color: white;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .kick-btn:hover {
+      background: rgba(255, 0, 0, 0.25);
+    }
+
+    /* Form styles for DM */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    input, textarea {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      padding: 8px 14px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+    }
+
+    textarea {
+      border-radius: 16px;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    textarea.story {
+      min-height: 160px;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Toggle switch */
+    .switch-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .switch-label-text {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .switch {
+      position: relative;
+      width: 158px;
+      height: 34px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-option {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      z-index: 2;
+      color: #ffffff;
+      transition: color 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .switch-thumb {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      width: 50%;
+      border-radius: 999px;
+      background: #7708c7b8;
+      transition: transform 0.2s;
+      z-index: 1;
+    }
+
+    .switch.public .switch-thumb {
+      transform: translateX(0%);
+    }
+
+    .switch.private .switch-thumb {
+      transform: translateX(100%);
+    }
+
+    .switch.public .option-public {
+      font-weight: 600;
+    }
+
+    .switch.private .option-private {
+      font-weight: 600;
+    }
+
+    /* Map section */
+    .map-section {
+      margin-top: 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .map-section img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .map-upload {
+      border-radius: 16px;
+      border: 1px dashed rgba(255, 255, 255, 0.5);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.15);
+      transition: background 0.2s;
+    }
+
+    .map-upload:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .map-upload-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .map-upload-text {
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    /* Footer buttons */
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 13px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .btn-secondary {
+      border-color: rgba(255, 255, 255, 0.89);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-primary {
+      background: #7708c7b8;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.05);
+    }
+
+    .btn-danger {
+      background: rgba(244, 67, 54, 0.8);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 67, 54, 1);
+    }
+
+    .btn-success {
+      background: rgba(76, 175, 80, 0.8);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .btn-success:hover {
+      background: rgba(76, 175, 80, 1);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Status message */
+    .status {
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      display: none;
+      font-size: 14px;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.error {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f97373;
+    }
+
+    .status.success {
+      background: rgba(76, 175, 80, 0.2);
+      color: #81c784;
+    }
+
+    .empty-players {
+      color: rgba(255, 255, 255, 0.6);
+      font-style: italic;
+      padding: 8px;
+    }
+
+    .badge-public {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(129, 199, 132, 0.25);
+      color: #81c784;
+      margin-left: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .your-role {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div id="status" class="status"></div>
+
+  <!-- Not Joined View (Visitor) -->
+  <div id="notJoinedView" style="display: none;">
+    <div class="preview">
+      <div class="preview-title" id="titleNotJoined">Kampagne</div>
+      <div id="badgeNotJoined"></div>
+      <div class="preview-desc" id="descNotJoined">-</div>
+
+      <div class="preview-divider"></div>
+
+      <div class="preview-info">
+        <div class="preview-info-item">
+          <strong>DM:</strong>
+          <span id="dmNameNotJoined">-</span>
+        </div>
+        <div class="preview-info-item">
+          <strong>Spieler:</strong>
+          <span id="playerCountNotJoined">0</span>
+        </div>
+        <div class="preview-info-item">
+          <strong>Max:</strong>
+          <span id="maxPlayersNotJoined">Unbegrenzt</span>
+        </div>
+      </div>
+
+      <div class="preview-divider"></div>
+
+      <div class="players-title">Beigetretene Spieler</div>
+      <div class="players-horizontal" id="playersListNotJoined"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-secondary" id="backBtnNotJoined">Abbrechen</button>
+      <button class="btn btn-success" id="joinBtn">Beitreten</button>
+    </div>
+  </div>
+
+  <!-- Player Joined View -->
+  <div id="playerJoinedView" style="display: none;">
+    <div class="preview">
+      <div class="preview-title" id="titlePlayer">Kampagne</div>
+      <div id="badgePlayer"></div>
+      <div class="your-role">Deine Rolle: <span class="player-role role-player">PLAYER</span></div>
+      <div class="preview-desc" id="descPlayer" style="margin-top: 12px;">-</div>
+
+      <div class="preview-divider"></div>
+
+      <div class="preview-info">
+        <div class="preview-info-item">
+          <strong>DM:</strong>
+          <span id="dmNamePlayer">-</span>
+        </div>
+        <div class="preview-info-item">
+          <strong>Spieler:</strong>
+          <span id="playerCountPlayer">0</span>
+        </div>
+        <div class="preview-info-item">
+          <strong>Max:</strong>
+          <span id="maxPlayersPlayer">Unbegrenzt</span>
+        </div>
+      </div>
+
+      <div class="preview-divider"></div>
+
+      <div class="players-title">Beigetretene Spieler</div>
+      <div class="players-horizontal" id="playersListPlayer"></div>
+
+      <!-- Map for joined players -->
+      <div id="mapSectionPlayer" class="map-section" style="display: none; margin-top: 16px;">
+        <div class="players-title" style="margin-bottom: 10px;">Kampagnenkarte</div>
+        <img id="mapImagePlayer" src="" alt="Kampagnenkarte" />
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-secondary" id="backBtnPlayer">Abbrechen</button>
+      <button class="btn btn-danger" id="leaveBtn">Verlassen</button>
+    </div>
+  </div>
+
+  <!-- DM View -->
+  <div id="dmView" style="display: none;">
+    <div class="your-role" style="margin-bottom: 16px;">Deine Rolle: <span class="player-role role-dm">DM</span></div>
+
+    <div class="form-group">
+      <label for="dmTitle">Titel</label>
+      <input type="text" id="dmTitle" placeholder="Kampagnentitel" />
+    </div>
+
+    <div class="form-group">
+      <label for="dmDescription">Beschreibung</label>
+      <textarea id="dmDescription" placeholder="Kurze Beschreibung der Kampagne..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="dmMaxPlayers">Max. Spieler</label>
+      <input type="number" id="dmMaxPlayers" min="1" placeholder="Leer = Unbegrenzt" style="max-width: 150px;" />
+    </div>
+
+    <div class="switch-wrapper">
+      <span class="switch-label-text">Sichtbarkeit</span>
+      <div class="switch public" id="visibilitySwitch">
+        <div class="switch-thumb"></div>
+        <div class="switch-option option-public">Public</div>
+        <div class="switch-option option-private">Private</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Karte</label>
+      <div class="map-upload" onclick="document.getElementById('dmMapFile').click()">
+        <span class="map-upload-icon">+</span>
+        <span class="map-upload-text">Karte hochladen oder ändern</span>
+        <input type="file" id="dmMapFile" accept=".jpg,.png,.svg" style="display: none;" />
+      </div>
+      <div id="mapSectionDM" class="map-section" style="display: none; margin-top: 12px;">
+        <img id="mapImageDM" src="" alt="Kampagnenkarte" />
+      </div>
+    </div>
+
+    <div class="players-section">
+      <div class="players-title">Beigetretene Spieler</div>
+      <div class="players" id="playersListDM"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-secondary" id="cancelBtn">Abbrechen</button>
+      <button class="btn btn-danger" id="deleteBtn">Löschen</button>
+      <button class="btn btn-primary" id="updateBtn">Aktualisieren</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const params = new URLSearchParams(window.location.search)
+    const campaignId = params.get('id')
+    let currentPlayer = null
+    let campaign = null
+    let playerRole = null
+    let campaignPlayers = []
+    let playerNameMap = {}
+    let isPublic = true
+
+    function setStatus(msg, isError = false) {
+      const statusEl = document.getElementById('status')
+      statusEl.textContent = msg
+      statusEl.className = 'status show ' + (isError ? 'error' : 'success')
+      setTimeout(() => { statusEl.className = 'status' }, 3000)
+    }
+
+    function escapeHtml(s) {
+      return String(s||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))
+    }
+
+    function requirePlayer() {
+      try {
+        const raw = sessionStorage.getItem('player')
+        if (!raw) return null
+        return JSON.parse(raw)
+      } catch(e) {
+        console.warn(e)
+        return null
+      }
+    }
+
+    function getInitials(name) {
+      if (!name) return '?'
+      const parts = name.trim().split(/\s+/)
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+
+    async function loadCampaign() {
+      currentPlayer = requirePlayer()
+      if (!currentPlayer) {
+        setStatus('Nicht eingeloggt', true)
+        return
+      }
+
+      if (!campaignId) {
+        setStatus('Kampagne nicht gefunden', true)
+        return
+      }
+
+      try {
+        const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+        if (!campaignRes.ok) {
+          setStatus('Kampagne nicht gefunden', true)
+          return
+        }
+        campaign = await campaignRes.json()
+
+        const playersRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+        if (playersRes.ok) {
+          campaignPlayers = await playersRes.json()
+        }
+
+        for (const cp of campaignPlayers) {
+          try {
+            const playerRes = await fetch('/api/player/id/' + encodeURIComponent(cp.playerId), { cache: 'no-store' })
+            if (playerRes.ok) {
+              const playerData = await playerRes.json()
+              playerNameMap[cp.playerId] = playerData.name || `Player ${cp.playerId}`
+            }
+          } catch (err) {
+            console.error('Failed to load player details', err)
+            playerNameMap[cp.playerId] = `Player ${cp.playerId}`
+          }
+        }
+
+        const roleRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/' + encodeURIComponent(currentPlayer.id) + '/role', { cache: 'no-store' })
+        if (roleRes.ok) {
+          const cp = await roleRes.json()
+          playerRole = cp.role
+        }
+
+        renderView()
+      } catch (err) {
+        console.error(err)
+        setStatus('Fehler beim Laden der Kampagne', true)
+      }
+    }
+
+    function renderView() {
+      document.getElementById('notJoinedView').style.display = 'none'
+      document.getElementById('playerJoinedView').style.display = 'none'
+      document.getElementById('dmView').style.display = 'none'
+
+      if (playerRole === 'DM') {
+        renderDMView()
+      } else if (playerRole === 'PLAYER') {
+        renderPlayerView()
+      } else {
+        renderNotJoinedView()
+      }
+    }
+
+    async function loadCampaignPlayers() {
+      try {
+        const res = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+        if (res.ok) {
+          campaignPlayers = await res.json()
+          for (const cp of campaignPlayers) {
+            if (!playerNameMap[cp.playerId]) {
+              try {
+                const playerRes = await fetch('/api/player/id/' + encodeURIComponent(cp.playerId), { cache: 'no-store' })
+                if (playerRes.ok) {
+                  const playerData = await playerRes.json()
+                  playerNameMap[cp.playerId] = playerData.name || `Player ${cp.playerId}`
+                }
+              } catch (err) {
+                console.error('Failed to load player details', err)
+                playerNameMap[cp.playerId] = `Player ${cp.playerId}`
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    function getDMName() {
+      const dm = campaignPlayers.find(cp => cp.role === 'DM')
+      return dm ? (playerNameMap[dm.playerId] || `Player ${dm.playerId}`) : 'Unbekannt'
+    }
+
+    function renderNotJoinedView() {
+      document.getElementById('notJoinedView').style.display = 'block'
+      document.getElementById('titleNotJoined').textContent = campaign.name || 'Kampagne'
+      document.getElementById('badgeNotJoined').innerHTML = campaign.isPublic ? '<span class="badge-public">Public</span>' : ''
+      document.getElementById('descNotJoined').textContent = campaign.description || 'Keine Beschreibung'
+      document.getElementById('dmNameNotJoined').textContent = getDMName()
+      document.getElementById('playerCountNotJoined').textContent = campaignPlayers.filter(cp => cp.role === 'PLAYER').length
+      document.getElementById('maxPlayersNotJoined').textContent = campaign.maxPlayerCount ? `${campaign.maxPlayerCount}` : 'Unbegrenzt'
+      renderPlayersListCompact('playersListNotJoined')
+
+      document.getElementById('backBtnNotJoined').onclick = () => window.location.href = './Campaigns.html'
+
+      const joinBtn = document.getElementById('joinBtn')
+      joinBtn.onclick = async () => {
+        joinBtn.disabled = true
+        joinBtn.textContent = 'Beitreten...'
+        try {
+          const res = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId: currentPlayer.id })
+          })
+          if (!res.ok) {
+            let msg = 'Beitreten fehlgeschlagen'
+            try { msg = await res.text() } catch (e) {}
+            setStatus(msg, true)
+            joinBtn.disabled = false
+            joinBtn.textContent = 'Beitreten'
+            return
+          }
+          playerRole = 'PLAYER'
+          await loadCampaignPlayers()
+          renderView()
+        } catch (err) {
+          console.error(err)
+          setStatus('Fehler beim Beitreten', true)
+          joinBtn.disabled = false
+          joinBtn.textContent = 'Beitreten'
+        }
+      }
+    }
+
+    function renderPlayerView() {
+      document.getElementById('playerJoinedView').style.display = 'block'
+      document.getElementById('titlePlayer').textContent = campaign.name || 'Kampagne'
+      document.getElementById('badgePlayer').innerHTML = campaign.isPublic ? '<span class="badge-public">Public</span>' : ''
+      document.getElementById('descPlayer').textContent = campaign.description || 'Keine Beschreibung'
+      document.getElementById('dmNamePlayer').textContent = getDMName()
+      document.getElementById('playerCountPlayer').textContent = campaignPlayers.filter(cp => cp.role === 'PLAYER').length
+      document.getElementById('maxPlayersPlayer').textContent = campaign.maxPlayerCount ? `${campaign.maxPlayerCount}` : 'Unbegrenzt'
+      renderPlayersListCompact('playersListPlayer')
+
+      if (campaign.mapImagePath) {
+        const mapSection = document.getElementById('mapSectionPlayer')
+        const mapImg = document.getElementById('mapImagePlayer')
+        mapSection.style.display = 'block'
+
+        let mapUrl = campaign.mapImagePath
+        if (mapUrl.startsWith('/uploads/')) {
+          mapUrl = '.' + mapUrl
+        } else if (!mapUrl.startsWith('./') && !mapUrl.startsWith('http')) {
+          mapUrl = './' + mapUrl
+        }
+        mapImg.src = mapUrl
+        mapImg.onerror = () => { mapSection.style.display = 'none' }
+      }
+
+      document.getElementById('backBtnPlayer').onclick = () => window.location.href = './Campaigns.html'
+
+      const leaveBtn = document.getElementById('leaveBtn')
+      leaveBtn.onclick = async () => {
+        leaveBtn.disabled = true
+        leaveBtn.textContent = 'Verlasse...'
+        try {
+          const res = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/leave/' + encodeURIComponent(currentPlayer.id), {
+            method: 'DELETE'
+          })
+          if (!res.ok) {
+            setStatus('Verlassen fehlgeschlagen', true)
+            leaveBtn.disabled = false
+            leaveBtn.textContent = 'Verlassen'
+            return
+          }
+          setStatus('Kampagne verlassen')
+          setTimeout(() => window.location.href = './Campaigns.html', 1500)
+        } catch (err) {
+          console.error(err)
+          setStatus('Fehler beim Verlassen', true)
+          leaveBtn.disabled = false
+          leaveBtn.textContent = 'Verlassen'
+        }
+      }
+    }
+
+    function renderDMView() {
+      document.getElementById('dmView').style.display = 'block'
+      document.getElementById('dmTitle').value = campaign.name || ''
+      document.getElementById('dmDescription').value = campaign.description || ''
+      document.getElementById('dmMaxPlayers').value = campaign.maxPlayerCount || ''
+
+      // Set up visibility switch
+      isPublic = campaign.isPublic || false
+      const switchEl = document.getElementById('visibilitySwitch')
+      if (isPublic) {
+        switchEl.classList.remove('private')
+        switchEl.classList.add('public')
+      } else {
+        switchEl.classList.remove('public')
+        switchEl.classList.add('private')
+      }
+
+      switchEl.onclick = () => {
+        isPublic = !isPublic
+        if (isPublic) {
+          switchEl.classList.remove('private')
+          switchEl.classList.add('public')
+        } else {
+          switchEl.classList.remove('public')
+          switchEl.classList.add('private')
+        }
+      }
+
+      renderPlayersListDM('playersListDM')
+
+      // Map preview
+      if (campaign.mapImagePath) {
+        const mapSection = document.getElementById('mapSectionDM')
+        const mapImg = document.getElementById('mapImageDM')
+        mapSection.style.display = 'block'
+
+        let mapUrl = campaign.mapImagePath
+        if (mapUrl.startsWith('/uploads/')) {
+          mapUrl = '.' + mapUrl
+        } else if (!mapUrl.startsWith('./') && !mapUrl.startsWith('http')) {
+          mapUrl = './' + mapUrl
+        }
+        mapImg.src = mapUrl
+        mapImg.onerror = () => { mapSection.style.display = 'none' }
+      }
+
+      // File upload preview
+      const mapInput = document.getElementById('dmMapFile')
+      mapInput.onchange = (e) => {
+        const file = e.target.files && e.target.files[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = (evt) => {
+          const mapSection = document.getElementById('mapSectionDM')
+          const mapImg = document.getElementById('mapImageDM')
+          mapImg.src = evt.target.result
+          mapSection.style.display = 'block'
+        }
+        reader.readAsDataURL(file)
+      }
+
+      // Buttons
+      document.getElementById('cancelBtn').onclick = () => window.location.href = './Campaigns.html'
+
+      const updateBtn = document.getElementById('updateBtn')
+      updateBtn.onclick = async () => {
+        updateBtn.disabled = true
+        updateBtn.textContent = 'Aktualisiere...'
+        try {
+          const payload = {
+            name: document.getElementById('dmTitle').value.trim(),
+            description: document.getElementById('dmDescription').value.trim(),
+            isPublic: isPublic,
+            maxPlayerCount: document.getElementById('dmMaxPlayers').value ? parseInt(document.getElementById('dmMaxPlayers').value) : null
+          }
+
+          const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+
+          if (!res.ok) {
+            let msg = 'Aktualisieren fehlgeschlagen'
+            try { msg = await res.text() } catch (e) {}
+            setStatus(msg, true)
+            updateBtn.disabled = false
+            updateBtn.textContent = 'Aktualisieren'
+            return
+          }
+
+          // Handle file upload
+          const mapFile = document.getElementById('dmMapFile')
+          if (mapFile.files && mapFile.files.length > 0) {
+            const formData = new FormData()
+            formData.append('file', mapFile.files[0])
+            await fetch('/api/campaign/' + campaignId + '/upload-map', {
+              method: 'POST',
+              body: formData
+            })
+          }
+
+          campaign = await res.json()
+          setStatus('Kampagne aktualisiert')
+          updateBtn.disabled = false
+          updateBtn.textContent = 'Aktualisieren'
+        } catch (err) {
+          console.error(err)
+          setStatus('Fehler beim Aktualisieren', true)
+          updateBtn.disabled = false
+          updateBtn.textContent = 'Aktualisieren'
+        }
+      }
+
+      const deleteBtn = document.getElementById('deleteBtn')
+      deleteBtn.onclick = async () => {
+        if (!confirm('Möchtest du diese Kampagne wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+          return
+        }
+        deleteBtn.disabled = true
+        deleteBtn.textContent = 'Löschen...'
+        try {
+          const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), {
+            method: 'DELETE'
+          })
+          if (!res.ok) {
+            setStatus('Löschen fehlgeschlagen', true)
+            deleteBtn.disabled = false
+            deleteBtn.textContent = 'Löschen'
+            return
+          }
+          setStatus('Kampagne gelöscht')
+          setTimeout(() => window.location.href = './Campaigns.html', 1500)
+        } catch (err) {
+          console.error(err)
+          setStatus('Fehler beim Löschen', true)
+          deleteBtn.disabled = false
+          deleteBtn.textContent = 'Löschen'
+        }
+      }
+    }
+
+    function renderPlayersListCompact(listId) {
+      const list = document.getElementById(listId)
+      list.innerHTML = ''
+      if (campaignPlayers.length === 0) {
+        list.innerHTML = '<span class="empty-players">Noch keine Spieler beigetreten</span>'
+        return
+      }
+
+      campaignPlayers.forEach(cp => {
+        const div = document.createElement('div')
+        div.className = 'player-compact'
+        const name = playerNameMap[cp.playerId] || `Player ${cp.playerId}`
+        const roleClass = cp.role === 'DM' ? 'role-dm' : 'role-player'
+        div.innerHTML = `
+          <span class="player-avatar">${getInitials(name)}</span>
+          <span>${escapeHtml(name)}</span>
+          <span class="player-role ${roleClass}">${cp.role}</span>
+        `
+        list.appendChild(div)
+      })
+    }
+
+    function renderPlayersListDM(listId) {
+      const list = document.getElementById(listId)
+      list.innerHTML = ''
+      if (campaignPlayers.length === 0) {
+        list.innerHTML = '<span class="empty-players">Noch keine Spieler beigetreten</span>'
+        return
+      }
+
+      campaignPlayers.forEach(cp => {
+        const div = document.createElement('div')
+        div.className = 'player'
+        const name = playerNameMap[cp.playerId] || `Player ${cp.playerId}`
+        const roleClass = cp.role === 'DM' ? 'role-dm' : 'role-player'
+
+        if (cp.role === 'DM') {
+          div.innerHTML = `
+            <div class="player-left">
+              <span class="player-avatar">${getInitials(name)}</span>
+              <span class="player-name">${escapeHtml(name)}</span>
+            </div>
+            <span class="player-role ${roleClass}">${cp.role}</span>
+          `
+        } else {
+          div.innerHTML = `
+            <div class="player-left">
+              <span class="player-avatar">${getInitials(name)}</span>
+              <span class="player-name">${escapeHtml(name)}</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span class="player-role ${roleClass}">${cp.role}</span>
+              <button class="kick-btn" data-player-id="${cp.playerId}">KICK</button>
+            </div>
+          `
+        }
+
+        list.appendChild(div)
+
+        // Add kick handler
+        if (cp.role !== 'DM') {
+          const kickBtn = div.querySelector('.kick-btn')
+          kickBtn.onclick = async () => {
+            const playerId = kickBtn.getAttribute('data-player-id')
+            kickBtn.disabled = true
+            kickBtn.textContent = '...'
+            try {
+              const res = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/leave/' + encodeURIComponent(playerId), {
+                method: 'DELETE'
+              })
+              if (!res.ok) {
+                setStatus('Entfernen fehlgeschlagen', true)
+                kickBtn.disabled = false
+                kickBtn.textContent = 'KICK'
+                return
+              }
+              setStatus('Spieler entfernt')
+              await loadCampaignPlayers()
+              renderPlayersListDM('playersListDM')
+            } catch (err) {
+              console.error(err)
+              setStatus('Fehler beim Entfernen', true)
+              kickBtn.disabled = false
+              kickBtn.textContent = 'KICK'
+            }
+          }
+        }
+      })
+    }
+
+    loadCampaign()
+  })()
+</script>
+</body>
+</html>

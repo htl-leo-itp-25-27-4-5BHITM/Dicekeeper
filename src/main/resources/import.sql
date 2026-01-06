@@ -60,8 +60,8 @@ insert into Ability (id, name, description) values (6, 'Charisma', 'measuring fo
 
 insert into character_ability (id, character_id, ability_id, score) values (1, 1, 1, 15);
 
-insert into Player (id, email, username) values (1, 'test@gmail.com', 'testuser');
-insert into Player (id, email, username) values (2, 'fredl@htl.at', 'Fredl');
+insert into Player (id, email, username, name) values (1, 'test@gmail.com', 'testuser', 'Alex');
+insert into Player (id, email, username, name) values (2, 'fredl@htl.at', 'Fredl', 'Fredl');
 
 -- sample campaigns for testing (commented out for now)
 -- insert into campaign (name, description, player_id) values ('Schattenwald', 'A haunted forest campaign', 2);

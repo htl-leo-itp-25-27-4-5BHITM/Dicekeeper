@@ -27,4 +27,23 @@ public class PlayerResource {
                     .build();
         }
     }
+
+    @GET
+    @Path("id/{id}")
+    public Response getPlayerById(@PathParam("id") Long id) {
+        try {
+            Player player = Player.findById(id);
+            if (player == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Player with id " + id + " not found")
+                        .build();
+            }
+            return Response.ok(player).build();
+        } catch (Exception e) {
+            String msg = "Service temporarily unavailable: " + e.getMessage();
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(msg)
+                    .build();
+        }
+    }
 }

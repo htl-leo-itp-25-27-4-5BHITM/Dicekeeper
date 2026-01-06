@@ -3,92 +3,326 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>My Campaigns</title>
+  <title>Deine Kampagne</title>
   <style>
-    body {
-        font-family: system-ui, sans-serif;
-        color:#e6eef3;
-        padding:24px;
-        background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
-        background-color: #ffffff78;
-        background-size: cover;
-        background-attachment: fixed;
-        background-blend-mode: lighten;
+    :root {
+      --green-600: #004c3685;
+      --green-700: #256628;
+      --green-300: #81c784;
+      --white: #ffffff;
     }
-    .top { display:flex; justify-content:space-between; align-items:center }
-    h1 { margin:0 }
-    .list { margin-top:18px }
-    .card { background:#042f22; padding:12px 16px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center }
-    .card .meta { color:#9fbfaf }
-    .empty { color:#94a3b8 }
-    .btn { background:#fff; color:#064e3b; border:none; padding:8px 12px; border-radius:8px; cursor:pointer }
+
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-image: url("../character-creation/Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
+      background-color: #ffffff78;
+      background-size: cover;
+      background-attachment: fixed;
+      background-blend-mode: lighten;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      width: 720px;
+      padding: 30px;
+      border-radius: 14px;
+      background: var(--green-600);
+      backdrop-filter: blur(12px);
+      color: white;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .add-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: none;
+      background-color: #4f8f7a;
+      color: white;
+      font-size: 26px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .add-btn:hover {
+      background-color: #3d7a65;
+    }
+
+    .logout-btn {
+      background: transparent;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .logout-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .campaign {
+      background-color: rgba(0, 0, 0, 0.25);
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      font-weight: bold;
+      transition: 0.2s;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .campaign:hover {
+      background-color: rgba(0, 0, 0, 0.35);
+    }
+
+    .campaign-info {
+      flex: 1;
+    }
+
+    .campaign-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .campaign-meta {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.85rem;
+      font-weight: normal;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(129, 199, 132, 0.25);
+      color: #81c784;
+      margin-left: 12px;
+      font-weight: 600;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 30px 0 20px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .divider span {
+      margin: 0 12px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .empty {
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+    }
+
+    #status {
+      text-align: center;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
-  <div class="top">
-    <h1>Meine Kampagnen</h1>
-    <div>
-      <button id="newBtn" class="btn">Neu erstellen</button>
-      <button id="backLogin" class="btn" style="margin-left:8px">Logout</button>
-    </div>
+
+<div class="container">
+  <h1>Deine Kampagne</h1>
+
+  <div id="status" style="color:#98a2b3"></div>
+
+  <div class="top-bar">
+    <button id="newBtn" class="add-btn" title="Neue Kampagne erstellen">+</button>
+    <button id="backLogin" class="logout-btn">Logout</button>
   </div>
 
-  <div id="status" style="margin-top:12px; color:#98a2b3"></div>
-  <div id="list" class="list"></div>
+  <div id="myCampaignsList"></div>
 
-  <script>
-    (function(){
-      const listEl = document.getElementById('list')
-      const status = document.getElementById('status')
-      const newBtn = document.getElementById('newBtn')
-      const backLogin = document.getElementById('backLogin')
+  <div class="divider">
+    <span>Öffentlich</span>
+  </div>
 
-      function setStatus(msg, isErr){ status.textContent = msg || ''; status.style.color = isErr ? '#f97373' : '#98a2b3' }
+  <div id="publicGamesList"></div>
+</div>
 
-      function requirePlayer(){
-        try{
-          const raw = sessionStorage.getItem('player')
-          if (!raw) return null
-          return JSON.parse(raw)
-        }catch(e){ console.warn(e); return null }
+<script>
+  (function(){
+    const myCampaignsListEl = document.getElementById('myCampaignsList')
+    const publicGamesListEl = document.getElementById('publicGamesList')
+    const status = document.getElementById('status')
+    const newBtn = document.getElementById('newBtn')
+    const backLogin = document.getElementById('backLogin')
+
+    function setStatus(msg, isErr){ status.textContent = msg || ''; status.style.color = isErr ? '#f97373' : '#98a2b3' }
+
+    function requirePlayer(){
+      try{
+        const raw = sessionStorage.getItem('player')
+        if (!raw) return null
+        return JSON.parse(raw)
+      }catch(e){ console.warn(e); return null }
+    }
+
+    function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
+
+    function createCampaignCard(campaign, player) {
+      const card = document.createElement('div')
+      card.className = 'campaign'
+
+      const infoDiv = document.createElement('div')
+      infoDiv.className = 'campaign-info'
+
+      const titleDiv = document.createElement('div')
+      titleDiv.className = 'campaign-title'
+      titleDiv.textContent = campaign.name || 'Unnamed Campaign'
+
+      const metaDiv = document.createElement('div')
+      metaDiv.className = 'campaign-meta'
+      const maxPlayers = campaign.maxPlayerCount ? `Max: ${campaign.maxPlayerCount} Spieler` : 'Unbegrenzt'
+      metaDiv.textContent = campaign.description ? `${campaign.description.substring(0, 50)}${campaign.description.length > 50 ? '...' : ''} • ${maxPlayers}` : maxPlayers
+
+      infoDiv.appendChild(titleDiv)
+      infoDiv.appendChild(metaDiv)
+      card.appendChild(infoDiv)
+
+      // Show public badge
+      if (campaign.isPublic) {
+        const badgeSpan = document.createElement('span')
+        badgeSpan.className = 'badge'
+        badgeSpan.textContent = 'Public'
+        card.appendChild(badgeSpan)
       }
 
-      async function load(){
-        const player = requirePlayer()
-        if (!player){ setStatus('Not logged in — please sign in', true); return }
-        setStatus('Loading campaigns...')
-        try{
-          const res = await fetch('/api/campaign/player/' + encodeURIComponent(player.id), { cache:'no-store' })
-          if (!res.ok){
-            let txt = null
-            try { txt = await res.text() } catch (e) {}
-            setStatus('Failed to load campaigns: ' + (txt || res.statusText || ('HTTP ' + res.status)), true)
-            return
+      // Make entire card clickable
+      card.addEventListener('click', () => {
+        window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+      })
+
+      return card
+    }
+
+    async function load(){
+      const player = requirePlayer()
+      if (!player){ setStatus('Nicht eingeloggt — bitte anmelden', true); return }
+      setStatus('Lade Kampagnen...')
+      try{
+        // Load user's campaigns (created by them)
+        const myCampaignsRes = await fetch('/api/campaign/player/' + encodeURIComponent(player.id), { cache:'no-store' })
+        if (!myCampaignsRes.ok){
+          let txt = null
+          try { txt = await myCampaignsRes.text() } catch (e) {}
+          setStatus('Kampagnen konnten nicht geladen werden: ' + (txt || myCampaignsRes.statusText || ('HTTP ' + myCampaignsRes.status)), true)
+          return
+        }
+        const myCampaigns = await myCampaignsRes.json()
+
+        // Load all public campaigns
+        const publicRes = await fetch('/api/campaign/public/all', { cache:'no-store' })
+        let publicCampaigns = []
+        if (publicRes.ok) {
+          publicCampaigns = await publicRes.json()
+        }
+
+        // Load campaigns the player has joined (via CampaignPlayer entries)
+        const playerCampaignsRes = await fetch('/api/campaign-player/player/' + encodeURIComponent(player.id), { cache:'no-store' })
+        const joinedCampaignIds = new Set()
+        if (playerCampaignsRes.ok) {
+          const playerCampaigns = await playerCampaignsRes.json()
+          playerCampaigns.forEach(pc => {
+            // Add to set if player (not DM, since DM campaigns are already in myCampaigns)
+            if (pc.role === 'PLAYER') {
+              joinedCampaignIds.add(pc.campaignId)
+            }
+          })
+        }
+
+        // Get the full campaign objects for joined campaigns
+        const joinedCampaigns = []
+        for (const campaignId of joinedCampaignIds) {
+          try {
+            const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache:'no-store' })
+            if (res.ok) {
+              joinedCampaigns.push(await res.json())
+            }
+          } catch (err) {
+            console.error('Error loading joined campaign', err)
           }
-          const data = await res.json()
-          if (!Array.isArray(data) || data.length === 0){ listEl.innerHTML = '<div class="empty">No campaigns yet.</div>'; setStatus(''); return }
-          listEl.innerHTML = ''
-          for(const c of data){
-            const card = document.createElement('div')
-            card.className = 'card'
-            card.style.cursor = 'pointer'
-            card.innerHTML = `<div><div style="font-weight:700">${escapeHtml(c.name)}</div><div class="meta">${escapeHtml(c.description || '')}</div></div><div class="meta">id:${c.id}</div>`
-            card.addEventListener('click', ()=>{ window.location.href = './Campaign.html?id=' + encodeURIComponent(c.id) })
-            card.addEventListener('mouseenter', ()=>{ card.style.opacity = '0.8' })
-            card.addEventListener('mouseleave', ()=>{ card.style.opacity = '1' })
-            listEl.appendChild(card)
+        }
+
+        // Combine created campaigns with joined campaigns
+        const allMyCampaigns = [...myCampaigns, ...joinedCampaigns]
+
+        // Create a set of campaign IDs that the user owns or has joined
+        const myCampaignIds = new Set(allMyCampaigns.map(c => c.id))
+
+        // Populate "My Campaigns" section
+        myCampaignsListEl.innerHTML = ''
+        if (!Array.isArray(allMyCampaigns) || allMyCampaigns.length === 0){
+          myCampaignsListEl.innerHTML = '<div class="empty">Noch keine Kampagnen.</div>'
+        } else {
+          for(const c of allMyCampaigns){
+            myCampaignsListEl.appendChild(createCampaignCard(c, player))
           }
-          setStatus('')
-        }catch(err){ console.error(err); setStatus('Failed to load campaigns: ' + (err.message||''), true) }
-      }
+        }
 
-      newBtn.addEventListener('click', ()=>{ window.location.href = './Campaign.html' })
-      backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = './Login.html' })
+        // Filter out campaigns that already appear in "My Campaigns"
+        const filteredPublicCampaigns = publicCampaigns.filter(c => !myCampaignIds.has(c.id))
 
-      function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
+        // Populate "All Public Games" section
+        publicGamesListEl.innerHTML = ''
+        if (!Array.isArray(filteredPublicCampaigns) || filteredPublicCampaigns.length === 0){
+          publicGamesListEl.innerHTML = '<div class="empty">Keine öffentlichen Kampagnen verfügbar.</div>'
+        } else {
+          for(const c of filteredPublicCampaigns){
+            publicGamesListEl.appendChild(createCampaignCard(c, player))
+          }
+        }
 
-      load()
-    })()
-  </script>
+        setStatus('')
+      }catch(err){ console.error(err); setStatus('Kampagnen konnten nicht geladen werden: ' + (err.message||''), true) }
+    }
+
+    newBtn.addEventListener('click', ()=>{ window.location.href = './Campaign.html' })
+    backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = './Login.html' })
+
+    load()
+  })()
+</script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import model.Campaign;
+import model.CampaignPlayer;
 import model.Player;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -28,6 +29,13 @@ public class CampaignResource {
     public List<Campaign> list() {
         return Campaign.listAll();
     }
+
+    @GET
+    @Path("public/all")
+    public List<Campaign> listPublic() {
+        return Campaign.find("isPublic", true).list();
+    }
+
 
     @GET
     @Path("{id}")
@@ -64,6 +72,12 @@ public class CampaignResource {
         campaign.id = null; // always create a new one
         campaign.persist();
 
+        // Add creator as DM
+        if (campaign.playerId != null) {
+            CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
+            dm.persist();
+        }
+
         return Response.status(Response.Status.CREATED).entity(campaign).build();
     }
 
@@ -88,6 +102,12 @@ public class CampaignResource {
         if (updated.playerId != null) {
             // could validate Player here if you want
             existing.playerId = updated.playerId;
+        }
+        if (updated.isPublic != null) {
+            existing.isPublic = updated.isPublic;
+        }
+        if (updated.maxPlayerCount != null) {
+            existing.maxPlayerCount = updated.maxPlayerCount;
         }
 
         return Response.ok(existing).build();
