@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+  namespace: student-it200233
+type: Opaque
+stringData:
+  KC_BOOTSTRAP_ADMIN_USERNAME: admin
+  KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+
+  KC_DB: postgres
+  KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+  KC_DB_USERNAME: keycloak
+  KC_DB_PASSWORD: dicekeeper
+
+  KC_HTTP_ENABLED: "true"
+  KC_PROXY_HEADERS: "xforwarded"
+  KC_HTTP_RELATIVE_PATH: "/keycloak"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: student-it200233
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: student-it200233
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.5.0
+          args: ["start"]
+          envFrom:
+            - secretRef:
+                name: keycloak-secret
+          ports:
+            - containerPort: 8080

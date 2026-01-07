@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: student-it200233
+type: Opaque
+stringData:
+  POSTGRES_USER: rulerofall
+  POSTGRES_PASSWORD: rulerofall
+  POSTGRES_DB: postgres
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: student-it200233
+data:
+  initdb.sql: |
+    DROP DATABASE IF EXISTS keycloak;
+    DROP USER IF EXISTS keycloak;
+
+    CREATE USER keycloak WITH PASSWORD 'dicekeeper' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION CONNECTION LIMIT -1;
+    CREATE DATABASE keycloak WITH OWNER=keycloak ENCODING='UTF8' CONNECTION LIMIT=-1;
+
+    DROP DATABASE IF EXISTS keeperofthedice;
+    DROP USER IF EXISTS keeperofthedice;
+
+    CREATE USER keeperofthedice WITH PASSWORD 'dicekeeper' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION CONNECTION LIMIT -1;
+    CREATE DATABASE keeperofthedice WITH OWNER=keeperofthedice ENCODING='UTF8' CONNECTION LIMIT=-1;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: student-it200233
+spec:
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: student-it200233
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: initdb
+          configMap:
+            name: postgres-initdb
+            items:
+              - key: initdb.sql
+                path: initdb.sql
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
