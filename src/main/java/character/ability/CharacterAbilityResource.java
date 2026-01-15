@@ -1,37 +1,26 @@
-package resource;
+package character.ability;
 
+import ability.Ability;
+import character.Character;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.PATCH;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import model.Ability;
-import model.Character;
-import model.Character_ability;
 
 @Path("/api/character-ability")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class CharacterAbilityResource {
 
-    // small DTO for JSON body: { "score": 14 }
-    public static class AbilityScoreUpdate {
-        public int score;
-    }
-
     /**
      * Update (or create) the ability score for a given character & ability.
-     * PATCH /api/character-ability/{characterId}/{abilityId}
      */
     @PATCH
     @Path("/{characterId}/{abilityId}")
     @Transactional
     public Response updateAbilityScore(@PathParam("characterId") Long characterId,
                                        @PathParam("abilityId") Long abilityId,
-                                       AbilityScoreUpdate update) {
+                                       AbilityScoreUpdateDTO update) {
         if (update == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Body must contain a score field").build();
@@ -49,13 +38,12 @@ public class CharacterAbilityResource {
                     .entity("Ability not found").build();
         }
 
-        Character_ability ca = Character_ability
+        CharacterAbility ca = CharacterAbility
                 .find("character = ?1 and ability = ?2", character, ability)
                 .firstResult();
 
         if (ca == null) {
-            // create link if it doesn't exist yet
-            ca = new Character_ability();
+            ca = new CharacterAbility();
             ca.character = character;
             ca.ability = ability;
         }
@@ -63,6 +51,7 @@ public class CharacterAbilityResource {
         ca.score = update.score;
         ca.persist();
 
-        return Response.ok(ca).build();
+        return Response.ok(AbilityScoreDTO.fromEntity(ca)).build();
     }
 }
+

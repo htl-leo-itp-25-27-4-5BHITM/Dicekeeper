@@ -1,12 +1,16 @@
-package model;
+package character.ability;
 
+import ability.Ability;
+import character.Character;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
-public class Character_ability extends PanacheEntity {
+@Table(name = "character_ability")
+public class CharacterAbility extends PanacheEntity {
 
     @ManyToOne
     @JoinColumn(name = "character_Id")
@@ -18,3 +22,4 @@ public class Character_ability extends PanacheEntity {
 
     public int score;
 }
+

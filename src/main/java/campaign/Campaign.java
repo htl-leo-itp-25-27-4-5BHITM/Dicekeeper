@@ -1,4 +1,4 @@
-package model;
+package campaign;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
@@ -8,20 +8,17 @@ import jakarta.persistence.Entity;
 public class Campaign extends PanacheEntity {
     public String name;
     public String description;
+    public String story;
 
-    // owner player id (nullable)
     @Column(name = "player_id", nullable = true)
     public Long playerId;
 
-    // path to uploaded map image (nullable)
     @Column(name = "map_image_path", nullable = true)
     public String mapImagePath;
 
-    // is campaign public (default: false)
     @Column(name = "is_public", nullable = false)
     public Boolean isPublic = false;
 
-    // maximum player count (nullable, null means unlimited)
     @Column(name = "max_player_count", nullable = true)
     public Integer maxPlayerCount;
 }

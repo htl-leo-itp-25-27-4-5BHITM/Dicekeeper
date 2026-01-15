@@ -1,12 +1,10 @@
-package resource;
+package campaign;
 
+import player.Player;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import model.Campaign;
-import model.CampaignPlayer;
-import model.Player;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -23,8 +21,6 @@ public class CampaignResource {
 
     private static final java.nio.file.Path UPLOAD_DIR = Paths.get("src/main/resources/META-INF/resources/campaign-creation/uploads");
 
-    // ---- basic CRUD ----
-
     @GET
     public List<Campaign> list() {
         return Campaign.listAll();
@@ -35,7 +31,6 @@ public class CampaignResource {
     public List<Campaign> listPublic() {
         return Campaign.find("isPublic", true).list();
     }
-
 
     @GET
     @Path("{id}")
@@ -59,7 +54,6 @@ public class CampaignResource {
                     .build();
         }
 
-        // Optional: validate playerId if provided
         if (campaign.playerId != null) {
             Player player = Player.findById(campaign.playerId);
             if (player == null) {
@@ -69,10 +63,9 @@ public class CampaignResource {
             }
         }
 
-        campaign.id = null; // always create a new one
+        campaign.id = null;
         campaign.persist();
 
-        // Add creator as DM
         if (campaign.playerId != null) {
             CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
             dm.persist();
@@ -100,7 +93,6 @@ public class CampaignResource {
             existing.description = updated.description;
         }
         if (updated.playerId != null) {
-            // could validate Player here if you want
             existing.playerId = updated.playerId;
         }
         if (updated.isPublic != null) {
@@ -126,8 +118,6 @@ public class CampaignResource {
         existing.delete();
         return Response.noContent().build();
     }
-
-    // ---- file upload for map image ----
 
     @POST
     @Path("{id}/upload-map")
@@ -156,10 +146,8 @@ public class CampaignResource {
         }
 
         try {
-            // ensure ./uploads exists
             Files.createDirectories(UPLOAD_DIR);
 
-            // build new filename: campaign-<id>-<uuid>.<ext>
             String extension = "";
             int dot = originalFileName.lastIndexOf('.');
             if (dot >= 0) {
@@ -168,11 +156,8 @@ public class CampaignResource {
             String newFileName = "campaign-" + id + "-" + UUID.randomUUID() + extension;
 
             java.nio.file.Path target = UPLOAD_DIR.resolve(newFileName).normalize();
-
-            // move temporary upload to ./uploads/
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
 
-            // store HTTP path in DB so frontend can use it
             campaign.mapImagePath = "/uploads/" + newFileName;
 
             return Response.ok(campaign).build();
@@ -195,3 +180,4 @@ public class CampaignResource {
                 lower.endsWith(".png") || lower.endsWith(".svg");
     }
 }
+

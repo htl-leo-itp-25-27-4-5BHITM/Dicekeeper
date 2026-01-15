@@ -1,12 +1,10 @@
-package resource;
+package campaign;
 
+import player.Player;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import model.Campaign;
-import model.CampaignPlayer;
-import model.Player;
 
 import java.util.List;
 
@@ -14,7 +12,6 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class CampaignPlayerResource {
 
-    // Get all players in a campaign
     @GET
     @Path("{campaignId}")
     public List<CampaignPlayer> getCampaignPlayers(@PathParam("campaignId") Long campaignId) {
@@ -25,7 +22,6 @@ public class CampaignPlayerResource {
         return CampaignPlayer.find("campaignId", campaignId).list();
     }
 
-    // Check if player is in campaign
     @GET
     @Path("{campaignId}/{playerId}/role")
     public Response getPlayerRole(@PathParam("campaignId") Long campaignId,
@@ -39,7 +35,6 @@ public class CampaignPlayerResource {
         return Response.ok(cp).build();
     }
 
-    // Get all campaigns a player is in (including as DM)
     @GET
     @Path("player/{playerId}")
     public List<CampaignPlayer> getPlayerCampaigns(@PathParam("playerId") Long playerId) {
@@ -50,7 +45,6 @@ public class CampaignPlayerResource {
         return CampaignPlayer.find("playerId", playerId).list();
     }
 
-    // Join a public campaign
     @POST
     @Path("{campaignId}/join")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -70,7 +64,6 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        // Parse playerId from JSON body (simple approach: {"playerId": 123})
         Long playerId = extractPlayerId(playerIdJson);
         if (playerId == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -85,7 +78,6 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        // Check if player already in campaign
         CampaignPlayer existing = CampaignPlayer.find("campaignId = ?1 and playerId = ?2",
                                                        campaignId, playerId).firstResult();
         if (existing != null) {
@@ -94,7 +86,6 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        // Check max player count
         if (campaign.maxPlayerCount != null) {
             long currentPlayerCount = CampaignPlayer.find("campaignId", campaignId).count();
             if (currentPlayerCount >= campaign.maxPlayerCount) {
@@ -104,14 +95,12 @@ public class CampaignPlayerResource {
             }
         }
 
-        // Create campaign player entry (not DM, regular player)
         CampaignPlayer cp = new CampaignPlayer(campaignId, playerId, "PLAYER");
         cp.persist();
 
         return Response.status(Response.Status.CREATED).entity(cp).build();
     }
 
-    // Leave a campaign
     @DELETE
     @Path("{campaignId}/leave/{playerId}")
     @Transactional
@@ -125,7 +114,6 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        // Check if player is DM
         if ("DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("DM cannot leave campaign")
@@ -139,7 +127,6 @@ public class CampaignPlayerResource {
     private Long extractPlayerId(String json) {
         if (json == null || json.isEmpty()) return null;
         try {
-            // Simple extraction of playerId from JSON
             int start = json.indexOf("\"playerId\"");
             if (start == -1) return null;
             int colonIndex = json.indexOf(":", start);

@@ -1,7 +1,9 @@
-package model;
+package campaign;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "campaign_player")
@@ -16,7 +18,7 @@ public class CampaignPlayer extends PanacheEntity {
     public String role; // "DM" or "PLAYER"
 
     @Column(name = "joined_at", nullable = false)
-    public Long joinedAt; // timestamp when player joined
+    public Long joinedAt;
 
     public CampaignPlayer() {}
 

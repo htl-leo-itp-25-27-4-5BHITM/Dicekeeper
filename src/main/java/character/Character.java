@@ -1,13 +1,13 @@
-package model;
+package character;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "character")
 public class Character extends PanacheEntity {
-//    public int playerId;
     public String name;
-//    public int raceId;
     public long classId;
     public int backgroundId;
     public int level;

@@ -1,10 +1,13 @@
-package model;
+package tool;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
-public class Tool_Proficiency extends PanacheEntity {
+@Table(name = "tool_proficiency")
+public class ToolProficiency extends PanacheEntity {
     public int toolId;
     public String proficiencyLevel;
 }
+

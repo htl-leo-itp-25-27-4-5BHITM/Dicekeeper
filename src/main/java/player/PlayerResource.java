@@ -1,13 +1,16 @@
-package resource;
+package player;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import model.Player;
 
 @Path("/api/player")
+@Produces(MediaType.APPLICATION_JSON)
 public class PlayerResource {
+
     @GET
     @Path("{email}")
     public Response getPlayerByEmail(@PathParam("email") String email) {
@@ -20,7 +23,6 @@ public class PlayerResource {
             }
             return Response.ok(player).build();
         } catch (Exception e) {
-            // Likely a DB connection error — return 503 so client can show a friendly message
             String msg = "Service temporarily unavailable: " + e.getMessage();
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(msg)
@@ -47,3 +49,4 @@ public class PlayerResource {
         }
     }
 }
+

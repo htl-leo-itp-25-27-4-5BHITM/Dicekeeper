@@ -1,10 +1,11 @@
-package model;
+package skill;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Entity;
 
 @Entity
-public class Ability extends PanacheEntity {
+public class Skill extends PanacheEntity {
     public String name;
     public String description;
 }
+
