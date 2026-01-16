@@ -8,8 +8,7 @@ body{
   color: #ffff;
   margin: 0;
   padding: 40px;
-  background-image: url("Firefly_Enchanted Dungeons & Dragons scene with green magical accents- an overgrown, moss-cov 39064 (3).jpg");
-  background-color: #ffffff78;
+  background-image: url("../images/Background.png");
   background-size: cover;
   background-attachment: fixed;
   background-blend-mode: lighten;
