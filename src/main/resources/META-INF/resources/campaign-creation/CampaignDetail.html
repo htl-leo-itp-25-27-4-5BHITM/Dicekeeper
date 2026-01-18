@@ -705,7 +705,8 @@
       }
 
       try {
-        const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+        // Include playerId so the backend knows if this is the DM (to include story)
+        const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '?playerId=' + encodeURIComponent(currentPlayer.id), { cache: 'no-store' })
         if (!campaignRes.ok) {
           setStatus('Kampagne nicht gefunden', true)
           return

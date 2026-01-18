@@ -297,12 +297,12 @@
           if (!charRes.ok) throw new Error('Failed to load character');
           currentCharacter = await charRes.json();
 
-          // Load classes for dropdown
-          const classesRes = await fetch('/api/class', { cache: 'no-store' });
+          // Load classes for dropdown (correct endpoint is /api/classes)
+          const classesRes = await fetch('/api/classes', { cache: 'no-store' });
           const classes = classesRes.ok ? await classesRes.json() : [];
 
-          // Load backgrounds for dropdown
-          const bgRes = await fetch('/api/background', { cache: 'no-store' });
+          // Load backgrounds for dropdown (correct endpoint is /api/background/all)
+          const bgRes = await fetch('/api/background/all', { cache: 'no-store' });
           const backgrounds = bgRes.ok ? await bgRes.json() : [];
 
           // If campaignId is provided, load campaign player info for DM notes
@@ -324,12 +324,22 @@
       }
 
       function renderForm(character, classes, backgrounds, dmNotes) {
+        // Get the current class and background IDs from the character
+        // The API returns nested objects, so we need to extract the IDs
+        const currentClassId = character.characterClass ? character.characterClass.id : null;
+        const currentBackgroundId = character.background ? character.background.id : null;
+
+        console.log('Current class ID:', currentClassId);
+        console.log('Current background ID:', currentBackgroundId);
+        console.log('Available classes:', classes);
+        console.log('Available backgrounds:', backgrounds);
+
         const classOptions = classes.map(c =>
-          `<option value="${c.id}" ${character.characterClass?.id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+          `<option value="${c.id}" ${currentClassId && c.id == currentClassId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
         ).join('');
 
         const bgOptions = backgrounds.map(b =>
-          `<option value="${b.id}" ${character.background?.id == b.id ? 'selected' : ''}>${escapeHtml(b.name)}</option>`
+          `<option value="${b.id}" ${currentBackgroundId && b.id == currentBackgroundId ? 'selected' : ''}>${escapeHtml(b.name)}</option>`
         ).join('');
 
         const abilityScores = character.abilityScores || [];
@@ -339,6 +349,9 @@
             <input type="number" min="1" max="30" value="${a.score || 10}" data-ability-id="${a.abilityId}" class="ability-score-input">
           </div>
         `).join('');
+
+        // Get the character info/backstory
+        const characterInfo = character.info || '';
 
         contentEl.innerHTML = `
           ${dmNotes ? `
@@ -371,13 +384,8 @@
             </div>
 
             <div class="form-group">
-              <label for="level">Level</label>
-              <input type="number" id="level" min="1" max="20" value="${character.level || 1}">
-            </div>
-
-            <div class="form-group">
               <label for="info">Background Story / Info</label>
-              <textarea id="info" placeholder="Describe your character's background, personality, goals...">${escapeHtml(character.info || '')}</textarea>
+              <textarea id="info" placeholder="Describe your character's background, personality, goals...">${escapeHtml(characterInfo)}</textarea>
             </div>
 
             ${abilityInputs ? `
@@ -391,7 +399,6 @@
 
             <div class="actions">
               <button type="button" class="btn btn-secondary" onclick="history.back()">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="saveBtn">Save Changes</button>
               ${campaignId && campaignPlayer?.characterStatus === 'REJECTED' ? `
               <button type="button" class="btn btn-primary" id="resubmitBtn" style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);">Save & Resubmit</button>
               ` : ''}
@@ -421,13 +428,11 @@
 
       async function saveCharacter(resubmit) {
         const player = getPlayer();
-        const saveBtn = document.getElementById('saveBtn');
         const resubmitBtn = document.getElementById('resubmitBtn');
 
         const name = document.getElementById('name').value.trim();
         const classId = document.getElementById('classId').value;
         const backgroundId = document.getElementById('backgroundId').value;
-        const level = document.getElementById('level').value;
         const info = document.getElementById('info').value.trim();
 
         if (!name) {
@@ -435,9 +440,10 @@
           return;
         }
 
-        saveBtn.disabled = true;
-        if (resubmitBtn) resubmitBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
+        if (resubmitBtn) {
+          resubmitBtn.disabled = true;
+          resubmitBtn.textContent = 'Saving...';
+        }
 
         try {
           // Update character basic info
@@ -448,7 +454,6 @@
               name: name,
               classId: classId ? parseInt(classId) : null,
               backgroundId: backgroundId ? parseInt(backgroundId) : null,
-              level: level ? parseInt(level) : 1,
               info: info
             })
           });
@@ -464,8 +469,8 @@
             const abilityId = input.dataset.abilityId;
             const score = parseInt(input.value) || 10;
 
-            await fetch(`/api/character/${characterId}/ability/${abilityId}`, {
-              method: 'PUT',
+            await fetch(`/api/character-ability/${characterId}/${abilityId}`, {
+              method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ score: score })
             });
@@ -500,9 +505,10 @@
         } catch (err) {
           console.error(err);
           showStatus('Error: ' + err.message, true);
-          saveBtn.disabled = false;
-          if (resubmitBtn) resubmitBtn.disabled = false;
-          saveBtn.textContent = 'Save Changes';
+          if (resubmitBtn) {
+            resubmitBtn.disabled = false;
+            resubmitBtn.textContent = 'Save & Resubmit';
+          }
         }
       }
 
@@ -511,4 +517,3 @@
   </script>
 </body>
 </html>
-

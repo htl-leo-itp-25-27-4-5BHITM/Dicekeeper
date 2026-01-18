@@ -29,7 +29,7 @@ Sorcerers don’t learn magic; the raw, roiling power of magic is part of them. 
 Sorcerers are rare. Some family lines produce exactly one Sorcerer in every generation, but most of the time, the talents of sorcery appear as a fluke. People who have this magical power soon discover that it doesn’t like to stay quiet. A Sorcerer’s magic wants to be wielded.');
 
 
-insert into character (id, name, classid, backgroundid, level, isCreated, info) values (1, 'Arin', 2, 1, 0, false, 'This is a test character. Additional info can go here. Background story, personality traits, ideals, bonds, and flaws can be detailed in this section.');
+-- insert into character (id, name, classid, backgroundid, level, isCreated, info) values (1, 'Arin', 2, 1, 0, false, 'This is a test character. Additional info can go here. Background story, personality traits, ideals, bonds, and flaws can be detailed in this section.');
 
 
 INSERT INTO Background
@@ -58,7 +58,7 @@ insert into Ability (id, name, description) values (4, 'Intelligence', 'measurin
 insert into Ability (id, name, description) values (5, 'Wisdom', 'measuring perception and insight');
 insert into Ability (id, name, description) values (6, 'Charisma', 'measuring force of personality');
 
-insert into character_ability (id, character_id, ability_id, score) values (1, 1, 1, 15);
+-- insert into character_ability (id, character_id, ability_id, score) values (1, 1, 1, 15);
 
 insert into Player (id, email, username, name) values (1, 'test@gmail.com', 'testuser', 'Alex');
 insert into Player (id, email, username, name) values (2, 'fredl@htl.at', 'Fredl', 'Fredl');
