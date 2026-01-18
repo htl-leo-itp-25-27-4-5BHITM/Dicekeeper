@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Character - Dicekeeper</title>
+  <link rel="stylesheet" href="../common/header.css">
+  <style>
+    :root {
+      --green-600: #004c3685;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url("../images/Background.png");
+      background-size: cover;
+      background-attachment: fixed;
+      min-height: 100vh;
+      padding-top: 80px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--green-600);
+      border-radius: 24px;
+      padding: 26px;
+      color: white;
+      backdrop-filter: blur(12px);
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card-title {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .back-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dm-notes {
+      background: rgba(244, 67, 54, 0.15);
+      border: 1px solid rgba(244, 67, 54, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .dm-notes-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ef5350;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dm-notes-content {
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: white;
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #81c784;
+      box-shadow: 0 0 0 2px rgba(129, 199, 132, 0.3);
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .form-group select option {
+      background: #1a3a2a;
+      color: white;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .ability-scores-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .ability-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+
+    .ability-input label {
+      flex: 1;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .ability-input input {
+      width: 60px;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .status-message.error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid rgba(244, 67, 54, 0.5);
+      color: #ef5350;
+    }
+
+    .status-message.success {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.5);
+      color: #81c784;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  </style>
+</head>
+<body class="has-header">
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1 class="card-title">Edit Character</h1>
+        <button class="back-btn" onclick="history.back()">← Back</button>
+      </div>
+
+      <div id="statusMessage" style="display:none"></div>
+      <div id="content">
+        <div class="loading">Loading character...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/header.js" defer></script>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const characterId = params.get('id');
+      const campaignId = params.get('campaignId');
+
+      const contentEl = document.getElementById('content');
+      const statusEl = document.getElementById('statusMessage');
+
+      let currentCharacter = null;
+      let campaignPlayer = null;
+
+      function getPlayer() {
+        try {
+          const raw = sessionStorage.getItem('player');
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+      }
+
+      function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+      }
+
+      function showStatus(msg, isError) {
+        statusEl.className = 'status-message ' + (isError ? 'error' : 'success');
+        statusEl.textContent = msg;
+        statusEl.style.display = 'block';
+      }
+
+      async function loadData() {
+        const player = getPlayer();
+        if (!player) {
+          showStatus('Not logged in. Please log in first.', true);
+          return;
+        }
+
+        if (!characterId) {
+          showStatus('No character specified.', true);
+          return;
+        }
+
+        try {
+          // Load character
+          const charRes = await fetch(`/api/character/${characterId}`, { cache: 'no-store' });
+          if (!charRes.ok) throw new Error('Failed to load character');
+          currentCharacter = await charRes.json();
+
+          // Load classes for dropdown
+          const classesRes = await fetch('/api/class', { cache: 'no-store' });
+          const classes = classesRes.ok ? await classesRes.json() : [];
+
+          // Load backgrounds for dropdown
+          const bgRes = await fetch('/api/background', { cache: 'no-store' });
+          const backgrounds = bgRes.ok ? await bgRes.json() : [];
+
+          // If campaignId is provided, load campaign player info for DM notes
+          let dmNotes = null;
+          if (campaignId) {
+            const cpRes = await fetch(`/api/campaign-player/${campaignId}/${player.id}/role`, { cache: 'no-store' });
+            if (cpRes.ok) {
+              campaignPlayer = await cpRes.json();
+              dmNotes = campaignPlayer.dmNotes;
+            }
+          }
+
+          renderForm(currentCharacter, classes, backgrounds, dmNotes);
+        } catch (err) {
+          console.error(err);
+          showStatus('Error loading character: ' + err.message, true);
+          contentEl.innerHTML = '';
+        }
+      }
+
+      function renderForm(character, classes, backgrounds, dmNotes) {
+        const classOptions = classes.map(c =>
+          `<option value="${c.id}" ${character.characterClass?.id == c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+        ).join('');
+
+        const bgOptions = backgrounds.map(b =>
+          `<option value="${b.id}" ${character.background?.id == b.id ? 'selected' : ''}>${escapeHtml(b.name)}</option>`
+        ).join('');
+
+        const abilityScores = character.abilityScores || [];
+        const abilityInputs = abilityScores.map(a => `
+          <div class="ability-input">
+            <label>${escapeHtml(a.abilityName)}</label>
+            <input type="number" min="1" max="30" value="${a.score || 10}" data-ability-id="${a.abilityId}" class="ability-score-input">
+          </div>
+        `).join('');
+
+        contentEl.innerHTML = `
+          ${dmNotes ? `
+          <div class="dm-notes">
+            <div class="dm-notes-title">⚠️ DM Feedback</div>
+            <div class="dm-notes-content">${escapeHtml(dmNotes)}</div>
+          </div>
+          ` : ''}
+
+          <form id="characterForm">
+            <div class="form-group">
+              <label for="name">Character Name</label>
+              <input type="text" id="name" value="${escapeHtml(character.name || '')}" placeholder="Enter character name" required>
+            </div>
+
+            <div class="form-group">
+              <label for="classId">Class</label>
+              <select id="classId">
+                <option value="">Select a class</option>
+                ${classOptions}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="backgroundId">Background</label>
+              <select id="backgroundId">
+                <option value="">Select a background</option>
+                ${bgOptions}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="level">Level</label>
+              <input type="number" id="level" min="1" max="20" value="${character.level || 1}">
+            </div>
+
+            <div class="form-group">
+              <label for="info">Background Story / Info</label>
+              <textarea id="info" placeholder="Describe your character's background, personality, goals...">${escapeHtml(character.info || '')}</textarea>
+            </div>
+
+            ${abilityInputs ? `
+            <div class="form-group">
+              <label>Ability Scores</label>
+              <div class="ability-scores-grid">
+                ${abilityInputs}
+              </div>
+            </div>
+            ` : ''}
+
+            <div class="actions">
+              <button type="button" class="btn btn-secondary" onclick="history.back()">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="saveBtn">Save Changes</button>
+              ${campaignId && campaignPlayer?.characterStatus === 'REJECTED' ? `
+              <button type="button" class="btn btn-primary" id="resubmitBtn" style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);">Save & Resubmit</button>
+              ` : ''}
+            </div>
+          </form>
+        `;
+
+        setupFormHandlers();
+      }
+
+      function setupFormHandlers() {
+        const form = document.getElementById('characterForm');
+        const saveBtn = document.getElementById('saveBtn');
+        const resubmitBtn = document.getElementById('resubmitBtn');
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await saveCharacter(false);
+        });
+
+        if (resubmitBtn) {
+          resubmitBtn.addEventListener('click', async () => {
+            await saveCharacter(true);
+          });
+        }
+      }
+
+      async function saveCharacter(resubmit) {
+        const player = getPlayer();
+        const saveBtn = document.getElementById('saveBtn');
+        const resubmitBtn = document.getElementById('resubmitBtn');
+
+        const name = document.getElementById('name').value.trim();
+        const classId = document.getElementById('classId').value;
+        const backgroundId = document.getElementById('backgroundId').value;
+        const level = document.getElementById('level').value;
+        const info = document.getElementById('info').value.trim();
+
+        if (!name) {
+          showStatus('Character name is required.', true);
+          return;
+        }
+
+        saveBtn.disabled = true;
+        if (resubmitBtn) resubmitBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          // Update character basic info
+          const updateRes = await fetch(`/api/character/${characterId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              classId: classId ? parseInt(classId) : null,
+              backgroundId: backgroundId ? parseInt(backgroundId) : null,
+              level: level ? parseInt(level) : 1,
+              info: info
+            })
+          });
+
+          if (!updateRes.ok) {
+            const text = await updateRes.text();
+            throw new Error(text || 'Failed to save character');
+          }
+
+          // Update ability scores
+          const abilityInputs = document.querySelectorAll('.ability-score-input');
+          for (const input of abilityInputs) {
+            const abilityId = input.dataset.abilityId;
+            const score = parseInt(input.value) || 10;
+
+            await fetch(`/api/character/${characterId}/ability/${abilityId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ score: score })
+            });
+          }
+
+          // Resubmit if requested
+          if (resubmit && campaignId) {
+            const resubmitRes = await fetch(
+              `/api/campaign-player/${campaignId}/${player.id}/resubmit-character`,
+              { method: 'POST' }
+            );
+
+            if (!resubmitRes.ok) {
+              const text = await resubmitRes.text();
+              throw new Error(text || 'Failed to resubmit character');
+            }
+
+            showStatus('Character saved and resubmitted for approval!', false);
+            setTimeout(() => {
+              window.location.href = `../campaign-creation/CampaignDetail.html?id=${campaignId}`;
+            }, 1500);
+          } else {
+            showStatus('Character saved successfully!', false);
+            setTimeout(() => {
+              if (campaignId) {
+                window.location.href = `../campaign-creation/CampaignDetail.html?id=${campaignId}`;
+              } else {
+                window.location.href = '../character-creation/characterList.html';
+              }
+            }, 1500);
+          }
+        } catch (err) {
+          console.error(err);
+          showStatus('Error: ' + err.message, true);
+          saveBtn.disabled = false;
+          if (resubmitBtn) resubmitBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        }
+      }
+
+      loadData();
+    })();
+  </script>
+</body>
+</html>
+

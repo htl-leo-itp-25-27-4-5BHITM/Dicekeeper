@@ -34,13 +34,79 @@ public class CampaignResource {
 
     @GET
     @Path("{id}")
-    public Response get(@PathParam("id") Long id) {
+    public Response get(@PathParam("id") Long id, @QueryParam("playerId") Long playerId) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Campaign with id " + id + " not found")
                     .build();
         }
+
+        // Check if the requester is the DM - if not, hide the story
+        boolean isDM = false;
+        if (playerId != null) {
+            CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
+            isDM = cp != null && "DM".equals(cp.role);
+        }
+
+        CampaignDTO dto = new CampaignDTO(campaign, isDM);
+        return Response.ok(dto).build();
+    }
+
+    @GET
+    @Path("{id}/story")
+    public Response getStory(@PathParam("id") Long id, @QueryParam("playerId") Long playerId) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+
+        // Only DM can see the story
+        if (playerId == null) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Player ID required")
+                    .build();
+        }
+
+        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
+        if (cp == null || !"DM".equals(cp.role)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can view the story")
+                    .build();
+        }
+
+        return Response.ok(campaign.story).build();
+    }
+
+    @PATCH
+    @Path("{id}/story")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response updateStory(@PathParam("id") Long id, @QueryParam("playerId") Long playerId, StoryUpdateDTO storyUpdate) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+
+        // Only DM can update the story
+        if (playerId == null) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Player ID required")
+                    .build();
+        }
+
+        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
+        if (cp == null || !"DM".equals(cp.role)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can update the story")
+                    .build();
+        }
+
+        campaign.story = storyUpdate.story;
         return Response.ok(campaign).build();
     }
 
@@ -100,6 +166,9 @@ public class CampaignResource {
         }
         if (updated.maxPlayerCount != null) {
             existing.maxPlayerCount = updated.maxPlayerCount;
+        }
+        if (updated.story != null) {
+            existing.story = updated.story;
         }
 
         return Response.ok(existing).build();
@@ -180,4 +249,3 @@ public class CampaignResource {
                 lower.endsWith(".png") || lower.endsWith(".svg");
     }
 }
-

@@ -20,6 +20,17 @@ public class CampaignPlayer extends PanacheEntity {
     @Column(name = "joined_at", nullable = false)
     public Long joinedAt;
 
+    @Column(name = "character_id")
+    public Long characterId;
+
+    // Character submission status: NONE, PENDING, APPROVED, REJECTED
+    @Column(name = "character_status")
+    public String characterStatus = "NONE";
+
+    // DM notes when rejecting a character
+    @Column(name = "dm_notes", length = 2000)
+    public String dmNotes;
+
     public CampaignPlayer() {}
 
     public CampaignPlayer(Long campaignId, Long playerId, String role) {
@@ -27,6 +38,6 @@ public class CampaignPlayer extends PanacheEntity {
         this.playerId = playerId;
         this.role = role;
         this.joinedAt = System.currentTimeMillis();
+        this.characterStatus = "NONE";
     }
 }
-

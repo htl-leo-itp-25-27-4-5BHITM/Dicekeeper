@@ -323,6 +323,13 @@
       color: #064e3b;
       box-shadow: 0 4px 12px rgba(0,0,0,0.25);
       flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .profile-pic img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .profile-name {
@@ -377,6 +384,12 @@
       <label for="story">Beschreibung</label>
       <textarea id="story" maxlength="1000" placeholder="Kurze Beschreibung deiner Kampagne..."></textarea>
       <div class="char-info" id="descChars">Zeichen: 1000</div>
+    </div>
+
+    <div class="form-group story-group">
+      <label for="dmStory">Story (nur für dich sichtbar)</label>
+      <textarea id="dmStory" maxlength="5000" placeholder="Deine private Storyline, Notizen, Plot-Punkte..."></textarea>
+      <div class="char-info">🔒 Diese Story ist nur für den DM sichtbar</div>
     </div>
 
     <label class="image-label" style="font-size: 13px; color: #e5e7eb; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; display: block;">Karte</label>
@@ -435,7 +448,17 @@
         if (raw) {
           var player = JSON.parse(raw)
           nameEl.textContent = player.name || player.username || player.email || 'Player'
-          pic.textContent = initialsFromName(player.name || player.username || player.email)
+
+          // Check if player has a profile picture
+          if (player.profilePicture) {
+            var imgUrl = player.profilePicture
+            if (imgUrl.startsWith('/uploads/')) {
+              imgUrl = '..' + imgUrl
+            }
+            pic.innerHTML = '<img src="' + imgUrl + '" alt="Profile">'
+          } else {
+            pic.textContent = initialsFromName(player.name || player.username || player.email)
+          }
         } else {
           nameEl.textContent = 'Guest'
           pic.textContent = '?'
@@ -447,7 +470,7 @@
       }
 
       widget.addEventListener('click', function () {
-        window.location.href = './Login.html'
+        window.location.href = './Profile.html'
       })
     })();
 
@@ -591,6 +614,7 @@
       async function saveCampaign() {
         const name = (nameInput.value || '').trim()
         const description = (storyInput.value || '').trim()
+        const dmStoryValue = (document.getElementById('dmStory').value || '').trim()
         if (!name) {
           setStatus('Kampagnenname ist erforderlich.', true)
           nameInput.focus()
@@ -613,6 +637,7 @@
           const payload = {
             name: name,
             description: description,
+            story: dmStoryValue,
             playerId: Number(player.id),
             isPublic: isPublic,
             maxPlayerCount: document.getElementById('maxPlayers').value ? parseInt(document.getElementById('maxPlayers').value) : null
