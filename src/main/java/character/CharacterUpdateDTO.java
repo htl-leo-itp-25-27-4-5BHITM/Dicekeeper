@@ -10,7 +10,8 @@ public class CharacterUpdateDTO {
     public Long backgroundId;
     public String info;
     public Integer level;
+    public String race;
+    public String alignment;
 
     public CharacterUpdateDTO() {}
 }
-

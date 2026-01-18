@@ -20,6 +20,8 @@ public class CharacterDTO {
     public String info;
     public int level;
     public boolean isCreated;
+    public String race;
+    public String alignment;
 
     // Related entities - fully resolved
     public ClassDTO characterClass;
@@ -40,6 +42,8 @@ public class CharacterDTO {
         dto.info = entity.info;
         dto.level = entity.level;
         dto.isCreated = entity.isCreated;
+        dto.race = entity.race;
+        dto.alignment = entity.alignment;
         return dto;
     }
 
@@ -67,4 +71,3 @@ public class CharacterDTO {
         return dto;
     }
 }
-

@@ -202,7 +202,7 @@
 
     function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
 
-    function createCampaignCard(campaign, player) {
+    function createCampaignCard(campaign, player, isJoinedAsPlayer = false) {
       const card = document.createElement('div')
       card.className = 'campaign'
 
@@ -232,7 +232,12 @@
 
       // Make entire card clickable
       card.addEventListener('click', () => {
-        window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+        // If player has joined this campaign (not as DM), redirect to character selection
+        if (isJoinedAsPlayer) {
+          window.location.href = './CharacterSelect.html?campaignId=' + encodeURIComponent(campaign.id)
+        } else {
+          window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+        }
       })
 
       return card
@@ -298,7 +303,9 @@
           myCampaignsListEl.innerHTML = '<div class="empty">Noch keine Kampagnen.</div>'
         } else {
           for(const c of allMyCampaigns){
-            myCampaignsListEl.appendChild(createCampaignCard(c, player))
+            // Check if this is a joined campaign (not created by user)
+            const isJoinedAsPlayer = joinedCampaignIds.has(c.id)
+            myCampaignsListEl.appendChild(createCampaignCard(c, player, isJoinedAsPlayer))
           }
         }
 

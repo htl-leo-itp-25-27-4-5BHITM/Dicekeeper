@@ -13,4 +13,6 @@ public class Character extends PanacheEntity {
     public int level;
     public boolean isCreated;
     public String info;
+    public String race;
+    public String alignment;
 }

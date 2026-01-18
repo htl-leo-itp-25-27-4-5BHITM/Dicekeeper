@@ -594,6 +594,8 @@
           // Extract class and background names from nested objects
         const className = character.characterClass ? character.characterClass.name : 'No Class';
         const backgroundName = character.background ? character.background.name : null;
+        const raceName = character.race || null;
+        const alignmentName = character.alignment || null;
 
         contentEl.innerHTML = `
           <div class="player-info">
@@ -611,8 +613,10 @@
               <div class="character-name">${escapeHtml(character.name || 'Unnamed Character')}</div>
               <div class="character-meta">
                 <span class="character-meta-item">📜 Level ${character.level || 1}</span>
+                ${raceName ? `<span class="character-meta-item">🧬 ${escapeHtml(raceName)}</span>` : ''}
                 <span class="character-meta-item">⚔️ ${escapeHtml(className)}</span>
                 ${backgroundName ? `<span class="character-meta-item">📖 ${escapeHtml(backgroundName)}</span>` : ''}
+                ${alignmentName ? `<span class="character-meta-item">⚖️ ${escapeHtml(alignmentName)}</span>` : ''}
               </div>
             </div>
           </div>

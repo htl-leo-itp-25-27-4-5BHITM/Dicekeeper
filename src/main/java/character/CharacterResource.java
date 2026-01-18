@@ -120,6 +120,12 @@ public class CharacterResource {
         if (updated.level != null) {
             existing.level = updated.level;
         }
+        if (updated.race != null) {
+            existing.race = updated.race;
+        }
+        if (updated.alignment != null) {
+            existing.alignment = updated.alignment;
+        }
 
         CharacterDTO dto = toFullDTO(existing);
         return Response.ok(dto).build();
@@ -159,4 +165,3 @@ public class CharacterResource {
         return CharacterDTO.fromEntityWithRelations(character, clazz, background, abilityScores);
     }
 }
-

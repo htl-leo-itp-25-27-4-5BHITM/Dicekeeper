@@ -712,6 +712,9 @@
           return;
         }
 
+        const race = charRaceSelect.value;
+        const alignment = charAlignmentSelect.value;
+
         const player = getPlayer();
         if (!player) {
           showStatus('Not logged in', 'error');
@@ -741,7 +744,9 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 name: name,
-                level: 1
+                level: 1,
+                race: race || null,
+                alignment: alignment || null
               })
             });
 
@@ -761,7 +766,9 @@
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                name: name
+                name: name,
+                race: race || null,
+                alignment: alignment || null
               })
             });
           } catch (err) {
@@ -1085,4 +1092,3 @@
   </script>
 </body>
 </html>
-
