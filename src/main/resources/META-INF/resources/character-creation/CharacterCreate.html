@@ -999,7 +999,8 @@
         showStatus('Saving character...', 'info');
 
         try {
-          // Save ability scores using the correct endpoint
+
+            // Save ability scores using the correct endpoint
           for (const [abilityId, score] of Object.entries(abilityScores)) {
             await fetch(`/api/character-ability/${characterId}/${abilityId}`, {
               method: 'PATCH',
