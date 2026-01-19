@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Deine Kampagne</title>
+  <link rel="stylesheet" href="../common/header.css">
   <style>
     :root {
       --green-600: #004c3685;
@@ -19,7 +20,7 @@
 
     body {
       background-image: url("../images/Background.png");
-        background-size: cover;
+      background-size: cover;
       background-attachment: fixed;
       background-blend-mode: lighten;
       display: flex;
@@ -27,6 +28,7 @@
       align-items: center;
       min-height: 100vh;
       margin: 0;
+      padding-top: 70px;
     }
 
     .container {
@@ -200,7 +202,7 @@
 
     function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
 
-    function createCampaignCard(campaign, player) {
+    function createCampaignCard(campaign, player, campaignPlayerData = null) {
       const card = document.createElement('div')
       card.className = 'campaign'
 
@@ -230,7 +232,21 @@
 
       // Make entire card clickable
       card.addEventListener('click', () => {
-        window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+        // If player has joined this campaign (not as DM)
+        if (campaignPlayerData) {
+          // If character was rejected, redirect to edit page
+          if (campaignPlayerData.characterStatus === 'REJECTED' && campaignPlayerData.characterId) {
+            window.location.href = '../character-creation/CharacterEdit.html?id=' + encodeURIComponent(campaignPlayerData.characterId) + '&campaignId=' + encodeURIComponent(campaign.id)
+          } else if (campaignPlayerData.characterStatus === 'PENDING' || campaignPlayerData.characterStatus === 'APPROVED') {
+            // Character has been submitted, go to campaign detail
+            window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+          } else {
+            // No character submitted yet (NONE status), go to character selection
+            window.location.href = './CharacterSelect.html?campaignId=' + encodeURIComponent(campaign.id)
+          }
+        } else {
+          window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+        }
       })
 
       return card
@@ -260,20 +276,20 @@
 
         // Load campaigns the player has joined (via CampaignPlayer entries)
         const playerCampaignsRes = await fetch('/api/campaign-player/player/' + encodeURIComponent(player.id), { cache:'no-store' })
-        const joinedCampaignIds = new Set()
+        const joinedCampaignMap = new Map() // Map campaignId -> campaignPlayer data
         if (playerCampaignsRes.ok) {
           const playerCampaigns = await playerCampaignsRes.json()
           playerCampaigns.forEach(pc => {
-            // Add to set if player (not DM, since DM campaigns are already in myCampaigns)
+            // Add to map if player (not DM, since DM campaigns are already in myCampaigns)
             if (pc.role === 'PLAYER') {
-              joinedCampaignIds.add(pc.campaignId)
+              joinedCampaignMap.set(pc.campaignId, pc)
             }
           })
         }
 
         // Get the full campaign objects for joined campaigns
         const joinedCampaigns = []
-        for (const campaignId of joinedCampaignIds) {
+        for (const campaignId of joinedCampaignMap.keys()) {
           try {
             const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache:'no-store' })
             if (res.ok) {
@@ -296,7 +312,9 @@
           myCampaignsListEl.innerHTML = '<div class="empty">Noch keine Kampagnen.</div>'
         } else {
           for(const c of allMyCampaigns){
-            myCampaignsListEl.appendChild(createCampaignCard(c, player))
+            // Check if this is a joined campaign (not created by user) and get player data
+            const campaignPlayerData = joinedCampaignMap.get(c.id) || null
+            myCampaignsListEl.appendChild(createCampaignCard(c, player, campaignPlayerData))
           }
         }
 
@@ -309,7 +327,7 @@
           publicGamesListEl.innerHTML = '<div class="empty">Keine öffentlichen Kampagnen verfügbar.</div>'
         } else {
           for(const c of filteredPublicCampaigns){
-            publicGamesListEl.appendChild(createCampaignCard(c, player))
+            myCampaignsListEl.appendChild(createCampaignCard(c, player))
           }
         }
 
@@ -323,5 +341,6 @@
     load()
   })()
 </script>
+<script src="../common/header.js" defer></script>
 </body>
 </html>

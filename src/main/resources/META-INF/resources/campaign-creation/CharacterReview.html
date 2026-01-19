@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Review - Dicekeeper</title>
+  <link rel="stylesheet" href="../common/header.css">
+  <style>
+    :root {
+      --green-600: #004c3685;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url("../images/Background.png");
+      background-size: cover;
+      background-attachment: fixed;
+      min-height: 100vh;
+      padding-top: 80px;
+      padding-bottom: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--green-600);
+      border-radius: 24px;
+      padding: 26px;
+      color: white;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: white;
+    }
+
+    .card-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    /* Player Info Section */
+    .player-info {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: #064e3b;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .player-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .player-details {
+      flex: 1;
+    }
+
+    .player-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .player-email {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+    }
+
+    .status-approved {
+      background: rgba(76, 175, 80, 0.2);
+      color: #81c784;
+    }
+
+    .status-rejected {
+      background: rgba(244, 67, 54, 0.2);
+      color: #ef5350;
+    }
+
+    /* Character Section */
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .character-header {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .character-name {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .character-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .character-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .stat-modifier {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    /* Details Section */
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .detail-box {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .detail-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .detail-list li {
+      padding: 4px 0;
+      font-size: 14px;
+    }
+
+    .detail-list li::before {
+      content: "• ";
+      opacity: 0.5;
+    }
+
+    /* Notes Section */
+    .notes-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .notes-textarea {
+      width: 100%;
+      min-height: 120px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      color: white;
+      font-size: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .notes-textarea:focus {
+      border-color: #38bdf8;
+    }
+
+    .notes-textarea::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .previous-notes {
+      background: rgba(244, 67, 54, 0.15);
+      border: 1px solid rgba(244, 67, 54, 0.3);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .previous-notes-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #ef5350;
+      margin-bottom: 8px;
+    }
+
+    .previous-notes-content {
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-approve {
+      background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+      color: white;
+    }
+
+    .btn-reject {
+      background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+    }
+
+    /* Status Messages */
+    .status-message {
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .status-message.error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid rgba(244, 67, 54, 0.5);
+      color: #ef5350;
+    }
+
+    .status-message.success {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.5);
+      color: #81c784;
+    }
+
+    .status-message.info {
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid rgba(33, 150, 243, 0.5);
+      color: #64b5f6;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .already-reviewed {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .already-reviewed-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .already-reviewed-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .already-reviewed-text {
+      opacity: 0.7;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body class="has-header">
+  <div class="container">
+    <div class="card">
+      <a href="#" class="back-link" id="backLink">← Back to Campaign</a>
+
+      <div class="card-header">
+        <h1 class="card-title">Character Review</h1>
+        <p class="card-subtitle">Review this player's submitted character</p>
+      </div>
+
+      <div id="statusMessage" style="display:none"></div>
+      <div id="content">
+        <div class="loading">Loading character details...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/header.js" defer></script>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const campaignId = params.get('campaignId');
+      const campaignPlayerId = params.get('campaignPlayerId');
+
+      const contentEl = document.getElementById('content');
+      const statusMessageEl = document.getElementById('statusMessage');
+      const backLink = document.getElementById('backLink');
+
+      let currentPlayer = null;
+      let campaignPlayer = null;
+      let character = null;
+      let player = null;
+      let campaign = null;
+
+      function getPlayer() {
+        try {
+          const raw = sessionStorage.getItem('player');
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function showStatus(message, type = 'info') {
+        statusMessageEl.textContent = message;
+        statusMessageEl.className = 'status-message ' + type;
+        statusMessageEl.style.display = 'block';
+      }
+
+      function hideStatus() {
+        statusMessageEl.style.display = 'none';
+      }
+
+      function initialsFromName(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+
+      function calculateModifier(score) {
+        return Math.floor((score - 10) / 2);
+      }
+
+      function formatModifier(mod) {
+        return mod >= 0 ? '+' + mod : mod.toString();
+      }
+
+      async function loadData() {
+        currentPlayer = getPlayer();
+        if (!currentPlayer) {
+          showStatus('Not logged in. Redirecting...', 'error');
+          setTimeout(() => window.location.href = './Login.html', 1500);
+          return;
+        }
+
+        if (!campaignId || !campaignPlayerId) {
+          showStatus('Missing campaign or player information', 'error');
+          return;
+        }
+
+        backLink.href = './CampaignDetail.html?id=' + encodeURIComponent(campaignId);
+
+        try {
+          // Load campaign
+          const campaignRes = await fetch('/api/campaign/' + campaignId, { cache: 'no-store' });
+          if (!campaignRes.ok) throw new Error('Campaign not found');
+          campaign = await campaignRes.json();
+
+          // Verify current user is the DM
+          if (campaign.playerId !== currentPlayer.id) {
+            showStatus('Only the DM can review characters', 'error');
+            return;
+          }
+
+          // Load campaign player entry
+          const cpRes = await fetch('/api/campaign-player/' + campaignId, { cache: 'no-store' });
+          if (!cpRes.ok) throw new Error('Failed to load campaign players');
+          const campaignPlayers = await cpRes.json();
+          campaignPlayer = campaignPlayers.find(cp => cp.id == campaignPlayerId);
+
+          if (!campaignPlayer) {
+            showStatus('Campaign player not found', 'error');
+            return;
+          }
+
+          // Load player info
+          const playerRes = await fetch('/api/player/id/' + campaignPlayer.playerId, { cache: 'no-store' });
+          if (!playerRes.ok) throw new Error('Player not found');
+          player = await playerRes.json();
+
+          // Load character if exists
+          if (campaignPlayer.characterId) {
+            const charRes = await fetch('/api/character/' + campaignPlayer.characterId, { cache: 'no-store' });
+            if (charRes.ok) {
+              character = await charRes.json();
+            }
+          }
+
+          renderContent();
+        } catch (err) {
+          console.error('Load error:', err);
+          showStatus('Failed to load data: ' + err.message, 'error');
+        }
+      }
+
+      function renderContent() {
+        if (!character) {
+          contentEl.innerHTML = `
+            <div class="already-reviewed">
+              <div class="already-reviewed-icon">📝</div>
+              <div class="already-reviewed-title">No Character Submitted</div>
+              <div class="already-reviewed-text">This player hasn't submitted a character yet.</div>
+              <button class="btn btn-secondary" onclick="window.location.href='./CampaignDetail.html?id=${campaignId}'">Back to Campaign</button>
+            </div>
+          `;
+          return;
+        }
+
+        const statusClass = campaignPlayer.characterStatus === 'PENDING' ? 'status-pending' :
+                           campaignPlayer.characterStatus === 'APPROVED' ? 'status-approved' : 'status-rejected';
+
+        let playerAvatarHtml;
+        if (player.profilePicture) {
+          let imgUrl = player.profilePicture;
+          if (imgUrl.startsWith('/uploads/')) imgUrl = '..' + imgUrl;
+          playerAvatarHtml = `<img src="${imgUrl}" alt="Avatar">`;
+        } else {
+          playerAvatarHtml = initialsFromName(player.name || player.username || player.email);
+        }
+
+        // Get ability scores from the abilityScores array
+        function getAbilityScore(name) {
+          if (!character.abilityScores || !Array.isArray(character.abilityScores)) return 10;
+          const found = character.abilityScores.find(a =>
+            a.abilityName && a.abilityName.toLowerCase() === name.toLowerCase()
+          );
+          return found ? found.score : 10;
+        }
+
+        // Build abilities array with actual scores
+        const abilities = [
+          { key: 'strength', label: 'STR', value: getAbilityScore('Strength') },
+          { key: 'dexterity', label: 'DEX', value: getAbilityScore('Dexterity') },
+          { key: 'constitution', label: 'CON', value: getAbilityScore('Constitution') },
+          { key: 'intelligence', label: 'INT', value: getAbilityScore('Intelligence') },
+          { key: 'wisdom', label: 'WIS', value: getAbilityScore('Wisdom') },
+          { key: 'charisma', label: 'CHA', value: getAbilityScore('Charisma') }
+        ];
+
+        const statsHtml = abilities.map(a => `
+          <div class="stat-box">
+            <div class="stat-label">${a.label}</div>
+            <div class="stat-value">${a.value || 10}</div>
+            <div class="stat-modifier">${formatModifier(calculateModifier(a.value || 10))}</div>
+          </div>
+        `).join('');
+
+        const previousNotesHtml = campaignPlayer.dmNotes ? `
+          <div class="previous-notes">
+            <div class="previous-notes-title">Previous DM Notes</div>
+            <div class="previous-notes-content">${escapeHtml(campaignPlayer.dmNotes)}</div>
+          </div>
+        ` : '';
+
+        const isPending = campaignPlayer.characterStatus === 'PENDING';
+
+          // Extract class and background names from nested objects
+        const className = character.characterClass ? character.characterClass.name : 'No Class';
+        const backgroundName = character.background ? character.background.name : null;
+        const raceName = character.race || null;
+        const alignmentName = character.alignment || null;
+
+        contentEl.innerHTML = `
+          <div class="player-info">
+            <div class="player-avatar">${playerAvatarHtml}</div>
+            <div class="player-details">
+              <div class="player-name">${escapeHtml(player.name || player.username || 'Unknown')}</div>
+              <div class="player-email">${escapeHtml(player.email || '')}</div>
+            </div>
+            <span class="status-badge ${statusClass}">${campaignPlayer.characterStatus}</span>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Character Information</div>
+            <div class="character-header">
+              <div class="character-name">${escapeHtml(character.name || 'Unnamed Character')}</div>
+              <div class="character-meta">
+                <span class="character-meta-item">📜 Level ${character.level || 1}</span>
+                ${raceName ? `<span class="character-meta-item">🧬 ${escapeHtml(raceName)}</span>` : ''}
+                <span class="character-meta-item">⚔️ ${escapeHtml(className)}</span>
+                ${backgroundName ? `<span class="character-meta-item">📖 ${escapeHtml(backgroundName)}</span>` : ''}
+                ${alignmentName ? `<span class="character-meta-item">⚖️ ${escapeHtml(alignmentName)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Ability Scores</div>
+            <div class="stats-grid">
+              ${statsHtml}
+            </div>
+          </div>
+
+          ${character.info ? `
+          <div class="section">
+            <div class="section-title">Background Story</div>
+            <div class="detail-box">
+              <div class="detail-value" style="white-space: pre-wrap;">${escapeHtml(character.info)}</div>
+            </div>
+          </div>
+          ` : ''}
+
+          ${isPending ? `
+          <div class="notes-section">
+            <div class="section-title">DM Review</div>
+            ${previousNotesHtml}
+            <textarea class="notes-textarea" id="dmNotes" placeholder="Add notes for the player if you need them to make changes..."></textarea>
+            <div class="actions">
+              <button class="btn btn-reject" id="rejectBtn">Reject & Request Changes</button>
+              <button class="btn btn-approve" id="approveBtn">Approve Character</button>
+            </div>
+          </div>
+          ` : `
+          <div class="notes-section">
+            <div class="section-title">Review Status</div>
+            ${previousNotesHtml}
+            <div class="already-reviewed">
+              <div class="already-reviewed-icon">${campaignPlayer.characterStatus === 'APPROVED' ? '✅' : '❌'}</div>
+              <div class="already-reviewed-title">Character ${campaignPlayer.characterStatus === 'APPROVED' ? 'Approved' : 'Rejected'}</div>
+              <div class="already-reviewed-text">
+                ${campaignPlayer.characterStatus === 'APPROVED'
+                  ? 'This character has been approved and is ready for the campaign.'
+                  : 'This character was rejected. Waiting for player to resubmit.'}
+              </div>
+            </div>
+          </div>
+          `}
+        `;
+
+        // Bind action buttons
+        if (isPending) {
+          document.getElementById('approveBtn').addEventListener('click', approveCharacter);
+          document.getElementById('rejectBtn').addEventListener('click', rejectCharacter);
+        }
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      async function approveCharacter() {
+        const btn = document.getElementById('approveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Approving...';
+
+        try {
+          const res = await fetch(
+            `/api/campaign-player/${campaignId}/approve-character/${campaignPlayerId}?dmPlayerId=${currentPlayer.id}`,
+            { method: 'POST' }
+          );
+
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || 'Approval failed');
+          }
+
+          showStatus('Character approved! The player has been notified.', 'success');
+          setTimeout(() => {
+            window.location.href = './CampaignDetail.html?id=' + campaignId;
+          }, 2000);
+        } catch (err) {
+          console.error('Approve error:', err);
+          showStatus('Failed to approve: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Approve Character';
+        }
+      }
+
+      async function rejectCharacter() {
+        const notes = document.getElementById('dmNotes').value.trim();
+        if (!notes) {
+          showStatus('Please add notes explaining what the player should change.', 'error');
+          document.getElementById('dmNotes').focus();
+          return;
+        }
+
+        const btn = document.getElementById('rejectBtn');
+        btn.disabled = true;
+        btn.textContent = 'Rejecting...';
+
+        try {
+          const res = await fetch(
+            `/api/campaign-player/${campaignId}/reject-character/${campaignPlayerId}?dmPlayerId=${currentPlayer.id}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ notes: notes })
+            }
+          );
+
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || 'Rejection failed');
+          }
+
+          showStatus('Character rejected. The player has been notified with your notes.', 'success');
+          setTimeout(() => {
+            window.location.href = './CampaignDetail.html?id=' + campaignId;
+          }, 2000);
+        } catch (err) {
+          console.error('Reject error:', err);
+          showStatus('Failed to reject: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Reject & Request Changes';
+        }
+      }
+
+      // Initialize
+      loadData();
+    })();
+  </script>
+</body>
+</html>

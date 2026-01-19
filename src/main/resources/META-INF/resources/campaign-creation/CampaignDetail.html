@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kampagne – Details</title>
+  <link rel="stylesheet" href="../common/header.css">
   <style>
     :root {
       --green-600: #004c3685;
@@ -19,13 +20,15 @@
 
     body {
       background-image: url("../images/Background.png");
-        background-size: cover;
+      background-size: cover;
       background-attachment: fixed;
       background-blend-mode: lighten;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      padding-top: 80px;
+      padding-bottom: 20px;
     }
 
     .card {
@@ -443,6 +446,59 @@
       text-transform: uppercase;
     }
 
+    /* Character status badges */
+    .character-status {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+      background: rgba(255, 193, 7, 0.25);
+      color: #ffc107;
+      cursor: pointer;
+      animation: pulse 2s infinite;
+    }
+
+    .status-approved {
+      background: rgba(76, 175, 80, 0.25);
+      color: #81c784;
+    }
+
+    .status-rejected {
+      background: rgba(244, 67, 54, 0.25);
+      color: #ef5350;
+    }
+
+    .status-none {
+      background: rgba(158, 158, 158, 0.25);
+      color: #9e9e9e;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .player.clickable {
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .player.clickable:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(4px);
+    }
+
+    .review-hint {
+      font-size: 10px;
+      color: #ffc107;
+      margin-left: 8px;
+    }
+
     .your-role {
       display: inline-flex;
       align-items: center;
@@ -552,6 +608,12 @@
     </div>
 
     <div class="form-group">
+      <label for="dmStory">Story (nur für dich sichtbar)</label>
+      <textarea id="dmStory" class="story" placeholder="Deine private Storyline, Notizen, Plot-Punkte..."></textarea>
+      <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">🔒 Diese Story ist nur für den DM sichtbar</div>
+    </div>
+
+    <div class="form-group">
       <label for="dmMaxPlayers">Max. Spieler</label>
       <input type="number" id="dmMaxPlayers" min="1" placeholder="Leer = Unbegrenzt" style="max-width: 150px;" />
     </div>
@@ -643,7 +705,8 @@
       }
 
       try {
-        const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId), { cache: 'no-store' })
+        // Include playerId so the backend knows if this is the DM (to include story)
+        const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '?playerId=' + encodeURIComponent(currentPlayer.id), { cache: 'no-store' })
         if (!campaignRes.ok) {
           setStatus('Kampagne nicht gefunden', true)
           return
@@ -755,9 +818,11 @@
             joinBtn.textContent = 'Beitreten'
             return
           }
-          playerRole = 'PLAYER'
-          await loadCampaignPlayers()
-          renderView()
+          // Redirect to character selection after joining
+          setStatus('Beigetreten! Wähle deinen Charakter...')
+          setTimeout(() => {
+            window.location.href = './CharacterSelect.html?campaignId=' + encodeURIComponent(campaignId)
+          }, 1000)
         } catch (err) {
           console.error(err)
           setStatus('Fehler beim Beitreten', true)
@@ -823,6 +888,7 @@
       document.getElementById('dmView').style.display = 'block'
       document.getElementById('dmTitle').value = campaign.name || ''
       document.getElementById('dmDescription').value = campaign.description || ''
+      document.getElementById('dmStory').value = campaign.story || ''
       document.getElementById('dmMaxPlayers').value = campaign.maxPlayerCount || ''
 
       // Set up visibility switch
@@ -891,6 +957,7 @@
           const payload = {
             name: document.getElementById('dmTitle').value.trim(),
             description: document.getElementById('dmDescription').value.trim(),
+            story: document.getElementById('dmStory').value.trim(),
             isPublic: isPublic,
             maxPlayerCount: document.getElementById('dmMaxPlayers').value ? parseInt(document.getElementById('dmMaxPlayers').value) : null
           }
@@ -1006,16 +1073,49 @@
             <span class="player-role ${roleClass}">${cp.role}</span>
           `
         } else {
+          // Determine character status
+          let statusBadge = ''
+          let reviewHint = ''
+          let isClickable = false
+
+          if (cp.characterStatus === 'PENDING') {
+            statusBadge = '<span class="character-status status-pending">⏳ Pending Review</span>'
+            reviewHint = '<span class="review-hint">Click to review</span>'
+            isClickable = true
+          } else if (cp.characterStatus === 'APPROVED') {
+            statusBadge = '<span class="character-status status-approved">✓ Approved</span>'
+          } else if (cp.characterStatus === 'REJECTED') {
+            statusBadge = '<span class="character-status status-rejected">✗ Rejected</span>'
+            isClickable = true
+          } else if (!cp.characterId) {
+            statusBadge = '<span class="character-status status-none">No Character</span>'
+          }
+
+          if (isClickable) {
+            div.className = 'player clickable'
+          }
+
           div.innerHTML = `
             <div class="player-left">
               <span class="player-avatar">${getInitials(name)}</span>
               <span class="player-name">${escapeHtml(name)}</span>
+              ${statusBadge}
+              ${reviewHint}
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <span class="player-role ${roleClass}">${cp.role}</span>
               <button class="kick-btn" data-player-id="${cp.playerId}">KICK</button>
             </div>
           `
+
+          // Add click handler for review if pending or rejected
+          if (isClickable) {
+            div.addEventListener('click', (e) => {
+              // Don't navigate if clicking the kick button
+              if (e.target.classList.contains('kick-btn')) return
+              window.location.href = './CharacterReview.html?campaignId=' + encodeURIComponent(campaignId) + '&campaignPlayerId=' + encodeURIComponent(cp.id)
+            })
+          }
         }
 
         list.appendChild(div)
@@ -1023,7 +1123,8 @@
         // Add kick handler
         if (cp.role !== 'DM') {
           const kickBtn = div.querySelector('.kick-btn')
-          kickBtn.onclick = async () => {
+          kickBtn.onclick = async (e) => {
+            e.stopPropagation() // Prevent triggering the review click
             const playerId = kickBtn.getAttribute('data-player-id')
             kickBtn.disabled = true
             kickBtn.textContent = '...'
@@ -1054,5 +1155,6 @@
     loadCampaign()
   })()
 </script>
+<script src="../common/header.js" defer></script>
 </body>
 </html>

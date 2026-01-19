@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Character - Dicekeeper</title>
+  <link rel="stylesheet" href="../common/header.css">
+  <style>
+    :root {
+      --green-600: #004c3685;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url("../images/Background.png");
+      background-size: cover;
+      background-attachment: fixed;
+      min-height: 100vh;
+      padding-top: 80px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--green-600);
+      border-radius: 24px;
+      padding: 26px;
+      color: white;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    .campaign-info {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .campaign-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .campaign-dm {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .section-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .character-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .character-item {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .character-item:hover {
+      background: rgba(0, 0, 0, 0.3);
+      transform: translateX(4px);
+    }
+
+    .character-item.selected {
+      border-color: #81c784;
+      background: rgba(129, 199, 132, 0.15);
+    }
+
+    .character-item-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .character-item-meta {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .divider span {
+      margin: 0 12px;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .create-new-btn {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      margin-bottom: 24px;
+    }
+
+    .create-new-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .status-message.error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid rgba(244, 67, 54, 0.5);
+      color: #ef5350;
+    }
+
+    .status-message.success {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid rgba(76, 175, 80, 0.5);
+      color: #81c784;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 20px;
+      opacity: 0.7;
+      font-style: italic;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  </style>
+</head>
+<body class="has-header">
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1 class="card-title">Select Your Character</h1>
+        <p class="card-subtitle">Choose a character to use in this campaign</p>
+      </div>
+
+      <div id="statusMessage" style="display:none"></div>
+      <div id="content">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/header.js" defer></script>
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const campaignId = params.get('campaignId');
+
+      const contentEl = document.getElementById('content');
+      const statusEl = document.getElementById('statusMessage');
+
+      let selectedCharacterId = null;
+
+      function getPlayer() {
+        try {
+          const raw = sessionStorage.getItem('player');
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+      }
+
+      function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+      }
+
+      function showStatus(msg, isError) {
+        statusEl.className = 'status-message ' + (isError ? 'error' : 'success');
+        statusEl.textContent = msg;
+        statusEl.style.display = 'block';
+      }
+
+      async function loadData() {
+        const player = getPlayer();
+        if (!player) {
+          showStatus('Not logged in. Please log in first.', true);
+          return;
+        }
+
+        if (!campaignId) {
+          showStatus('No campaign specified.', true);
+          return;
+        }
+
+        try {
+          // Load campaign info
+          const campaignRes = await fetch(`/api/campaign/${campaignId}`, { cache: 'no-store' });
+          if (!campaignRes.ok) throw new Error('Failed to load campaign');
+          const campaign = await campaignRes.json();
+
+          // Load DM info
+          let dmName = 'Unknown';
+          if (campaign.playerId) {
+            const dmRes = await fetch(`/api/player/id/${campaign.playerId}`, { cache: 'no-store' });
+            if (dmRes.ok) {
+              const dm = await dmRes.json();
+              dmName = dm.username || dm.name;
+            }
+          }
+
+          // Load player's characters
+          const charsRes = await fetch('/api/character/all', { cache: 'no-store' });
+          const allCharacters = charsRes.ok ? await charsRes.json() : [];
+
+          // Filter to only show completed characters (for simplicity, show all for now)
+          const characters = allCharacters;
+
+          renderContent(campaign, dmName, characters);
+        } catch (err) {
+          console.error(err);
+          showStatus('Error: ' + err.message, true);
+          contentEl.innerHTML = '';
+        }
+      }
+
+      function renderContent(campaign, dmName, characters) {
+        const characterListHtml = characters.length > 0
+          ? characters.map(c => `
+            <div class="character-item" data-id="${c.id}">
+              <div class="character-item-name">${escapeHtml(c.name) || 'Unnamed Character'}</div>
+              <div class="character-item-meta">
+                ${escapeHtml(c.characterClass?.name || 'No class')} •
+                Level ${c.level || 1}
+              </div>
+            </div>
+          `).join('')
+          : '<div class="empty-message">You don\'t have any characters yet.</div>';
+
+        contentEl.innerHTML = `
+          <div class="campaign-info">
+            <div class="campaign-name">${escapeHtml(campaign.name)}</div>
+            <div class="campaign-dm">DM: ${escapeHtml(dmName)}</div>
+          </div>
+
+          <div class="section-title">Your Characters</div>
+          <div class="character-list" id="characterList">
+            ${characterListHtml}
+          </div>
+
+          <div class="divider"><span>or</span></div>
+
+          <button class="create-new-btn" id="createNewBtn">+ Create New Character</button>
+
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="window.location.href='./Campaigns.html'">Cancel</button>
+            <button class="btn btn-primary" id="submitBtn" disabled>Submit Character</button>
+          </div>
+        `;
+
+        setupHandlers();
+      }
+
+      function setupHandlers() {
+        const characterList = document.getElementById('characterList');
+        const submitBtn = document.getElementById('submitBtn');
+        const createNewBtn = document.getElementById('createNewBtn');
+
+        // Character selection
+        characterList.addEventListener('click', (e) => {
+          const item = e.target.closest('.character-item');
+          if (!item) return;
+
+          // Deselect all
+          characterList.querySelectorAll('.character-item').forEach(el => el.classList.remove('selected'));
+
+          // Select clicked
+          item.classList.add('selected');
+          selectedCharacterId = item.dataset.id;
+          submitBtn.disabled = false;
+        });
+
+        // Create new character
+        createNewBtn.addEventListener('click', () => {
+          // Redirect to character creation with campaign context
+          window.location.href = `../character-creation/CharacterCreate.html?campaignId=${campaignId}`;
+        });
+
+        // Submit character
+        submitBtn.addEventListener('click', async () => {
+          if (!selectedCharacterId) {
+            showStatus('Please select a character.', true);
+            return;
+          }
+
+          const player = getPlayer();
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting...';
+
+          try {
+            const res = await fetch(`/api/campaign-player/${campaignId}/${player.id}/submit-character`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ characterId: parseInt(selectedCharacterId) })
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(text || 'Failed to submit character');
+            }
+
+            showStatus('Character submitted for DM approval!', false);
+            setTimeout(() => {
+              window.location.href = `./CampaignDetail.html?id=${campaignId}`;
+            }, 1500);
+          } catch (err) {
+            console.error(err);
+            showStatus('Error: ' + err.message, true);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Character';
+          }
+        });
+      }
+
+      loadData();
+    })();
+  </script>
+</body>
+</html>
