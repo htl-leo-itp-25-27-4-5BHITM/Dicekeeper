@@ -63,6 +63,29 @@ insert into Ability (id, name, description) values (6, 'Charisma', 'measuring fo
 insert into Player (id, email, username, name) values (1, 'test@gmail.com', 'testuser', 'Alex');
 insert into Player (id, email, username, name) values (2, 'fredl@htl.at', 'Fredl', 'Fredl');
 
+-- Sample campaign created by user 1 (Alex)
+INSERT INTO campaign (id, name, description, story, player_id, is_public, max_player_count)
+VALUES (9001, 'Die Schatten von Grünwald', 'Eine mysteriöse Dunkelheit breitet sich im Grünwald aus. Mutige Abenteurer werden gesucht, um das Geheimnis zu lüften.', 'Die Spieler werden herausfinden, dass ein alter Nekromant namens Malachar in den Ruinen unter dem Wald erwacht ist. Er plant, eine Armee der Untoten zu erschaffen. Die Gruppe muss drei magische Artefakte finden, um ihn zu stoppen.', 1, true, 5);
+
+-- Sample character for user 2 (Fredl)
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
+VALUES (9001, 'Thorin Eisenfaust', 5, 1, 3, true, 'Ein erfahrener Zwergenkämpfer aus den Bergen von Kazad-Dum. Er sucht nach dem Mörder seines Bruders.', 'Zwerg', 'Rechtschaffen Gut');
+
+-- Character abilities for Thorin
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9001, 9001, 1, 16);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9002, 9001, 2, 12);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9003, 9001, 3, 15);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9004, 9001, 4, 10);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9005, 9001, 5, 13);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9006, 9001, 6, 8);
+
+-- Campaign player entries: User 1 as DM, User 2 as approved player
+INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
+VALUES (9001, 9001, 1, 'DM', 1706000000000, null, 'NONE');
+
+INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
+VALUES (9002, 9001, 2, 'PLAYER', 1706100000000, 9001, 'APPROVED');
+
 -- sample campaigns for testing (commented out for now)
 -- insert into campaign (name, description, player_id) values ('Schattenwald', 'A haunted forest campaign', 2);
 -- insert into campaign (name, description, player_id) values ('Versunkene Ruinen', 'Explore the ruins beneath the sea', 2);

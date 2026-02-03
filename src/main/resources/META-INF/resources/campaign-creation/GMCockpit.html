@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GM Cockpit</title>
+  <link rel="stylesheet" href="../common/header.css">
+  <style>
+    :root {
+      --green-600: #004c3685;
+      --white: #ffffff;
+      --purple: #7708c7b8;
+      --gold: #ffc107;
+      --success: #4caf50;
+      --danger: #f44336;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url("../images/Background.png");
+      background-size: cover;
+      background-attachment: fixed;
+      background-blend-mode: lighten;
+      min-height: 100vh;
+      padding-top: 80px;
+      padding-bottom: 20px;
+    }
+
+    .cockpit-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .cockpit-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--green-600);
+      border-radius: 24px;
+      padding: 24px;
+      color: white;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title-icon {
+      font-size: 24px;
+    }
+
+    /* Campaign Header */
+    .campaign-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .campaign-info {
+      flex: 1;
+    }
+
+    .campaign-name {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .campaign-desc {
+      font-size: 14px;
+      opacity: 0.85;
+      max-width: 600px;
+    }
+
+    .campaign-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      border-radius: 999px;
+      padding: 10px 20px;
+      font-size: 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: var(--purple);
+      font-weight: 600;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    .btn-secondary {
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-success {
+      background: rgba(76, 175, 80, 0.8);
+      font-weight: 600;
+    }
+
+    .btn-success:hover {
+      background: rgba(76, 175, 80, 1);
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Story Section */
+    .story-card {
+      grid-column: 1 / -1;
+    }
+
+    .story-content {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 150px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .story-edit {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 16px;
+      color: white;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 200px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .story-edit:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+    }
+
+    .story-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    /* Decisions Section */
+    .decisions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .decision-item {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      padding: 14px;
+      transition: background 0.2s;
+    }
+
+    .decision-item:hover {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .decision-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .decision-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .decision-status {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .status-pending {
+      background: rgba(255, 193, 7, 0.25);
+      color: #ffc107;
+    }
+
+    .status-resolved {
+      background: rgba(76, 175, 80, 0.25);
+      color: #81c784;
+    }
+
+    .decision-description {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .decision-outcome {
+      font-size: 13px;
+      padding: 8px 12px;
+      background: rgba(76, 175, 80, 0.15);
+      border-left: 3px solid var(--success);
+      border-radius: 0 8px 8px 0;
+      margin-top: 8px;
+    }
+
+    .decision-outcome strong {
+      color: #81c784;
+    }
+
+    .decision-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      opacity: 0.7;
+    }
+
+    .empty-state-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    /* Players Section */
+    .players {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .player {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .player-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .player-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 11px;
+      color: #064e3b;
+      flex-shrink: 0;
+    }
+
+    .player-name {
+      font-size: 14px;
+    }
+
+    .player-role {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .role-dm {
+      background: rgba(255, 193, 7, 0.3);
+      color: #ffc107;
+    }
+
+    .role-player {
+      background: rgba(33, 150, 243, 0.3);
+      color: #64b5f6;
+    }
+
+    .kick-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      color: white;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .kick-btn:hover {
+      background: rgba(255, 0, 0, 0.25);
+    }
+
+    /* Character status badges */
+    .character-status {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .character-status.status-pending {
+      background: rgba(255, 193, 7, 0.25);
+      color: #ffc107;
+      animation: pulse-status 2s infinite;
+    }
+
+    .character-status.status-approved {
+      background: rgba(76, 175, 80, 0.25);
+      color: #81c784;
+    }
+
+    .character-status.status-rejected {
+      background: rgba(244, 67, 54, 0.25);
+      color: #ef5350;
+    }
+
+    .character-status.status-none {
+      background: rgba(158, 158, 158, 0.25);
+      color: #9e9e9e;
+    }
+
+    @keyframes pulse-status {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .player.clickable {
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .player.clickable:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(4px);
+    }
+
+    .review-hint {
+      font-size: 10px;
+      color: #ffc107;
+      margin-left: 8px;
+    }
+
+    .view-hint {
+      font-size: 10px;
+      color: #64b5f6;
+      margin-left: 8px;
+    }
+
+    .empty-players {
+      color: rgba(255, 255, 255, 0.6);
+      font-style: italic;
+      padding: 8px;
+    }
+
+    /* Character Details Modal */
+    .character-modal {
+      max-width: 600px;
+    }
+
+    .character-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .character-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 22px;
+      color: #064e3b;
+      flex-shrink: 0;
+    }
+
+    .character-title {
+      flex: 1;
+    }
+
+    .character-title h2 {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .character-subtitle {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .character-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .character-info-item {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 14px;
+      border-radius: 12px;
+    }
+
+    .character-info-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .character-info-value {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .ability-scores {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .ability-score {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 6px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .ability-name {
+      font-size: 9px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .ability-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .ability-modifier {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    .character-bio {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .no-character-message {
+      text-align: center;
+      padding: 30px;
+      opacity: 0.7;
+    }
+
+    .no-character-message .empty-state-icon {
+      font-size: 50px;
+      margin-bottom: 12px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: #1a3a2e;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      color: white;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.show .modal {
+      transform: translateY(0);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 10px 14px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #38bdf8;
+    }
+
+    .form-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Status message */
+    .status-message {
+      position: fixed;
+      top: 90px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      z-index: 1001;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .status-message.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .status-message.success {
+      background: rgba(76, 175, 80, 0.9);
+      color: white;
+    }
+
+    .status-message.error {
+      background: rgba(244, 67, 54, 0.9);
+      color: white;
+    }
+
+    /* Start Campaign Button */
+    .start-campaign-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      font-size: 16px;
+      padding: 14px 28px;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .start-campaign-btn:hover {
+      box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
+    }
+
+    /* Quick Stats */
+    .quick-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 12px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .stat-icon {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="statusMessage" class="status-message"></div>
+
+<div class="cockpit-container">
+  <!-- Campaign Header -->
+  <div class="card campaign-header">
+    <div class="campaign-info">
+      <div class="campaign-name" id="campaignName">Kampagne laden...</div>
+      <div class="campaign-desc" id="campaignDesc"></div>
+      <div class="quick-stats">
+        <div class="stat-item">
+          <span class="stat-icon">👥</span>
+          <span id="playerCount">0 Spieler</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">📋</span>
+          <span id="decisionCount">0 Entscheidungen</span>
+        </div>
+      </div>
+    </div>
+    <div class="campaign-actions">
+      <button class="btn btn-secondary" onclick="goBack()">
+        ← Zurück
+      </button>
+      <button class="btn btn-primary" onclick="goToDetails()">
+        ⚙️ Einstellungen
+      </button>
+      <button class="btn start-campaign-btn" onclick="startCampaign()">
+        🎮 Kampagne starten
+      </button>
+    </div>
+  </div>
+
+  <!-- Story Section -->
+  <div class="card story-card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-title-icon">📖</span>
+        Story & Notizen
+      </div>
+      <button class="btn btn-small btn-secondary" id="editStoryBtn" onclick="toggleStoryEdit()">
+        ✏️ Bearbeiten
+      </button>
+    </div>
+    <div id="storyView">
+      <div class="story-content" id="storyContent">Keine Story vorhanden. Klicke auf "Bearbeiten" um eine Story hinzuzufügen.</div>
+    </div>
+    <div id="storyEditView" style="display: none;">
+      <textarea class="story-edit" id="storyEdit" placeholder="Deine Story, Plot-Punkte, Notizen..."></textarea>
+      <div class="story-footer">
+        <button class="btn btn-secondary" onclick="cancelStoryEdit()">Abbrechen</button>
+        <button class="btn btn-primary" onclick="saveStory()">💾 Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Decisions Section -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-title-icon">⚔️</span>
+        Gruppenentscheidungen
+      </div>
+      <button class="btn btn-small btn-success" onclick="openAddDecisionModal()">
+        + Neu
+      </button>
+    </div>
+    <div class="decisions-list" id="decisionsList">
+      <div class="empty-state">
+        <div class="empty-state-icon">🎯</div>
+        <div>Noch keine Entscheidungen</div>
+        <div style="font-size: 12px; margin-top: 4px;">Füge wichtige Gruppenentscheidungen hinzu</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Players Section -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-title-icon">👥</span>
+        Spieler
+      </div>
+    </div>
+    <div class="players" id="playersList">
+      <div class="empty-state">
+        <div class="empty-state-icon">🎭</div>
+        <div>Keine Spieler beigetreten</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Decision Modal -->
+<div class="modal-overlay" id="decisionModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Neue Entscheidung</div>
+    <input type="hidden" id="editDecisionId" value="">
+    <div class="form-group">
+      <label for="decisionTitle">Titel</label>
+      <input type="text" id="decisionTitle" placeholder="z.B. Welchen Weg wählt die Gruppe?">
+    </div>
+    <div class="form-group">
+      <label for="decisionDescription">Beschreibung (optional)</label>
+      <textarea id="decisionDescription" placeholder="Details zur Entscheidungssituation..."></textarea>
+    </div>
+    <div class="form-group" id="outcomeGroup" style="display: none;">
+      <label for="decisionOutcome">Ergebnis der Entscheidung</label>
+      <textarea id="decisionOutcome" placeholder="Was hat die Gruppe entschieden?"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDecisionModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveDecision()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Character Details Modal -->
+<div class="modal-overlay" id="characterModal">
+  <div class="modal character-modal">
+    <div id="characterModalContent">
+      <!-- Content will be dynamically inserted -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCharacterModal()">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const campaignId = params.get('id');
+  let currentPlayer = null;
+  let campaign = null;
+  let decisions = [];
+  let campaignPlayers = [];
+  let playerNameMap = {};
+  let characterNameMap = {};
+  let isEditingStory = false;
+
+  function showStatus(message, isError = false) {
+    const el = document.getElementById('statusMessage');
+    el.textContent = message;
+    el.className = 'status-message show ' + (isError ? 'error' : 'success');
+    setTimeout(() => {
+      el.className = 'status-message';
+    }, 3000);
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function requirePlayer() {
+    try {
+      const raw = sessionStorage.getItem('player');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch(e) {
+      console.warn(e);
+      return null;
+    }
+  }
+
+  async function loadCampaign() {
+    currentPlayer = requirePlayer();
+    if (!currentPlayer) {
+      showStatus('Nicht eingeloggt', true);
+      setTimeout(() => window.location.href = './Login.html', 1500);
+      return;
+    }
+
+    if (!campaignId) {
+      showStatus('Kampagne nicht gefunden', true);
+      return;
+    }
+
+    try {
+      // Check if user is DM
+      const roleRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/' + encodeURIComponent(currentPlayer.id) + '/role', { cache: 'no-store' });
+      if (!roleRes.ok) {
+        showStatus('Keine Berechtigung', true);
+        setTimeout(() => window.location.href = './Campaigns.html', 1500);
+        return;
+      }
+      const roleData = await roleRes.json();
+      if (roleData.role !== 'DM') {
+        showStatus('Nur der DM kann das Cockpit sehen', true);
+        setTimeout(() => window.location.href = './CampaignDetail.html?id=' + campaignId, 1500);
+        return;
+      }
+
+      // Load campaign data
+      const campaignRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '?playerId=' + encodeURIComponent(currentPlayer.id), { cache: 'no-store' });
+      if (!campaignRes.ok) {
+        showStatus('Kampagne nicht gefunden', true);
+        return;
+      }
+      campaign = await campaignRes.json();
+
+      // Load players
+      const playersRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId), { cache: 'no-store' });
+      if (playersRes.ok) {
+        campaignPlayers = await playersRes.json();
+      }
+
+      // Load player names and characters
+      for (const cp of campaignPlayers) {
+        try {
+          const playerRes = await fetch('/api/player/id/' + encodeURIComponent(cp.playerId), { cache: 'no-store' });
+          if (playerRes.ok) {
+            const playerData = await playerRes.json();
+            playerNameMap[cp.playerId] = playerData.name || `Player ${cp.playerId}`;
+          }
+        } catch (err) {
+          playerNameMap[cp.playerId] = `Player ${cp.playerId}`;
+        }
+
+        if (cp.characterId) {
+          try {
+            const charRes = await fetch('/api/character/' + encodeURIComponent(cp.characterId), { cache: 'no-store' });
+            if (charRes.ok) {
+              const charData = await charRes.json();
+              characterNameMap[cp.characterId] = charData.name || 'Unbenannt';
+            }
+          } catch (err) {
+            characterNameMap[cp.characterId] = 'Unbekannt';
+          }
+        }
+      }
+
+      // Load decisions
+      await loadDecisions();
+
+      renderCockpit();
+    } catch (err) {
+      console.error(err);
+      showStatus('Fehler beim Laden', true);
+    }
+  }
+
+  async function loadDecisions() {
+    try {
+      const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '/decisions?playerId=' + encodeURIComponent(currentPlayer.id), { cache: 'no-store' });
+      if (res.ok) {
+        decisions = await res.json();
+      }
+    } catch (err) {
+      console.error('Failed to load decisions', err);
+    }
+  }
+
+  function renderCockpit() {
+    // Campaign header
+    document.getElementById('campaignName').textContent = campaign.name || 'Kampagne';
+    document.getElementById('campaignDesc').textContent = campaign.description || '';
+
+    const playerCount = campaignPlayers.filter(cp => cp.role === 'PLAYER').length;
+    document.getElementById('playerCount').textContent = playerCount + ' Spieler';
+    document.getElementById('decisionCount').textContent = decisions.length + ' Entscheidungen';
+
+    // Story
+    const storyContent = document.getElementById('storyContent');
+    if (campaign.story && campaign.story.trim()) {
+      storyContent.textContent = campaign.story;
+    } else {
+      storyContent.textContent = 'Keine Story vorhanden. Klicke auf "Bearbeiten" um eine Story hinzuzufügen.';
+    }
+
+    // Decisions
+    renderDecisions();
+
+    // Players
+    renderPlayers();
+  }
+
+  function renderDecisions() {
+    const list = document.getElementById('decisionsList');
+
+    if (decisions.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎯</div>
+          <div>Noch keine Entscheidungen</div>
+          <div style="font-size: 12px; margin-top: 4px;">Füge wichtige Gruppenentscheidungen hinzu</div>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = decisions.map(d => {
+      const statusClass = d.status === 'RESOLVED' ? 'status-resolved' : 'status-pending';
+      const statusText = d.status === 'RESOLVED' ? 'Entschieden' : 'Offen';
+
+      let outcomeHtml = '';
+      if (d.decisionMade && d.status === 'RESOLVED') {
+        outcomeHtml = `
+          <div class="decision-outcome">
+            <strong>Entscheidung:</strong> ${escapeHtml(d.decisionMade)}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="decision-item" data-id="${d.id}">
+          <div class="decision-header">
+            <div class="decision-title">${escapeHtml(d.title)}</div>
+            <span class="decision-status ${statusClass}">${statusText}</span>
+          </div>
+          ${d.description ? `<div class="decision-description">${escapeHtml(d.description)}</div>` : ''}
+          ${outcomeHtml}
+          <div class="decision-actions">
+            ${d.status === 'PENDING' ? `<button class="btn btn-small btn-success" onclick="resolveDecision(${d.id})">✓ Entscheiden</button>` : ''}
+            <button class="btn btn-small btn-secondary" onclick="editDecision(${d.id})">✏️ Bearbeiten</button>
+            <button class="btn btn-small btn-secondary" onclick="deleteDecision(${d.id})" style="color: #ef5350;">🗑️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderPlayers() {
+    const list = document.getElementById('playersList');
+    list.innerHTML = '';
+
+    if (campaignPlayers.length === 0) {
+      list.innerHTML = '<span class="empty-players">Noch keine Spieler beigetreten</span>';
+      return;
+    }
+
+    campaignPlayers.forEach(cp => {
+      const div = document.createElement('div');
+      div.className = 'player';
+      const name = playerNameMap[cp.playerId] || `Player ${cp.playerId}`;
+      const roleClass = cp.role === 'DM' ? 'role-dm' : 'role-player';
+
+      if (cp.role === 'DM') {
+        div.innerHTML = `
+          <div class="player-left">
+            <span class="player-avatar">${getInitials(name)}</span>
+            <span class="player-name">${escapeHtml(name)}</span>
+          </div>
+          <span class="player-role ${roleClass}">${cp.role}</span>
+        `;
+      } else {
+        // Determine character status
+        let statusBadge = '';
+        let hintText = '';
+        let hasCharacter = !!cp.characterId;
+
+        if (cp.characterStatus === 'PENDING') {
+          statusBadge = '<span class="character-status status-pending">⏳ Pending Review</span>';
+          hintText = '<span class="review-hint">Click to review</span>';
+        } else if (cp.characterStatus === 'APPROVED') {
+          statusBadge = '<span class="character-status status-approved">✓ Approved</span>';
+          hintText = '<span class="view-hint">Click to view</span>';
+        } else if (cp.characterStatus === 'REJECTED') {
+          statusBadge = '<span class="character-status status-rejected">✗ Rejected</span>';
+          hintText = '<span class="review-hint">Click to review</span>';
+        } else if (!cp.characterId) {
+          statusBadge = '<span class="character-status status-none">No Character</span>';
+        }
+
+        // Make clickable if player has a character
+        if (hasCharacter) {
+          div.className = 'player clickable';
+        }
+
+        div.innerHTML = `
+          <div class="player-left">
+            <span class="player-avatar">${getInitials(name)}</span>
+            <span class="player-name">${escapeHtml(name)}</span>
+            ${statusBadge}
+            ${hintText}
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="player-role ${roleClass}">${cp.role}</span>
+            <button class="kick-btn" data-player-id="${cp.playerId}">KICK</button>
+          </div>
+        `;
+
+        list.appendChild(div);
+
+        // Add click handler if player has a character
+        if (hasCharacter) {
+          div.onclick = function(e) {
+            if (e.target.classList.contains('kick-btn')) return;
+            showCharacterModal(cp.characterId, name);
+          };
+        }
+
+        // Add kick handler
+        const kickBtn = div.querySelector('.kick-btn');
+        if (kickBtn) {
+          kickBtn.onclick = async function(e) {
+            e.stopPropagation();
+            const playerId = this.getAttribute('data-player-id');
+            this.disabled = true;
+            this.textContent = '...';
+            try {
+              const res = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId) + '/leave/' + encodeURIComponent(playerId), {
+                method: 'DELETE'
+              });
+              if (!res.ok) {
+                showStatus('Entfernen fehlgeschlagen', true);
+                this.disabled = false;
+                this.textContent = 'KICK';
+                return;
+              }
+              showStatus('Spieler entfernt');
+              // Reload players
+              const playersRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId), { cache: 'no-store' });
+              if (playersRes.ok) {
+                campaignPlayers = await playersRes.json();
+              }
+              renderPlayers();
+              const playerCount = campaignPlayers.filter(p => p.role === 'PLAYER').length;
+              document.getElementById('playerCount').textContent = playerCount + ' Spieler';
+            } catch (err) {
+              console.error(err);
+              showStatus('Fehler beim Entfernen', true);
+              this.disabled = false;
+              this.textContent = 'KICK';
+            }
+          };
+        }
+
+        return; // Skip appendChild below since we already did it
+      }
+
+      list.appendChild(div);
+    });
+  }
+
+  // Character modal functions
+  async function showCharacterModal(characterId, playerName) {
+    const content = document.getElementById('characterModalContent');
+    content.innerHTML = '<div style="text-align: center; padding: 20px;">Lade Charakter...</div>';
+    document.getElementById('characterModal').classList.add('show');
+
+    try {
+      const res = await fetch('/api/character/' + encodeURIComponent(characterId), { cache: 'no-store' });
+      if (!res.ok) {
+        content.innerHTML = `
+          <div class="no-character-message">
+            <div class="empty-state-icon">❌</div>
+            <div>Charakter konnte nicht geladen werden</div>
+          </div>
+        `;
+        return;
+      }
+
+      const char = await res.json();
+      renderCharacterModal(char, playerName);
+    } catch (err) {
+      console.error(err);
+      content.innerHTML = `
+        <div class="no-character-message">
+          <div class="empty-state-icon">❌</div>
+          <div>Fehler beim Laden des Charakters</div>
+        </div>
+      `;
+    }
+  }
+
+  function getAbilityModifier(score) {
+    const mod = Math.floor((score - 10) / 2);
+    return mod >= 0 ? '+' + mod : String(mod);
+  }
+
+  function getAbilityAbbreviation(name) {
+    const abbrevs = {
+      'Strength': 'STR',
+      'Dexterity': 'DEX',
+      'Constitution': 'CON',
+      'Intelligence': 'INT',
+      'Wisdom': 'WIS',
+      'Charisma': 'CHA',
+      'Stärke': 'STR',
+      'Geschicklichkeit': 'GES',
+      'Konstitution': 'KON',
+      'Intelligenz': 'INT',
+      'Weisheit': 'WEI',
+      'Charisma': 'CHA'
+    };
+    return abbrevs[name] || name.slice(0, 3).toUpperCase();
+  }
+
+  function renderCharacterModal(char, playerName) {
+    const content = document.getElementById('characterModalContent');
+
+    // Build class and level string
+    let classLevel = 'Level ' + (char.level || 1);
+    if (char.characterClass && char.characterClass.name) {
+      classLevel = char.characterClass.name + ' ' + classLevel;
+    }
+
+    // Build subtitle with race
+    let subtitle = classLevel;
+    if (char.race) {
+      subtitle = char.race + ' • ' + classLevel;
+    }
+
+    // Build ability scores HTML
+    let abilityScoresHtml = '';
+    if (char.abilityScores && char.abilityScores.length > 0) {
+      // Sort abilities in D&D order: STR, DEX, CON, INT, WIS, CHA
+      const abilityOrder = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma',
+                           'Stärke', 'Geschicklichkeit', 'Konstitution', 'Intelligenz', 'Weisheit'];
+      const sorted = [...char.abilityScores].sort((a, b) => {
+        const aIndex = abilityOrder.findIndex(o => a.abilityName && a.abilityName.toLowerCase().includes(o.toLowerCase()));
+        const bIndex = abilityOrder.findIndex(o => b.abilityName && b.abilityName.toLowerCase().includes(o.toLowerCase()));
+        return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+      });
+
+      abilityScoresHtml = `
+        <div class="ability-scores">
+          ${sorted.map(ab => `
+            <div class="ability-score">
+              <div class="ability-name">${getAbilityAbbreviation(ab.abilityName)}</div>
+              <div class="ability-value">${ab.score}</div>
+              <div class="ability-modifier">${getAbilityModifier(ab.score)}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // Build info grid
+    let infoItems = [];
+
+    if (char.race) {
+      infoItems.push({ label: 'Rasse', value: char.race });
+    }
+    if (char.characterClass && char.characterClass.name) {
+      infoItems.push({ label: 'Klasse', value: char.characterClass.name });
+    }
+    if (char.background && char.background.name) {
+      infoItems.push({ label: 'Hintergrund', value: char.background.name });
+    }
+    if (char.alignment) {
+      infoItems.push({ label: 'Gesinnung', value: char.alignment });
+    }
+    infoItems.push({ label: 'Level', value: char.level || 1 });
+    infoItems.push({ label: 'Spieler', value: playerName });
+
+    const infoGridHtml = infoItems.length > 0 ? `
+      <div class="character-info-grid">
+        ${infoItems.map(item => `
+          <div class="character-info-item">
+            <div class="character-info-label">${escapeHtml(item.label)}</div>
+            <div class="character-info-value">${escapeHtml(String(item.value))}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    // Bio/Info section
+    let bioHtml = '';
+    if (char.info && char.info.trim()) {
+      bioHtml = `
+        <div style="margin-top: 16px;">
+          <div style="font-size: 12px; text-transform: uppercase; opacity: 0.7; margin-bottom: 8px;">Beschreibung</div>
+          <div class="character-bio">${escapeHtml(char.info)}</div>
+        </div>
+      `;
+    }
+
+    content.innerHTML = `
+      <div class="character-header">
+        <div class="character-avatar">${getInitials(char.name || 'Unknown')}</div>
+        <div class="character-title">
+          <h2>${escapeHtml(char.name || 'Unbenannter Charakter')}</h2>
+          <div class="character-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+      </div>
+      ${infoGridHtml}
+      ${abilityScoresHtml}
+      ${bioHtml}
+    `;
+  }
+
+  window.closeCharacterModal = function() {
+    document.getElementById('characterModal').classList.remove('show');
+  };
+
+  // Story functions
+  window.toggleStoryEdit = function() {
+    isEditingStory = !isEditingStory;
+    const viewEl = document.getElementById('storyView');
+    const editEl = document.getElementById('storyEditView');
+    const editBtn = document.getElementById('editStoryBtn');
+    const storyTextarea = document.getElementById('storyEdit');
+
+    if (isEditingStory) {
+      viewEl.style.display = 'none';
+      editEl.style.display = 'block';
+      storyTextarea.value = campaign.story || '';
+      editBtn.style.display = 'none';
+    } else {
+      viewEl.style.display = 'block';
+      editEl.style.display = 'none';
+      editBtn.style.display = 'inline-flex';
+    }
+  };
+
+  window.cancelStoryEdit = function() {
+    isEditingStory = false;
+    document.getElementById('storyView').style.display = 'block';
+    document.getElementById('storyEditView').style.display = 'none';
+    document.getElementById('editStoryBtn').style.display = 'inline-flex';
+  };
+
+  window.saveStory = async function() {
+    const newStory = document.getElementById('storyEdit').value;
+
+    try {
+      const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '/story?playerId=' + encodeURIComponent(currentPlayer.id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story: newStory })
+      });
+
+      if (!res.ok) {
+        showStatus('Speichern fehlgeschlagen', true);
+        return;
+      }
+
+      campaign.story = newStory;
+      document.getElementById('storyContent').textContent = newStory || 'Keine Story vorhanden. Klicke auf "Bearbeiten" um eine Story hinzuzufügen.';
+      cancelStoryEdit();
+      showStatus('Story gespeichert');
+    } catch (err) {
+      console.error(err);
+      showStatus('Fehler beim Speichern', true);
+    }
+  };
+
+  // Decision functions
+  window.openAddDecisionModal = function() {
+    document.getElementById('modalTitle').textContent = 'Neue Entscheidung';
+    document.getElementById('editDecisionId').value = '';
+    document.getElementById('decisionTitle').value = '';
+    document.getElementById('decisionDescription').value = '';
+    document.getElementById('decisionOutcome').value = '';
+    document.getElementById('outcomeGroup').style.display = 'none';
+    document.getElementById('decisionModal').classList.add('show');
+  };
+
+  window.closeDecisionModal = function() {
+    document.getElementById('decisionModal').classList.remove('show');
+  };
+
+  window.editDecision = function(id) {
+    const decision = decisions.find(d => d.id === id);
+    if (!decision) return;
+
+    document.getElementById('modalTitle').textContent = 'Entscheidung bearbeiten';
+    document.getElementById('editDecisionId').value = id;
+    document.getElementById('decisionTitle').value = decision.title || '';
+    document.getElementById('decisionDescription').value = decision.description || '';
+    document.getElementById('decisionOutcome').value = decision.decisionMade || '';
+    document.getElementById('outcomeGroup').style.display = decision.status === 'RESOLVED' ? 'block' : 'none';
+    document.getElementById('decisionModal').classList.add('show');
+  };
+
+  window.resolveDecision = function(id) {
+    const decision = decisions.find(d => d.id === id);
+    if (!decision) return;
+
+    document.getElementById('modalTitle').textContent = 'Entscheidung festhalten';
+    document.getElementById('editDecisionId').value = id;
+    document.getElementById('decisionTitle').value = decision.title || '';
+    document.getElementById('decisionDescription').value = decision.description || '';
+    document.getElementById('decisionOutcome').value = '';
+    document.getElementById('outcomeGroup').style.display = 'block';
+    document.getElementById('decisionModal').classList.add('show');
+  };
+
+  window.saveDecision = async function() {
+    const id = document.getElementById('editDecisionId').value;
+    const title = document.getElementById('decisionTitle').value.trim();
+    const description = document.getElementById('decisionDescription').value.trim();
+    const outcome = document.getElementById('decisionOutcome').value.trim();
+
+    if (!title) {
+      showStatus('Titel ist erforderlich', true);
+      return;
+    }
+
+    try {
+      let res;
+      const payload = {
+        title: title,
+        description: description || null,
+        decisionMade: outcome || null,
+        status: outcome ? 'RESOLVED' : 'PENDING'
+      };
+
+      if (id) {
+        // Update existing
+        res = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '/decisions/' + id + '?playerId=' + encodeURIComponent(currentPlayer.id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create new
+        res = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '/decisions?playerId=' + encodeURIComponent(currentPlayer.id), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!res.ok) {
+        showStatus('Speichern fehlgeschlagen', true);
+        return;
+      }
+
+      await loadDecisions();
+      renderDecisions();
+      document.getElementById('decisionCount').textContent = decisions.length + ' Entscheidungen';
+      closeDecisionModal();
+      showStatus(id ? 'Entscheidung aktualisiert' : 'Entscheidung erstellt');
+    } catch (err) {
+      console.error(err);
+      showStatus('Fehler beim Speichern', true);
+    }
+  };
+
+  window.deleteDecision = async function(id) {
+    if (!confirm('Diese Entscheidung wirklich löschen?')) return;
+
+    try {
+      const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '/decisions/' + id + '?playerId=' + encodeURIComponent(currentPlayer.id), {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        showStatus('Löschen fehlgeschlagen', true);
+        return;
+      }
+
+      await loadDecisions();
+      renderDecisions();
+      document.getElementById('decisionCount').textContent = decisions.length + ' Entscheidungen';
+      showStatus('Entscheidung gelöscht');
+    } catch (err) {
+      console.error(err);
+      showStatus('Fehler beim Löschen', true);
+    }
+  };
+
+  // Navigation
+  window.goBack = function() {
+    window.location.href = './Campaigns.html';
+  };
+
+  window.goToDetails = function() {
+    window.location.href = './CampaignDetail.html?id=' + campaignId;
+  };
+
+  window.startCampaign = function() {
+    // TODO: Implement campaign start functionality
+    // This could open a battle tracker, session view, etc.
+    showStatus('Kampagne wird gestartet... (Feature kommt bald!)');
+  };
+
+  // Initialize
+  loadCampaign();
+})();
+</script>
+<script src="../common/header.js" defer></script>
+</body>
+</html>
+

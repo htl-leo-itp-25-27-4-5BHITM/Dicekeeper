@@ -647,6 +647,7 @@
     <div class="footer">
       <button class="btn btn-secondary" id="cancelBtn">Abbrechen</button>
       <button class="btn btn-danger" id="deleteBtn">Löschen</button>
+      <button class="btn btn-primary" id="cockpitBtn">🎮 Cockpit</button>
       <button class="btn btn-primary" id="updateBtn">Aktualisieren</button>
     </div>
   </div>
@@ -1025,6 +1026,11 @@
           deleteBtn.disabled = false
           deleteBtn.textContent = 'Löschen'
         }
+      }
+
+      const cockpitBtn = document.getElementById('cockpitBtn')
+      cockpitBtn.onclick = () => {
+        window.location.href = './GMCockpit.html?id=' + encodeURIComponent(campaignId)
       }
     }
 
