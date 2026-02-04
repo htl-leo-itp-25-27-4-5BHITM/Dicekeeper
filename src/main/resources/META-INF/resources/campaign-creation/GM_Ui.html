@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Interface</title>
+    <link rel="stylesheet" href="./GM_Ui.css">
+    <script src="GM_Ui.js" defer></script>
+</head>
+
+<body>
+<div class="container">
+
+    <!-- Character Slider -->
+    <div class="character-slider">
+        <div style="margin-top: 5vh">
+            <p>Nächsten Spieler:</p>
+        </div>
+        <div class="slider-images">
+            <img src="../images/Barbarian.png">
+            <img src="../images/Bard.png">
+            <img src="../images/Cleric.png">
+            <img src="../images/Druid.png">
+            <img src="../images/Fighter.png">
+            <img src="../images/Monk.png">
+            <img src="../images/Paladin.png">
+            <img src="../images/Rogue.png">
+        </div>
+    </div>
+
+    <!-- Character Info -->
+    <div class="character-info">
+        <h3>Aktueller Spieler</h3>
+        <img class="sliderImage" src="../images/Barbarian.png">
+
+        <div class="basic-info">
+            <p><strong>Name:</strong> Gandalf</p>
+            <p><strong>HP:</strong> 68 / 100</p>
+            <p><strong>MP:</strong> 100 / 100</p>
+            <p><strong>Background:</strong> Acolyte</p>
+            <p><strong>Class:</strong> Bard</p>
+        </div>
+
+        <!-- Stats Box -->
+        <div class="stats-box">
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Strength</strong>
+                    <span>measuring physical power</span>
+                </div>
+                <div class="stat-value">12</div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Dexterity</strong>
+                    <span>measuring agility</span>
+                </div>
+                <div class="stat-value">14</div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Constitution</strong>
+                    <span>measuring endurance</span>
+                </div>
+                <div class="stat-value">13</div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Intelligence</strong>
+                    <span>measuring reasoning</span>
+                </div>
+                <div class="stat-value">16</div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Wisdom</strong>
+                    <span>measuring perception</span>
+                </div>
+                <div class="stat-value">11</div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-text">
+                    <strong>Charisma</strong>
+                    <span>measuring force of personality</span>
+                </div>
+                <div class="stat-value">18</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mapBox">
+        <h3>Map</h3>
+        <img src="../images/kampagne-img.jpg" class="map">
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-box">
+        <div class="chat-header">CHATGPT BOT</div>
+        <div class="chat-content" id="chatContent"></div>
+
+        <div class="chat-input-wrapper">
+            <input type="text" id="chatInput" placeholder="Prompt eingeben">
+            <button id="sendBtn">&#8593;</button>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>Storyauswahl</title>
+    <link rel="stylesheet" href="./StoryPresets.css" />
+</head>
+<body>
+<h2>Kampagne auswählen</h2>
+
+<div class="card-container">
+
+    <div class="card">
+        <img src="../images/greek-cover.jpg" alt="Antike Story" />
+        <div class="card-overlay">
+            <h3>Antike Götter</h3>
+            <div>
+                <p>In einer Welt, die stark an das antike Griechenland erinnert,</p>
+                <p>erwachen alte Götter aus ihrem Schlaf, weil Sterbliche begonnen haben,</p>
+                <p>ihr Schicksal selbst zu verändern.</p>
+                <p>Die Helden geraten zwischen</p>
+                <p>rivalisierende Gottheiten, Orakel und Titanen,</p>
+                <p>die aus ihren Gefängnissen ausbrechen wollen.</p>
+                <p>Jede Entscheidung der Gruppe kann</p>
+                <p>göttliche Gunst oder ewigen Zorn nach sich ziehen.</p>
+                <p>Am Ende steht die Frage: </p>
+                <p>Dienen die Helden den Göttern – oder stürzen sie sie?</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <img src="../images/medieval-cover.jpeg" alt="Mittelalter Story" />
+        <div class="card-overlay">
+            <h3>Zerfallenes Königreich</h3>
+            <div>
+                <p>Ein zerfallendes Königreich wird von einer  </p>
+                <p>mysteriösen Seuche heimgesucht, die Tote </p>
+                <p>wieder aufstehen lässt, aber ihr Bewusstsein behält.</p>
+                <p> Die Kirche, der Adel und geheime Zirkel</p>
+                <p>kämpfen um die Deutung der Apokalypse.</p>
+                <p>Die Charaktere decken auf, dass die Seuche kein</p>
+                <p>Fluch, sondern das Nebenprodukt eines fehlgeschlagenen</p>
+                <p> Unsterblichkeitsrituals ist. Um das Reich zu retten, müssen sie entscheiden,</p>
+                <p>ob Wissen begraben oder vollendet wird.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <img src="../images/cyberpunk-cover.jpg" alt="Cyberpunk Story" />
+        <div class="card-overlay">
+            <h3>Neon-Zukunft</h3>
+            <div>
+                <p>In einer neongetränkten Megastadt kontrollieren Konzerne </p>
+                <p>nicht nur Wirtschaft, sondern auch Erinnerungen.</p>
+                <p>Die Gruppe entdeckt, dass ihre eigenen </p>
+                <p>Vergangenheiten manipuliert wurden, </p>
+                <p>um sie als perfekte Werkzeuge einzusetzen.</p>
+                <p>Während sie gegen KI-gesteuerte Sicherheitskräfte</p>
+                <p> und Datengötter kämpfen, setzen sie Stück </p>
+                <p>für Stück ihre Identität wieder zusammen. </p>
+                <p>Am Ende müssen sie wählen, ob sie das System </p>
+                <p>zerstören oder selbst die neuen Architekten</p>
+                <p>der Realität werden.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="selection-box"></div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const cards = document.querySelectorAll(".card");
+        const selectionBox = document.querySelector(".selection-box");
+
+        let selectedCard = null;
+
+        cards.forEach(card => {
+            card.addEventListener("click", () => {
+
+                // Alte Auswahl entfernen
+                cards.forEach(c => c.classList.remove("selected"));
+
+                // Neue Auswahl setzen
+                card.classList.add("selected");
+                selectedCard = card;
+
+                // Button-Box leeren
+                selectionBox.innerHTML = "";
+
+                // Button erstellen
+                const button = document.createElement("button");
+                button.textContent = "Auswählen";
+                button.classList.add("select-button");
+
+                button.addEventListener("click", () => {
+                    const title = selectedCard.querySelector("h3").textContent;
+                    alert("Story ausgewählt: " + title);
+                });
+
+                // Button in Box einsetzen
+                selectionBox.appendChild(button);
+            });
+        });
+    });
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,108 @@
+body {
+    font-family: system-ui, sans-serif;
+    background-image: url("../images/Background.png");
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: lighten;
+}
+
+h2{
+    text-align: center;
+    font-size: 3vh;
+}
+
+/* Container für 3 Karten */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Einzelne Karte */
+.card {
+    position: relative;
+    height: 650px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+/* Bild */
+.card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    outline: 5px solid transparent;
+    outline-offset: -5px;
+    transition: outline 0.2s ease;
+}
+
+.card.selected img {
+    outline: 5px solid #5b21b6;
+}
+
+/* Overlay */
+.card-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 40%; /* Bild bleibt sichtbar */
+    padding: 25px;
+
+    background: linear-gradient(
+            to top,
+            rgba(255, 255, 255, 0.95),
+            rgba(255, 255, 255, 0.85)
+    );
+
+    transform: translateY(100%);
+    transition: transform 0.35s ease;
+}
+
+/* Hover-Effekt */
+.card:hover .card-overlay {
+    transform: translateY(0);
+}
+
+/* Text */
+.card-overlay h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.card-overlay p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Optional: responsive */
+@media (max-width: 900px) {
+    .card-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.selection-box {
+    margin-top: 30px;
+    padding: 20px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: 2px solid #ccc;
+}
+
+.select-button {
+    padding: 12px 30px;
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
