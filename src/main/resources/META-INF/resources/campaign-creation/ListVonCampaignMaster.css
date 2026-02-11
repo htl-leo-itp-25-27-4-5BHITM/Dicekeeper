@@ -1,0 +1,39 @@
+:root {
+    /* Grundfarben */
+    --color-white: #ffffff;
+
+    /* Grüntöne / Hauptdesign */
+    --color-green-glass: #004c3685;   /* halbtransparenter Container-Hintergrund */
+    --color-green-dark: #256628;      /* dunkles Grün */
+    --color-green-light: #81c784;     /* helles Grün */
+    --color-green-button: #4f8f7a;    /* Add-Button */
+
+    /* Schwarze Transparenzen */
+    --color-black-25: rgba(0, 0, 0, 0.25); /* Campaign Hintergrund */
+    --color-black-35: rgba(0, 0, 0, 0.35); /* Campaign Hover */
+
+    /* Weiße Transparenzen */
+    --color-white-50: rgba(255, 255, 255, 0.5); /* Divider Linie */
+}
+.container {
+    background: var(--color-green-glass);
+    color: var(--color-white);
+}
+
+.add-btn {
+    background-color: var(--color-green-button);
+    color: var(--color-white);
+}
+
+.campaign {
+    background-color: var(--color-black-25);
+}
+
+.campaign:hover {
+    background-color: var(--color-black-35);
+}
+
+.divider::before,
+.divider::after {
+    background-color: var(--color-white-50);
+}

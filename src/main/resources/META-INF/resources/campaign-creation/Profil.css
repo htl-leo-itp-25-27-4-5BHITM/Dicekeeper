@@ -1,0 +1,334 @@
+/* ======================================================
+   COLOR TOKENS – NUR HIER FARBEN ÄNDERN
+   ====================================================== */
+:root {
+    /* Base */
+    --color-white: #ffffff;
+    --color-black: #000000;
+
+    /* Greens / Backgrounds */
+    --green-card-bg: #004c3685;
+    --green-card-bg-strong: #004c36d2;
+    --green-input-bg: #004c3670;
+    --green-avatar-start: #6ee7b7;
+    --green-avatar-end: #34d399;
+    --green-avatar-text: #064e3b;
+    --green-success: #86efac;
+
+    /* Accent / Primary */
+    --accent-primary: #7708c7b8;
+    --accent-primary-glow: rgba(168, 85, 247, 0.4);
+    --accent-focus: #38bdf8;
+
+    /* Status */
+    --status-error: #f97373;
+    --status-info: #98a2b3;
+    --danger-bg: rgba(239, 68, 68, 0.71);
+    --danger-bg-hover: rgba(239, 68, 68, 0.89);
+    --danger-border: rgba(239, 68, 68, 0.77);
+    --danger-border-hover: rgba(239, 68, 68, 0.86);
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-label: #e5e7eb;
+
+    /* Borders */
+    --border-soft: rgba(148, 163, 184, 0.3);
+    --border-light: rgba(255, 255, 255, 0.3);
+    --border-input: rgba(255, 255, 255, 0.903);
+
+    /* Shadows */
+    --shadow-card: 0 24px 60px rgba(0, 0, 0, 0.65);
+    --shadow-avatar: 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow-avatar-hover: 0 12px 32px rgba(0, 0, 0, 0.4);
+
+    /* Overlays */
+    --overlay-dark: rgba(0, 0, 0, 0.5);
+}
+
+/* ======================================================
+   RESET / BASE
+   ====================================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    background-image: url("../images/Background.png");
+    background-size: cover;
+    background-attachment: fixed;
+    background-blend-mode: lighten;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* ======================================================
+   CARD
+   ====================================================== */
+.card {
+    background: var(--green-card-bg);
+    border-radius: 24px;
+    padding: 32px 36px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-soft);
+    color: var(--text-primary);
+}
+
+.card-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.card-title {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+/* ======================================================
+   PROFILE SECTION
+   ====================================================== */
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(
+        135deg,
+        var(--green-avatar-start),
+        var(--green-avatar-end)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 42px;
+    color: var(--green-avatar-text);
+    box-shadow: var(--shadow-avatar);
+    overflow: hidden;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.profile-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-avatar-hover);
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--overlay-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 50%;
+}
+
+.profile-avatar:hover .profile-avatar-overlay {
+    opacity: 1;
+}
+
+.profile-avatar-overlay span {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.profile-email {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ======================================================
+   FORM
+   ====================================================== */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+label {
+    font-size: 13px;
+    color: var(--text-label);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+input[type="text"] {
+    background: var(--green-input-bg);
+    border-radius: 999px;
+    border: 1px solid var(--border-input);
+    padding: 12px 18px;
+    color: var(--text-primary);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+input:focus {
+    border-color: var(--accent-focus);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+    background: var(--green-card-bg-strong);
+}
+
+input::placeholder {
+    color: var(--text-muted);
+}
+
+/* ======================================================
+   BUTTONS
+   ====================================================== */
+.btn {
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-size: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    font-weight: 500;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: var(--accent-primary);
+    font-weight: 600;
+    box-shadow: 0 0 20px var(--accent-primary-glow);
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    border-color: var(--border-light);
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+    width: 100%;
+}
+
+.btn-danger:hover {
+    background: var(--danger-bg-hover);
+    border-color: var(--danger-border-hover);
+}
+
+/* ======================================================
+   DIVIDER / STATUS
+   ====================================================== */
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: var(--border-light);
+}
+
+.divider span {
+    margin: 0 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+#status {
+    margin-top: 16px;
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 24px;
+}
+
+.status-success { color: var(--green-success); }
+.status-error   { color: var(--status-error); }
+.status-info    { color: var(--status-info); }
+
+/* ======================================================
+   MISC
+   ====================================================== */
+#profilePicInput {
+    display: none;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.back-link:hover {
+    color: var(--text-primary);
+}
+
+/* ======================================================
+   RESPONSIVE
+   ====================================================== */
+@media (max-width: 520px) {
+    .card {
+        margin: 16px;
+        padding: 24px 20px;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        font-size: 36px;
+    }
+}

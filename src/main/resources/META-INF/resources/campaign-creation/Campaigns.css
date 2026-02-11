@@ -1,0 +1,202 @@
+/* ======================================================
+   COLOR TOKENS – NUR HIER FARBEN ÄNDERN
+   ====================================================== */
+:root {
+  /* Base */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Backgrounds */
+  --bg-container: #004c3685;
+  --bg-overlay-light: rgba(255, 255, 255, 0.1);
+  --bg-overlay-dark: rgba(0, 0, 0, 0.25);
+  --bg-overlay-dark-hover: rgba(0, 0, 0, 0.35);
+
+  /* Green Theme */
+  --green-primary: #4f8f7a;
+  --green-primary-hover: #a1c5b9;
+  --green-accent: #81c784;
+  --green-accent-bg: rgba(129, 199, 132, 0.25);
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.6);
+
+  /* Borders & Lines */
+  --border-light: rgba(255, 255, 255, 0.5);
+
+  /* Effects */
+  --blur-bg: blur(12px);
+}
+
+/* ======================================================
+   BASE
+   ====================================================== */
+* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background-image: url("../images/Background.png");
+  background-size: cover;
+  background-attachment: fixed;
+  background-blend-mode: lighten;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding-top: 70px;
+}
+
+/* ======================================================
+   CONTAINER
+   ====================================================== */
+.container {
+  width: 720px;
+  padding: 30px;
+  border-radius: 14px;
+  background: var(--bg-container);
+  backdrop-filter: var(--blur-bg);
+  color: var(--text-primary);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ======================================================
+   HEADER / TOP BAR
+   ====================================================== */
+h1 {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* ======================================================
+   BUTTONS
+   ====================================================== */
+.add-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--green-primary);
+  color: var(--text-primary);
+  font-size: 26px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-btn:hover {
+  background-color: var(--green-primary-hover);
+}
+
+.logout-btn {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: var(--bg-overlay-light);
+}
+
+/* ======================================================
+   CAMPAIGNS
+   ====================================================== */
+.campaign {
+  background-color: var(--bg-overlay-dark);
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.campaign:hover {
+  background-color: var(--bg-overlay-dark-hover);
+}
+
+.campaign-info {
+  flex: 1;
+}
+
+.campaign-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.campaign-meta {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+/* ======================================================
+   BADGE
+   ====================================================== */
+.badge {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--green-accent-bg);
+  color: var(--green-accent);
+  margin-left: 12px;
+  font-weight: 600;
+}
+
+/* ======================================================
+   DIVIDER
+   ====================================================== */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 30px 0 20px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-light);
+}
+
+.divider span {
+  margin: 0 12px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* ======================================================
+   EMPTY / STATUS
+   ====================================================== */
+.empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+
+#status {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}

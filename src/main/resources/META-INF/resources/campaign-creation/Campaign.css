@@ -1,0 +1,392 @@
+/* ======================================================
+   COLOR TOKENS – NUR HIER FARBEN ÄNDERN
+   ====================================================== */
+:root {
+  /* Base */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Greens / Backgrounds */
+  --bg-card: #004c3685;
+  --bg-input: #004c3670;
+  --bg-input-focus: #004c36d2;
+  --bg-hover-strong: #004c36dc;
+
+  /* Accent */
+  --accent-primary: #7708c7b8;
+  --accent-focus: #38bdf8;
+  --accent-glow: rgba(168, 85, 247, 0.4);
+
+  /* Avatar Gradient */
+  --avatar-start: #6ee7b7;
+  --avatar-end: #34d399;
+  --avatar-text: #064e3b;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: #9ca3af;
+  --text-label: #e5e7eb;
+  --text-info: #98a2b3;
+
+  /* Borders */
+  --border-soft: rgba(148, 163, 184, 0.3);
+  --border-input: rgba(255, 255, 255, 0.903);
+  --border-dashed: rgba(255, 255, 255, 0.826);
+  --border-strong: rgba(148, 163, 184, 0.8);
+  --border-light: rgba(255, 255, 255, 0.2);
+
+  /* Overlays */
+  --overlay-dark: rgba(0, 0, 0, 0.2);
+  --overlay-darker: rgba(0, 0, 0, 0.25);
+  --overlay-button-hover: rgba(15, 23, 42, 0.9);
+
+  /* Shadows */
+  --shadow-card: 0 24px 60px rgba(0, 0, 0, 0.65);
+  --shadow-avatar: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+/* ======================================================
+   BASE
+   ====================================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  background-image: url("../images/Background.png");
+  background-size: cover;
+  background-attachment: fixed;
+  background-blend-mode: lighten;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* ======================================================
+   CARD
+   ====================================================== */
+.card {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 24px 28px 20px;
+  max-width: 720px;
+  width: 100%;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-soft);
+  margin: 2vw 0;
+  color: var(--text-primary);
+}
+
+.card-header {
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ======================================================
+   FORM
+   ====================================================== */
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+label {
+  font-size: 13px;
+  color: var(--text-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  background: var(--bg-input);
+  border-radius: 999px;
+  border: 1px solid var(--border-input);
+  padding: 8px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+textarea {
+  border-radius: 18px;
+  min-height: 80px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--accent-focus);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+  background: var(--bg-input-focus);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.char-info {
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-label);
+}
+
+/* ======================================================
+   IMAGE UPLOAD
+   ====================================================== */
+.image-upload {
+  border-radius: 20px;
+  border: 1px dashed var(--border-dashed);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  margin-bottom: 18px;
+  background: var(--bg-input);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.image-upload:hover {
+  background: var(--bg-hover-strong);
+  border-color: var(--accent-focus);
+}
+
+.image-upload-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-label);
+}
+
+.image-upload-text-main {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.image-upload-text-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.story-group textarea {
+  min-height: 200px;
+}
+
+/* ======================================================
+   FOOTER / SWITCH
+   ====================================================== */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.switch-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.switch-label {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.switch {
+  position: relative;
+  width: 158px;
+  height: 34px;
+  background: var(--bg-input);
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  cursor: pointer;
+}
+
+.switch-option {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  z-index: 2;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 50%;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  transition: transform 0.2s;
+  z-index: 1;
+}
+
+.switch.public .switch-thumb { transform: translateX(0%); }
+.switch.private .switch-thumb { transform: translateX(100%); }
+
+/* ======================================================
+   BUTTONS
+   ====================================================== */
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary {
+  border-color: var(--border-input);
+}
+
+.btn-secondary:hover {
+  background: var(--overlay-button-hover);
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  font-weight: 600;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+/* ======================================================
+   STATUS / MAP
+   ====================================================== */
+#status {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--text-info);
+}
+
+#mapPreview {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--overlay-dark);
+  border-radius: 12px;
+}
+
+#mapPreview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+#mapFileName {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ======================================================
+   PROFILE WIDGET
+   ====================================================== */
+.profile-widget {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 999;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.profile-pic {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--avatar-start), var(--avatar-end));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--avatar-text);
+  box-shadow: var(--shadow-avatar);
+  overflow: hidden;
+}
+
+.profile-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+
+/* ======================================================
+   RESPONSIVE
+   ====================================================== */
+@media (max-width: 640px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .button-row {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

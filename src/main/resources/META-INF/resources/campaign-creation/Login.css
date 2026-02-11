@@ -1,3 +1,11 @@
+
+:root {
+  --green-600: #004c3685;   /* Box-Hintergrund */
+  --green-700: #256628;   /* Hover/Focus dunkler */
+  --green-300: #81c784;   /* zarter Rand/Fokus */
+  --white: #ffffff;
+}
+
 body {
     background-image: url("../images/Background.png");
     background-size: cover;
@@ -12,17 +20,6 @@ body {
     min-height: 100vh;
     margin: 0;
 }
-
-
-    :root {
-      --green-600: #004c3685;   /* Box-Hintergrund */
-      --green-700: #256628;   /* Hover/Focus dunkler */
-      --green-300: #81c784;   /* zarter Rand/Fokus */
-      --white: #ffffff;
-    }
-
-
-
     .login-box {
       width: 320px;
       background: var(--green-600);
@@ -60,11 +57,11 @@ body {
       color: var(--white);
       padding: 0 12px;
       outline: none;
+      font-weight: bold;
       transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-      color : black;
     }
     .input::placeholder {
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(255, 255, 255);
     }
     .input:focus {
       border-color: var(--green-300);
