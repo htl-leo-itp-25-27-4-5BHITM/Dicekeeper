@@ -1,114 +1,411 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Character Interface</title>
-    <link rel="stylesheet" href="./GM_Ui.css">
-    <script src="GM_Ui.js" defer></script>
+<meta charset="UTF-8">
+<title>Dicekeeper – Dungeon Master UI</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    height: 100vh;
+    font-family: "Segoe UI", sans-serif;
+    color: #e8f5e9;
+    background: 
+        linear-gradient(rgba(10,25,20,0.85), rgba(10,25,20,0.85)),
+        url(../images/HintergrundPC.jpg) center/cover no-repeat;
+    overflow: hidden;
+}
+
+header {
+    height: 57px;
+    background: #0f3d2e;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+}
+
+header h1 { font-size: 22px; }
+
+.current-player {
+    padding: 10px 20px;
+    border-radius: 30px;
+    background: linear-gradient(90deg, #00c853, #69f0ae);
+    font-weight: bold;
+    color: #003300;
+}
+
+/* ===== GRID FIX ===== */
+
+.main {
+    height: calc(100vh - 57px);
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 0.8fr;
+    gap: 25px;
+    padding: 30px 50px;
+}
+
+/* WICHTIG – erlaubt Schrumpfen */
+.main > * {
+    min-height: 0;
+}
+
+.glass {
+    background: rgba(20, 60, 45, 0.65);
+    backdrop-filter: blur(18px);
+    border-radius: 25px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ===== MAP ===== */
+
+.map-container {
+    justify-content: center;
+    align-items: center;
+}
+
+.map-box {
+    width: 100%;
+    aspect-ratio: 1/1;
+    background: rgba(0,0,0,0.5);
+    border-radius: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #9ccc65;
+}
+
+/* ===== CENTER COLUMN 50/50 ===== */
+
+.center-column {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    height: 100%;
+    min-height: 0;
+}
+
+.center-column .glass {
+    flex: 1;
+    min-height: 0;
+}
+
+.center-column h3 {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+#decisionList {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.chat-box {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    background: rgba(0,0,0,0.4);
+    border-radius: 15px;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+/* ===== RIGHT COLUMN ===== */
+
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    min-height: 0;
+}
+
+.player {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.05);
+}
+
+.player.active {
+    background: linear-gradient(90deg, #00c853, #69f0ae);
+    color: #003300;
+    font-weight: bold;
+}
+
+/* ===== BUTTONS & INPUTS ===== */
+
+button {
+    border: none;
+    border-radius: 15px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 5px;
+    background: linear-gradient(90deg, #00c853, #69f0ae);
+    color: #003300;
+}
+
+.purple-btn {
+    background: linear-gradient(90deg, #7b1fa2, #ba68c8);
+    color: white;
+}
+
+select, input, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 12px;
+    border: none;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+/* ===== DECISION CARDS ===== */
+
+.decision-card {
+    background: rgba(0,0,0,0.4);
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 10px;
+}
+
+.vote-area {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== MODAL ===== */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    width: 400px;
+    background: rgba(20,60,45,0.95);
+    padding: 25px;
+    border-radius: 20px;
+}
+
+/* ===== SCROLLBAR ===== */
+
+#decisionList::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#decisionList::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(100,255,150,0.4);
+    border-radius: 10px;
+}
+</style>
 </head>
-
 <body>
-<div class="container">
 
-    <!-- Character Slider -->
-    <div class="character-slider">
-        <div style="margin-top: 5vh">
-            <p>Nächsten Spieler:</p>
-        </div>
-        <div class="slider-images">
-            <img src="../images/Barbarian.png">
-            <img src="../images/Bard.png">
-            <img src="../images/Cleric.png">
-            <img src="../images/Druid.png">
-            <img src="../images/Fighter.png">
-            <img src="../images/Monk.png">
-            <img src="../images/Paladin.png">
-            <img src="../images/Rogue.png">
+<header>
+    <h1>Dungeon Master – Die Schatten von Grünwald</h1>
+    <div class="current-player">
+        Aktueller Spieler: <span id="currentPlayer">Arne</span>
+    </div>
+</header>
+
+<div class="main">
+
+    <div class="map-container glass">
+        <div class="map-box">
+            Map Bereich (Dungeon Master View)
         </div>
     </div>
 
-    <!-- Character Info -->
-    <div class="character-info">
-        <h3>Aktueller Spieler</h3>
-        <img class="sliderImage" src="../images/Barbarian.png">
+    <div class="center-column">
 
-        <div class="basic-info">
-            <p><strong>Name:</strong> Gandalf</p>
-            <p><strong>HP:</strong> 68 / 100</p>
-            <p><strong>MP:</strong> 100 / 100</p>
-            <p><strong>Background:</strong> Acolyte</p>
-            <p><strong>Class:</strong> Bard</p>
+        <div class="glass equal-box">
+            <h3>Gruppenentscheidungen</h3>
+            <button class="purple-btn" onclick="openDecisionModal()">Neue Entscheidung</button>
+            <div id="decisionList"></div>
         </div>
 
-        <!-- Stats Box -->
-        <div class="stats-box">
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Strength</strong>
-                    <span>measuring physical power</span>
-                </div>
-                <div class="stat-value">12</div>
-            </div>
+        
 
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Dexterity</strong>
-                    <span>measuring agility</span>
-                </div>
-                <div class="stat-value">14</div>
-            </div>
-
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Constitution</strong>
-                    <span>measuring endurance</span>
-                </div>
-                <div class="stat-value">13</div>
-            </div>
-
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Intelligence</strong>
-                    <span>measuring reasoning</span>
-                </div>
-                <div class="stat-value">16</div>
-            </div>
-
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Wisdom</strong>
-                    <span>measuring perception</span>
-                </div>
-                <div class="stat-value">11</div>
-            </div>
-
-            <div class="stat-row">
-                <div class="stat-text">
-                    <strong>Charisma</strong>
-                    <span>measuring force of personality</span>
-                </div>
-                <div class="stat-value">18</div>
-            </div>
+       <div class="glass equal-box chat-box">
+                    <h3>Dungeon Master Chat</h3>
+            <div class="chat-messages" id="chatMessages"></div>
+            <input type="text" id="chatInput" placeholder="Nachricht eingeben">
+            <button onclick="sendMessage()">Senden</button>
         </div>
+
     </div>
 
-    <div id="mapBox">
-        <h3>Map</h3>
-        <img src="../images/kampagne-img.jpg" class="map">
-    </div>
+    <div class="right-column">
 
-    <!-- Chat -->
-    <div class="chat-box">
-        <div class="chat-header">CHATGPT BOT</div>
-        <div class="chat-content" id="chatContent"></div>
-
-        <div class="chat-input-wrapper">
-            <input type="text" id="chatInput" placeholder="Prompt eingeben">
-            <button id="sendBtn">&#8593;</button>
+        <div class="glass">
+            <h3>Spieler</h3>
+            <div id="playerList"></div>
         </div>
+
+        <div class="glass">
+            <h3>Aktueller Spieler</h3>
+            <button onclick="nextTurn()">Zug beenden</button>
+        </div>
+         <div class="glass">
+            <h3>Würfeln</h3>
+
+            <label>Würfeltyp:</label>
+            <select id="diceType">
+                <option value="4">d4</option>
+                <option value="6">d6</option>
+                <option value="8">d8</option>
+                <option value="10">d10</option>
+                <option value="12">d12</option>
+                <option value="20" selected>d20</option>
+                <option value="100">d100</option>
+            </select>
+
+            <button onclick="rollDice()">Random würfeln</button>
+
+            <label>Manuelles Ergebnis:</label>
+            <input type="number" id="manualInput">
+
+            <h2 id="diceResult">-</h2>
+
+            <button onclick="saveResult()">Ergebnis speichern</button>
+        </div>
+
     </div>
+   
 
 </div>
+
+<div id="decisionModal" class="modal">
+    <div class="modal-content">
+        <h3>Neue Gruppenentscheidung</h3>
+        <input type="text" id="decisionTitle" placeholder="Titel">
+        <textarea id="decisionText" rows="4" placeholder="Beschreibung"></textarea>
+        <button onclick="saveDecision()">Speichern</button>
+        <button onclick="closeDecisionModal()">Abbrechen</button>
+    </div>
+</div>
+
+<script>
+
+let players = ["Arne", "Lena", "Max"];
+let currentIndex = 0;
+let decisions = [];
+
+function renderPlayers() {
+    const list = document.getElementById("playerList");
+    list.innerHTML = "";
+    players.forEach((p, index) => {
+        const div = document.createElement("div");
+        div.className = "player" + (index === currentIndex ? " active" : "");
+        div.innerText = p;
+        list.appendChild(div);
+    });
+    document.getElementById("currentPlayer").innerText = players[currentIndex];
+}
+
+function nextTurn() {
+    currentIndex = (currentIndex + 1) % players.length;
+    renderPlayers();
+}
+
+/* Würfel */
+function rollDice() {
+    const type = parseInt(document.getElementById("diceType").value);
+    const result = Math.floor(Math.random() * type) + 1;
+    document.getElementById("diceResult").innerText = result;
+}
+
+function saveResult() {
+    const manual = document.getElementById("manualInput").value;
+    if (manual) {
+        document.getElementById("diceResult").innerText = manual;
+    }
+}
+
+/* Entscheidungen */
+function openDecisionModal() {
+    document.getElementById("decisionModal").style.display = "flex";
+}
+
+function closeDecisionModal() {
+    document.getElementById("decisionModal").style.display = "none";
+}
+
+function saveDecision() {
+    const title = document.getElementById("decisionTitle").value.trim();
+    const text = document.getElementById("decisionText").value.trim();
+    if (!title || !text) return;
+
+    decisions.push({ id: Date.now(), title, text, yes: 0, no: 0 });
+    renderDecisions();
+    closeDecisionModal();
+}
+
+function vote(id, type) {
+    const d = decisions.find(dec => dec.id === id);
+    d[type]++;
+    renderDecisions();
+}
+
+function renderDecisions() {
+    const container = document.getElementById("decisionList");
+    container.innerHTML = "";
+    decisions.forEach(d => {
+        container.innerHTML += `
+        <div class="decision-card">
+            <h4>${d.title}</h4>
+            <p>${d.text}</p>
+            <div class="vote-area">
+                <button onclick="vote(${d.id}, 'yes')">Ja (${d.yes})</button>
+                <button onclick="vote(${d.id}, 'no')">Nein (${d.no})</button>
+            </div>
+        </div>`;
+    });
+}
+
+/* Chat */
+function sendMessage() {
+    const input = document.getElementById("chatInput");
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const chat = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.innerHTML = "<strong>Dungeon Master:</strong> " + msg;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    input.value = "";
+}
+
+document.getElementById("chatInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") sendMessage();
+});
+
+renderPlayers();
+
+</script>
+
 </body>
 </html>
