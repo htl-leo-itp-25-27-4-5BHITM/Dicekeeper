@@ -105,6 +105,19 @@ header h1 { font-size: 22px; }
     overflow-y: auto;
     min-height: 0;
 }
+.decision-card h4,
+.decision-card p {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Chat Text darf Layout nie sprengen */
+.chat-messages div {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
 
 .chat-box {
     display: flex;
@@ -133,10 +146,11 @@ header h1 { font-size: 22px; }
 }
 
 .player {
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 18px;
     background: rgba(255,255,255,0.05);
+    min-height: 70px;   /* Spieler Box größer */
 }
 
 .player.active {
@@ -181,6 +195,9 @@ select, input, textarea {
     padding: 15px;
     border-radius: 15px;
     margin-bottom: 10px;
+
+    max-height: 180px;     /* maximale Höhe */
+    overflow-y: auto;      /* eigener Scroll */
 }
 
 .vote-area {
@@ -219,12 +236,42 @@ select, input, textarea {
     background: rgba(100,255,150,0.4);
     border-radius: 10px;
 }
+.player-container {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* Scrollbar für Spieler */
+.player-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.player-container::-webkit-scrollbar-thumb {
+    background: rgba(100,255,150,0.4);
+    border-radius: 10px;
+}
+
+/* ===== Würfel ===== */
+input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.input-error {
+    border: 2px solid #ff5252;
+}
+
+.success-feedback {
+    color: #69f0ae;
+    font-size: 14px;
+    margin-top: 5px;
+}
 </style>
 </head>
 <body>
 
 <header>
-    <h1>Dungeon Master – Die Schatten von Grünwald</h1>
+    <h1> </h1>
     <div class="current-player">
         Aktueller Spieler: <span id="currentPlayer">Arne</span>
     </div>
@@ -259,14 +306,9 @@ select, input, textarea {
 
     <div class="right-column">
 
-        <div class="glass">
+        <div class="glass player-container">
             <h3>Spieler</h3>
             <div id="playerList"></div>
-        </div>
-
-        <div class="glass">
-            <h3>Aktueller Spieler</h3>
-            <button onclick="nextTurn()">Zug beenden</button>
         </div>
          <div class="glass">
             <h3>Würfeln</h3>
@@ -285,11 +327,18 @@ select, input, textarea {
             <button onclick="rollDice()">Random würfeln</button>
 
             <label>Manuelles Ergebnis:</label>
-            <input type="number" id="manualInput">
+            <input 
+                type="number" 
+                id="manualInput"
+                min="1"
+                step="1"
+                placeholder="Zahl eingeben..."
+            >
 
             <h2 id="diceResult">-</h2>
 
             <button onclick="saveResult()">Ergebnis speichern</button>
+            <div id="diceFeedback" style="margin-top:10px; font-weight:600;"></div>
         </div>
 
     </div>
@@ -308,40 +357,135 @@ select, input, textarea {
 </div>
 
 <script>
-
-let players = ["Arne", "Lena", "Max"];
+let players = [
+    { name: "Arne", hp: 25, strength: 8, active: true },
+    { name: "Lena", hp: 18, strength: 5, active: true },
+    { name: "Max", hp: 30, strength: 10, active: true }
+];
 let currentIndex = 0;
 let decisions = [];
 
 function renderPlayers() {
     const list = document.getElementById("playerList");
     list.innerHTML = "";
-    players.forEach((p, index) => {
+
+    players.forEach((player, index) => {
+
         const div = document.createElement("div");
         div.className = "player" + (index === currentIndex ? " active" : "");
-        div.innerText = p;
+
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>${player.name}</span>
+               <button class="purple-btn" onclick="toggleActive(${index})" style="padding:6px 10px; font-size:12px;">
+                    ${player.active ? "Aussetzen" : "Aktivieren"}
+                </button>
+            </div>
+        `;
+
+        // Aktiver Spieler zeigt Details
+        if (index === currentIndex) {
+            div.innerHTML += `
+                <div style="margin-top:10px; font-size:14px;">
+                    ❤️ HP: ${player.hp}<br>
+                    💪 Stärke: ${player.strength}
+                    <br><br>
+                    <button class="purple-btn" onclick="nextTurn()">Zug beenden</button>
+                </div>
+            `;
+        }
+
         list.appendChild(div);
     });
-    document.getElementById("currentPlayer").innerText = players[currentIndex];
+
+    document.getElementById("currentPlayer").innerText = players[currentIndex].name;
 }
 
 function nextTurn() {
-    currentIndex = (currentIndex + 1) % players.length;
+
+    let found = false;
+    let tries = 0;
+
+    while (!found && tries < players.length) {
+        currentIndex = (currentIndex + 1) % players.length;
+        if (players[currentIndex].active) {
+            found = true;
+        }
+        tries++;
+    }
+
     renderPlayers();
+}
+function toggleActive(index) {
+    players[index].active = !players[index].active;
+
+    // Falls aktueller Spieler deaktiviert wird → direkt nächster Zug
+    if (!players[currentIndex].active) {
+        nextTurn();
+    } else {
+        renderPlayers();
+    }
 }
 
 /* Würfel */
 function rollDice() {
+    if (manualInput.value.trim() !== "") {
+        showFeedback("Manuelles Ergebnis aktiv – Random deaktiviert", "warning");
+        return;
+    }
+
     const type = parseInt(document.getElementById("diceType").value);
     const result = Math.floor(Math.random() * type) + 1;
+
     document.getElementById("diceResult").innerText = result;
+    showFeedback("🎲 Gewürfelt: " + result, "success");
 }
 
 function saveResult() {
-    const manual = document.getElementById("manualInput").value;
-    if (manual) {
-        document.getElementById("diceResult").innerText = manual;
+    const type = parseInt(document.getElementById("diceType").value);
+    const manual = parseInt(manualInput.value);
+
+    if (isNaN(manual)) {
+        showFeedback("Bitte eine gültige Zahl eingeben", "error");
+        return;
     }
+
+    if (manual < 1 || manual > type) {
+        showFeedback("Zahl muss zwischen 1 und " + type + " liegen", "error");
+        return;
+    }
+
+    document.getElementById("diceResult").innerText = manual;
+    showFeedback("Manuelles Ergebnis gespeichert", "success");
+}
+const manualInput = document.getElementById("manualInput");
+const rollButton = document.querySelector("button[onclick='rollDice()']");
+
+manualInput.addEventListener("input", () => {
+    if (manualInput.value.trim() !== "") {
+        rollButton.disabled = true;
+        rollButton.style.opacity = "0.5";
+    } else {
+        rollButton.disabled = false;
+        rollButton.style.opacity = "1";
+    }
+});
+
+function showFeedback(message, type) {
+    const fb = document.getElementById("diceFeedback");
+    fb.innerText = message;
+
+    if (type === "error") {
+        fb.style.color = "#ff5252";
+    } else if (type === "warning") {
+        fb.style.color = "#ffd740";
+    } else {
+        fb.style.color = "#69f0ae";
+    }
+
+    setTimeout(() => {
+        fb.innerText = "";
+    }, 3000);
 }
 
 /* Entscheidungen */
