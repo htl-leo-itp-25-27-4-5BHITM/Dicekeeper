@@ -37,7 +37,8 @@
       margin: 0 auto;
       padding: 20px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
+      align-content: center;
       gap: 20px;
     }
 
@@ -304,6 +305,7 @@
       flex-direction: column;
       gap: 8px;
     }
+  
 
     .player {
       display: flex;
@@ -697,6 +699,12 @@
     .stat-icon {
       font-size: 16px;
     }
+    #players-card {
+      width: 50%;
+      justify-self: center;
+      display: flex;
+      flex-direction: column;
+    }
   </style>
 </head>
 <body>
@@ -760,7 +768,7 @@
   </div>
 
   <!-- Group Decisions Section -->
-  <div class="card">
+  <div class="card" style="display: none;">
     <div class="card-header">
       <div class="card-title">
         <span class="card-title-icon">⚔️</span>
@@ -780,7 +788,7 @@
   </div>
 
   <!-- Players Section -->
-  <div class="card">
+  <div class="card" id="players-card">
     <div class="card-header">
       <div class="card-title">
         <span class="card-title-icon">👥</span>
