@@ -736,7 +736,7 @@
         ⚙️ Einstellungen
       </button>
 
-      <a href="./GM_Ui.html" onclick="startCampaign()" style="text-decoration:none; color: white">
+        <a id="startCampaignLink" href="#" onclick="startCampaign(event)" style="text-decoration:none; color: white">
         <button class="btn start-campaign-btn">
           🎮 Kampagne starten
         </button>
@@ -1482,10 +1482,9 @@
     window.location.href = './CampaignDetail.html?id=' + campaignId;
   };
 
-  window.startCampaign = function() {
-    // TODO: Implement campaign start functionality
-    // This could open a battle tracker, session view, etc.
-    showStatus('Kampagne wird gestartet... (Feature kommt bald!)');
+  window.startCampaign = function(event) {
+    if (event) event.preventDefault();
+    window.location.href = './GM_Ui.html?campaignId=' + encodeURIComponent(campaignId);
   };
 
   // Initialize

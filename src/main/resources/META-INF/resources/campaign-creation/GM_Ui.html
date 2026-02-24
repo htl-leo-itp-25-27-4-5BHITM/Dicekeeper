@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Dicekeeper – Dungeon Master UI</title>
+<link rel="stylesheet" href="../common/header.css">
 
 <style>
 * { box-sizing: border-box; }
@@ -12,35 +13,17 @@ body {
     height: 100vh;
     font-family: "Segoe UI", sans-serif;
     color: #e8f5e9;
-    background: 
-        linear-gradient(rgba(10,25,20,0.85), rgba(10,25,20,0.85)),
-        url(../images/HintergrundPC.jpg) center/cover no-repeat;
+    background-image: url("../images/Background.png");
+    background-size: cover;
+    background-attachment: fixed;
     overflow: hidden;
-}
-
-header {
-    height: 57px;
-    background: #0f3d2e;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 40px;
-}
-
-header h1 { font-size: 22px; }
-
-.current-player {
-    padding: 10px 20px;
-    border-radius: 30px;
-    background: linear-gradient(90deg, #00c853, #69f0ae);
-    font-weight: bold;
-    color: #003300;
+    padding-top: 60px;
 }
 
 /* ===== GRID FIX ===== */
 
 .main {
-    height: calc(100vh - 57px);
+    height: calc(100vh - 60px);
     display: grid;
     grid-template-columns: 2fr 1.2fr 0.8fr;
     gap: 25px;
@@ -150,7 +133,13 @@ header h1 { font-size: 22px; }
     margin-bottom: 12px;
     border-radius: 18px;
     background: rgba(255,255,255,0.05);
-    min-height: 70px;   /* Spieler Box größer */
+    min-height: 70px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.player:hover {
+    background: rgba(255,255,255,0.12);
 }
 
 .player.active {
@@ -158,6 +147,40 @@ header h1 { font-size: 22px; }
     color: #003300;
     font-weight: bold;
 }
+
+/* ===== CHARACTER MODAL ===== */
+.char-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+.char-modal-overlay.visible { display: flex; }
+
+.char-modal {
+    width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: rgba(20,60,45,0.96);
+    backdrop-filter: blur(18px);
+    border-radius: 25px;
+    padding: 28px 24px;
+    color: #e8f5e9;
+}
+.char-modal h2 { margin: 0 0 4px 0; font-size: 22px; }
+.char-modal .char-meta { font-size: 14px; opacity: 0.85; margin-bottom: 18px; line-height: 1.6; }
+.char-modal .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.char-modal .stat-box { background: rgba(0,0,0,0.32); border-radius: 14px; padding: 12px 8px; text-align: center; }
+.char-modal .stat-label { font-size: 11px; opacity: 0.7; }
+.char-modal .stat-value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+.char-modal .stat-modifier { font-size: 11px; opacity: 0.8; }
+.char-modal .info-box { background: rgba(0,0,0,0.32); border-radius: 14px; padding: 14px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-top: 10px; }
+.char-modal .close-btn { margin-top: 16px; width: 100%; padding: 12px; border: none; border-radius: 14px; background: linear-gradient(90deg, #00c853, #69f0ae); color: #003300; font-weight: 700; font-size: 15px; cursor: pointer; }
+.char-modal::-webkit-scrollbar { width: 6px; }
+.char-modal::-webkit-scrollbar-thumb { background: rgba(100,255,150,0.4); border-radius: 10px; }
 
 /* ===== BUTTONS & INPUTS ===== */
 
@@ -188,16 +211,306 @@ select, input, textarea {
     color: white;
 }
 
+/* ===== DECISIONS PANEL ===== */
+
+.decisions-panel {
+    position: relative;
+}
+
+.decisions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.decisions-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.new-decision-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #7b1fa2, #ba68c8);
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(123,31,162,0.3);
+}
+
+.new-decision-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 14px rgba(123,31,162,0.45);
+}
+
+/* Decision empty state */
+.decisions-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    opacity: 0.5;
+    text-align: center;
+    padding: 20px;
+}
+
+.decisions-empty-icon {
+    font-size: 38px;
+    margin-bottom: 10px;
+}
+
+.decisions-empty-text {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 /* ===== DECISION CARDS ===== */
 
 .decision-card {
-    background: rgba(0,0,0,0.4);
-    padding: 15px;
-    border-radius: 15px;
+    background: rgba(0,0,0,0.35);
+    padding: 14px 16px;
+    border-radius: 16px;
     margin-bottom: 10px;
+    border-left: 3px solid #ba68c8;
+    transition: border-color 0.2s;
+}
 
-    max-height: 180px;     /* maximale Höhe */
-    overflow-y: auto;      /* eigener Scroll */
+.decision-card:hover {
+    border-left-color: #ce93d8;
+}
+
+.decision-card h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.decision-card .decision-desc {
+    font-size: 12.5px;
+    opacity: 0.8;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.decision-card .decision-desc::-webkit-scrollbar {
+    width: 4px;
+}
+
+.decision-card .decision-desc::-webkit-scrollbar-thumb {
+    background: rgba(186,104,200,0.3);
+    border-radius: 10px;
+}
+
+.decision-card .decision-time {
+    font-size: 10px;
+    opacity: 0.5;
+    margin-bottom: 8px;
+}
+
+/* Character counter */
+.char-counter {
+    float: right;
+    font-weight: 400;
+    opacity: 0.5;
+    font-size: 11px;
+}
+
+.char-counter.near-limit {
+    color: #ffd740;
+    opacity: 1;
+}
+
+.char-counter.at-limit {
+    color: #ff5252;
+    opacity: 1;
+}
+
+/* Vote bar */
+.vote-bar-container {
+    margin-top: 8px;
+}
+
+.vote-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.vote-bar-labels .vote-yes { color: #69f0ae; }
+.vote-bar-labels .vote-no  { color: #ff5252; }
+
+.vote-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 99px;
+    overflow: hidden;
+    display: flex;
+}
+
+.vote-bar-yes {
+    height: 100%;
+    background: linear-gradient(90deg, #00c853, #69f0ae);
+    border-radius: 99px 0 0 99px;
+    transition: width 0.4s ease;
+}
+
+.vote-bar-no {
+    height: 100%;
+    background: linear-gradient(90deg, #ff5252, #ff8a80);
+    border-radius: 0 99px 99px 0;
+    transition: width 0.4s ease;
+}
+
+.vote-buttons {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.vote-btn {
+    flex: 1;
+    padding: 7px 0;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+    margin: 0;
+}
+
+.vote-btn:hover {
+    transform: scale(1.03);
+}
+
+.vote-btn:active {
+    transform: scale(0.97);
+}
+
+.vote-btn-yes {
+    background: rgba(105,240,174,0.15);
+    color: #69f0ae;
+    border: 1px solid rgba(105,240,174,0.3);
+}
+
+.vote-btn-no {
+    background: rgba(255,82,82,0.15);
+    color: #ff8a80;
+    border: 1px solid rgba(255,82,82,0.3);
+}
+
+.vote-total {
+    text-align: center;
+    font-size: 10px;
+    opacity: 0.45;
+    margin-top: 6px;
+}
+
+/* ===== DECISION MODAL REDESIGN ===== */
+
+.decision-modal {
+    width: 440px;
+}
+
+.decision-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.decision-modal-header span {
+    font-size: 28px;
+}
+
+.decision-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.modal-label {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.7;
+    margin-bottom: 2px;
+    display: block;
+}
+
+.decision-modal input,
+.decision-modal textarea {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: border-color 0.2s;
+}
+
+.decision-modal input:focus,
+.decision-modal textarea:focus {
+    outline: none;
+    border-color: #ba68c8;
+}
+
+.decision-modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.modal-cancel-btn {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    background: transparent;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.modal-cancel-btn:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.modal-save-btn {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #7b1fa2, #ba68c8);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.modal-save-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 14px rgba(123,31,162,0.4);
 }
 
 .vote-area {
@@ -270,12 +583,6 @@ input:disabled {
 </head>
 <body>
 
-<header>
-    <h1> </h1>
-    <div class="current-player">
-        Aktueller Spieler: <span id="currentPlayer">Arne</span>
-    </div>
-</header>
 
 <div class="main">
 
@@ -287,9 +594,11 @@ input:disabled {
 
     <div class="center-column">
 
-        <div class="glass equal-box">
-            <h3>Gruppenentscheidungen</h3>
-            <button class="purple-btn" onclick="openDecisionModal()">Neue Entscheidung</button>
+        <div class="glass equal-box decisions-panel">
+            <div class="decisions-header">
+                <h3>⚖️ Gruppenentscheidungen</h3>
+                <button class="new-decision-btn" onclick="openDecisionModal()" title="Neue Entscheidung">+</button>
+            </div>
             <div id="decisionList"></div>
         </div>
 
@@ -346,63 +655,228 @@ input:disabled {
 
 </div>
 
-<div id="decisionModal" class="modal">
-    <div class="modal-content">
-        <h3>Neue Gruppenentscheidung</h3>
-        <input type="text" id="decisionTitle" placeholder="Titel">
-        <textarea id="decisionText" rows="4" placeholder="Beschreibung"></textarea>
-        <button onclick="saveDecision()">Speichern</button>
-        <button onclick="closeDecisionModal()">Abbrechen</button>
+<div id="decisionModal" class="modal" onclick="if(event.target===this) closeDecisionModal()">
+    <div class="modal-content decision-modal">
+        <div class="decision-modal-header">
+            <span>⚖️</span>
+            <h3>Neue Gruppenentscheidung</h3>
+        </div>
+        <label class="modal-label">Titel <span id="titleCounter" class="char-counter">0 / 60</span></label>
+        <input type="text" id="decisionTitle" placeholder="z.B. Welchen Pfad nehmen wir?" maxlength="60" oninput="updateCounter('decisionTitle','titleCounter',60)">
+        <label class="modal-label">Beschreibung <span id="textCounter" class="char-counter">0 / 200</span></label>
+        <textarea id="decisionText" rows="4" placeholder="Beschreibe die Entscheidung für deine Spieler..." maxlength="200" oninput="updateCounter('decisionText','textCounter',200)"></textarea>
+        <div class="decision-modal-actions">
+            <button class="modal-cancel-btn" onclick="closeDecisionModal()">Abbrechen</button>
+            <button class="modal-save-btn" onclick="saveDecision()">✓ Erstellen</button>
+        </div>
     </div>
 </div>
 
+<div id="charModalOverlay" class="char-modal-overlay" onclick="closeCharModal(event)">
+  <div class="char-modal" id="charModalContent" onclick="event.stopPropagation()">
+  </div>
+</div>
+
 <script>
-let players = [
-    { name: "Arne", hp: 25, strength: 8, active: true },
-    { name: "Lena", hp: 18, strength: 5, active: true },
-    { name: "Max", hp: 30, strength: 10, active: true }
-];
+const params = new URLSearchParams(window.location.search);
+const campaignId = params.get("campaignId");
+
+let players = [];
 let currentIndex = 0;
 let decisions = [];
+
+// ===== Load players from DB =====
+async function loadPlayers() {
+    if (!campaignId) {
+        document.getElementById("playerList").innerHTML = "<div style='opacity:0.6'>No campaign selected.</div>";
+        return;
+    }
+
+    try {
+        // Get all campaign players for this campaign
+        const cpRes = await fetch(`/api/campaign-player/${campaignId}`);
+        const campaignPlayers = await cpRes.json();
+
+        // Filter to only actual PLAYERs (not DM)
+        const playerEntries = campaignPlayers.filter(cp => cp.role === "PLAYER");
+
+        // Fetch player details + character data for each
+        const loaded = [];
+        for (const cp of playerEntries) {
+            try {
+                const pRes = await fetch(`/api/player/id/${cp.playerId}`);
+                if (pRes.ok) {
+                    const playerData = await pRes.json();
+                    let hp = 10, strength = 10;
+
+                    // If character exists, fetch its data for HP and Stärke
+                    if (cp.characterId) {
+                        try {
+                            const cRes = await fetch(`/api/character/${cp.characterId}`);
+                            if (cRes.ok) {
+                                const charData = await cRes.json();
+                                const strScore = charData.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'strength');
+                                const conScore = charData.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'constitution');
+                                strength = strScore ? strScore.score : 10;
+                                const conMod = conScore ? Math.floor((conScore.score - 10) / 2) : 0;
+                                hp = 10 + conMod + ((charData.level || 1) - 1) * (6 + conMod);
+                            }
+                        } catch (e) { /* use defaults */ }
+                    }
+
+                    loaded.push({
+                        id: playerData.id,
+                        name: playerData.username || playerData.name || "Unknown",
+                        profilePicture: playerData.profilePicture,
+                        characterId: cp.characterId,
+                        characterStatus: cp.characterStatus,
+                        hp: hp,
+                        strength: strength,
+                        active: true
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed to load player", cp.playerId, e);
+            }
+        }
+
+        players = loaded;
+        renderPlayers();
+    } catch (err) {
+        console.error("Failed to load campaign players", err);
+        document.getElementById("playerList").innerHTML = "<div style='opacity:0.6'>Failed to load players.</div>";
+    }
+}
 
 function renderPlayers() {
     const list = document.getElementById("playerList");
     list.innerHTML = "";
 
-    players.forEach((player, index) => {
+    if (players.length === 0) {
+        list.innerHTML = "<div style='opacity:0.6; padding:10px;'>No players have joined yet.</div>";
+        return;
+    }
 
+    players.forEach((player, index) => {
         const div = document.createElement("div");
         div.className = "player" + (index === currentIndex ? " active" : "");
 
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span>${player.name}</span>
-               <button class="purple-btn" onclick="toggleActive(${index})" style="padding:6px 10px; font-size:12px;">
+                <span style="cursor:pointer;" onclick="event.stopPropagation();" class="player-name" data-index="${index}">${player.name}</span>
+                <button class="purple-btn" onclick="event.stopPropagation(); toggleActive(${index})" style="padding:6px 10px; font-size:12px;">
                     ${player.active ? "Aussetzen" : "Aktivieren"}
                 </button>
             </div>
         `;
 
-        // Aktiver Spieler zeigt Details
+        // Active player shows details and Zug beenden button
         if (index === currentIndex) {
             div.innerHTML += `
                 <div style="margin-top:10px; font-size:14px;">
                     ❤️ HP: ${player.hp}<br>
-                    💪 Stärke: ${player.strength}
-                    <br><br>
-                    <button class="purple-btn" onclick="nextTurn()">Zug beenden</button>
+                    <br>
+                    <button class="purple-btn" onclick="event.stopPropagation(); nextTurn()">Zug beenden</button>
                 </div>
             `;
         }
 
+        // Make player clickable to show character stats
+        div.addEventListener("click", () => showCharacterModal(player));
         list.appendChild(div);
     });
+}
 
-    document.getElementById("currentPlayer").innerText = players[currentIndex].name;
+// ===== Character Modal =====
+function calculateModifier(score) {
+    return Math.floor((score - 10) / 2);
+}
+
+function formatModifier(mod) {
+    return mod >= 0 ? "+" + mod : "" + mod;
+}
+
+async function showCharacterModal(player) {
+    const overlay = document.getElementById("charModalOverlay");
+    const content = document.getElementById("charModalContent");
+
+    if (!player.characterId) {
+        content.innerHTML = `
+            <h2>${player.name}</h2>
+            <div class="char-meta">This player hasn't submitted a character yet.</div>
+            <button class="close-btn" onclick="closeCharModal()">Close</button>
+        `;
+        overlay.classList.add("visible");
+        return;
+    }
+
+    content.innerHTML = `<div style="text-align:center;padding:30px;opacity:0.7;">Loading character...</div>`;
+    overlay.classList.add("visible");
+
+    try {
+        const res = await fetch(`/api/character/${player.characterId}`);
+        if (!res.ok) throw new Error("Character not found");
+        const character = await res.json();
+
+        const abilityIcons = {
+            Strength: "💪", Dexterity: "🏹", Constitution: "🛡️",
+            Intelligence: "🧠", Wisdom: "🔮", Charisma: "✨"
+        };
+
+        const abilities = Object.keys(abilityIcons);
+
+        function getScore(name) {
+            const found = character.abilityScores?.find(a =>
+                a.abilityName.toLowerCase() === name.toLowerCase()
+            );
+            return found ? found.score : 10;
+        }
+
+        const statsHTML = abilities.map(name => {
+            const score = getScore(name);
+            const mod = calculateModifier(score);
+            return `
+                <div class="stat-box">
+                    <div class="stat-label">${abilityIcons[name]} ${name.substring(0,3).toUpperCase()}</div>
+                    <div class="stat-value">${score}</div>
+                    <div class="stat-modifier">${formatModifier(mod)}</div>
+                </div>
+            `;
+        }).join("");
+
+        content.innerHTML = `
+            <h2>${character.name || "Unnamed Character"}</h2>
+            <div class="char-meta">
+                👤 Player: ${player.name}<br>
+                🏆 Level ${character.level || 1}<br>
+                🧬 ${character.race || "Unknown Race"}<br>
+                ⚔️ ${character.characterClass?.name || "No Class"}<br>
+                📖 ${character.background?.name || "No Background"}<br>
+                ⚖️ ${character.alignment || "Unaligned"}
+            </div>
+            <div style="font-weight:600;margin-bottom:8px;">Ability Scores</div>
+            <div class="stats-grid">${statsHTML}</div>
+            <div style="font-weight:600;margin-bottom:6px;">Background Story</div>
+            <div class="info-box">${character.info || "This hero has not revealed their story yet..."}</div>
+            <button class="close-btn" onclick="closeCharModal()">Close</button>
+        `;
+    } catch (err) {
+        console.error("Failed to load character", err);
+        content.innerHTML = `
+            <h2>${player.name}</h2>
+            <div class="char-meta">Failed to load character data.</div>
+            <button class="close-btn" onclick="closeCharModal()">Close</button>
+        `;
+    }
+}
+
+function closeCharModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById("charModalOverlay").classList.remove("visible");
 }
 
 function nextTurn() {
-
+    if (players.length === 0) return;
     let found = false;
     let tries = 0;
 
@@ -416,11 +890,11 @@ function nextTurn() {
 
     renderPlayers();
 }
+
 function toggleActive(index) {
     players[index].active = !players[index].active;
 
-    // Falls aktueller Spieler deaktiviert wird → direkt nächster Zug
-    if (!players[currentIndex].active) {
+    if (players.length > 0 && !players[currentIndex].active) {
         nextTurn();
     } else {
         renderPlayers();
@@ -489,7 +963,23 @@ function showFeedback(message, type) {
 }
 
 /* Entscheidungen */
+function updateCounter(inputId, counterId, max) {
+    const len = document.getElementById(inputId).value.length;
+    const counter = document.getElementById(counterId);
+    counter.textContent = len + ' / ' + max;
+    counter.classList.remove('near-limit', 'at-limit');
+    if (len >= max) {
+        counter.classList.add('at-limit');
+    } else if (len >= max * 0.8) {
+        counter.classList.add('near-limit');
+    }
+}
+
 function openDecisionModal() {
+    document.getElementById("decisionTitle").value = "";
+    document.getElementById("decisionText").value = "";
+    updateCounter('decisionTitle', 'titleCounter', 60);
+    updateCounter('decisionText', 'textCounter', 200);
     document.getElementById("decisionModal").style.display = "flex";
 }
 
@@ -497,12 +987,20 @@ function closeDecisionModal() {
     document.getElementById("decisionModal").style.display = "none";
 }
 
+function escapeHTML(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function saveDecision() {
     const title = document.getElementById("decisionTitle").value.trim();
     const text = document.getElementById("decisionText").value.trim();
     if (!title || !text) return;
 
-    decisions.push({ id: Date.now(), title, text, yes: 0, no: 0 });
+    decisions.push({ id: Date.now(), title: escapeHTML(title), text: escapeHTML(text), yes: 0, no: 0, createdAt: Date.now() });
+    document.getElementById("decisionTitle").value = "";
+    document.getElementById("decisionText").value = "";
+    updateCounter('decisionTitle', 'titleCounter', 60);
+    updateCounter('decisionText', 'textCounter', 200);
     renderDecisions();
     closeDecisionModal();
 }
@@ -513,18 +1011,53 @@ function vote(id, type) {
     renderDecisions();
 }
 
+function formatTimeAgo(ts) {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return "Gerade eben";
+    if (diff < 3600) return Math.floor(diff / 60) + " Min.";
+    if (diff < 86400) return Math.floor(diff / 3600) + " Std.";
+    return Math.floor(diff / 86400) + " Tage";
+}
+
 function renderDecisions() {
     const container = document.getElementById("decisionList");
     container.innerHTML = "";
-    decisions.forEach(d => {
+
+    if (decisions.length === 0) {
+        container.innerHTML = `
+            <div class="decisions-empty">
+                <div class="decisions-empty-icon">⚖️</div>
+                <div class="decisions-empty-text">Noch keine Entscheidungen.<br>Klicke <strong>+</strong> um eine neue zu erstellen.</div>
+            </div>`;
+        return;
+    }
+
+    decisions.slice().reverse().forEach(d => {
+        const total = d.yes + d.no;
+        const yesPct = total > 0 ? Math.round((d.yes / total) * 100) : 0;
+        const noPct  = total > 0 ? 100 - yesPct : 0;
+
         container.innerHTML += `
         <div class="decision-card">
+            <div class="decision-time">🕐 ${formatTimeAgo(d.createdAt || d.id)}</div>
             <h4>${d.title}</h4>
-            <p>${d.text}</p>
-            <div class="vote-area">
-                <button onclick="vote(${d.id}, 'yes')">Ja (${d.yes})</button>
-                <button onclick="vote(${d.id}, 'no')">Nein (${d.no})</button>
+            <div class="decision-desc">${d.text}</div>
+            ${total > 0 ? `
+            <div class="vote-bar-container">
+                <div class="vote-bar-labels">
+                    <span class="vote-yes">👍 Ja ${yesPct}%</span>
+                    <span class="vote-no">👎 Nein ${noPct}%</span>
+                </div>
+                <div class="vote-bar">
+                    <div class="vote-bar-yes" style="width:${yesPct}%"></div>
+                    <div class="vote-bar-no" style="width:${noPct}%"></div>
+                </div>
+            </div>` : ''}
+            <div class="vote-buttons">
+                <button class="vote-btn vote-btn-yes" onclick="vote(${d.id}, 'yes')">👍 Ja (${d.yes})</button>
+                <button class="vote-btn vote-btn-no" onclick="vote(${d.id}, 'no')">👎 Nein (${d.no})</button>
             </div>
+            ${total > 0 ? `<div class="vote-total">${total} Stimme${total !== 1 ? 'n' : ''} abgegeben</div>` : ''}
         </div>`;
     });
 }
@@ -547,9 +1080,12 @@ document.getElementById("chatInput").addEventListener("keydown", e => {
     if (e.key === "Enter") sendMessage();
 });
 
-renderPlayers();
+loadPlayers();
+renderDecisions();
 
 </script>
 
+
+<script src="../common/header.js" defer></script>
 </body>
 </html>

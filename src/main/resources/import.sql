@@ -62,6 +62,8 @@ insert into Ability (id, name, description) values (6, 'Charisma', 'measuring fo
 
 insert into Player (id, email, username, name) values (1, 'test@gmail.com', 'testuser', 'Alex');
 insert into Player (id, email, username, name) values (2, 'fredl@htl.at', 'Fredl', 'Fredl');
+insert into Player (id, email, username, name) values (3, 'lena@htl.at', 'LenaRPG', 'Lena');
+insert into Player (id, email, username, name) values (4, 'max@htl.at', 'MaxDragon', 'Max');
 
 -- Sample campaign created by user 1 (Alex)
 INSERT INTO campaign (id, name, description, story, player_id, is_public, max_player_count)
@@ -69,9 +71,19 @@ VALUES (9001, 'Die Schatten von Grünwald', 'Eine mysteriöse Dunkelheit breitet
 
 -- Sample character for user 2 (Fredl)
 INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
-VALUES (9001, 'Thorin Eisenfaust', 5, 1, 3, true, 'Ein erfahrener Zwergenkämpfer aus den Bergen von Kazad-Dum. Er sucht nach dem Mörder seines Bruders.', 'Zwerg', 'Rechtschaffen Gut');
+VALUES (9001, 'Thorin Eisenfaust', 5, 1, 1, true, 'Ein erfahrener Zwergenkämpfer aus den Bergen von Kazad-Dum. Er sucht nach dem Mörder seines Bruders.', 'Zwerg', 'Rechtschaffen Gut');
 
--- Character abilities for Thorin
+-- Sample character for user 3 (Lena)
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
+VALUES (9002, 'Elara Mondschein', 2, 1, 1, true, 'Eine elfische Bardin, die durch die Lande reist und Geschichten vergessener Helden sammelt. Ihre Musik kann Herzen heilen und Feinde in den Schlaf singen.', 'Elf', 'Chaotisch Gut');
+
+-- Sample character for user 4 (Max)
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
+VALUES (9003, 'Grimjaw der Wilde', 1, 1, 1, true, 'Ein halborkischer Barbar aus den nördlichen Steppen. Nachdem sein Stamm von Gnolls überfallen wurde, zieht er als einsamer Krieger durch die Welt, getrieben von Rache und dem Wunsch, einen neuen Stamm zu finden.', 'Halbork', 'Chaotisch Neutral');
+
+
+
+-- Character abilities for Thorin (Fredl - Fighter)
 INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9001, 9001, 1, 16);
 INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9002, 9001, 2, 12);
 INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9003, 9001, 3, 15);
@@ -79,12 +91,34 @@ INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9004
 INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9005, 9001, 5, 13);
 INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9006, 9001, 6, 8);
 
+-- Character abilities for Elara (Lena - Bard)
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9007, 9002, 1, 8);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9008, 9002, 2, 14);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9009, 9002, 3, 12);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9010, 9002, 4, 13);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9011, 9002, 5, 10);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9012, 9002, 6, 17);
+
+-- Character abilities for Grimjaw (Max - Barbarian)
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9013, 9003, 1, 18);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9014, 9003, 2, 13);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9015, 9003, 3, 16);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9016, 9003, 4, 7);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9017, 9003, 5, 11);
+INSERT INTO character_ability (id, character_id, ability_id, score) VALUES (9018, 9003, 6, 10);
+
 -- Campaign player entries: User 1 as DM, User 2 as approved player
 INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
 VALUES (9001, 9001, 1, 'DM', 1706000000000, null, 'NONE');
 
 INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
 VALUES (9002, 9001, 2, 'PLAYER', 1706100000000, 9001, 'APPROVED');
+
+INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
+VALUES (9003, 9001, 3, 'PLAYER', 1706200000000, 9002, 'APPROVED');
+
+INSERT INTO campaign_player (id, campaign_id, player_id, role, joined_at, character_id, character_status)
+VALUES (9004, 9001, 4, 'PLAYER', 1706300000000, 9003, 'APPROVED');
 
 -- sample campaigns for testing (commented out for now)
 -- insert into campaign (name, description, player_id) values ('Schattenwald', 'A haunted forest campaign', 2);
