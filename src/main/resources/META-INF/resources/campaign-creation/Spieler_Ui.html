@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Character</title>
+
+<style>
+:root {
+  --green-600: #004c3685;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  background-image: url("../images/Background.png");
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding: 20px 14px 40px 14px;
+  color: white;
+}
+
+.container {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--green-600);
+  backdrop-filter: blur(16px);
+  border-radius: 32px;
+  overflow: hidden;
+}
+
+/* HEADER */
+.character-top {
+  padding: 28px 20px 22px 20px;
+  text-align: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.25), transparent);
+}
+
+.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 14px auto;
+  background: linear-gradient(135deg, #6ee7b7, #34d399);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.name {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.meta {
+  margin-top: 6px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* STATS */
+.stats-section {
+  padding: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.stat-box {
+  background: rgba(0,0,0,0.28);
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.stat-modifier {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* BACKGROUND */
+.info-section {
+  padding: 20px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.info-box {
+  background: rgba(0,0,0,0.28);
+  border-radius: 18px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.loading {
+  padding: 60px 20px;
+  text-align: center;
+  opacity: 0.8;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card" id="content">
+    <div class="loading">Loading character...</div>
+  </div>
+</div>
+
+<script>
+(function() {
+
+  const params = new URLSearchParams(window.location.search);
+  const campaignId = params.get("campaignId");
+
+  const content = document.getElementById("content");
+
+  function getSessionPlayer() {
+    try {
+      const raw = sessionStorage.getItem("player");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function calculateModifier(score) {
+    return Math.floor((score - 10) / 2);
+  }
+
+  function formatModifier(mod) {
+    return mod >= 0 ? "+" + mod : mod;
+  }
+
+  function initials(name) {
+    if (!name) return "?";
+    const parts = name.split(" ");
+    return parts.length > 1
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : parts[0].substring(0,2).toUpperCase();
+  }
+
+  async function loadCharacter() {
+
+    const sessionPlayer = getSessionPlayer();
+
+    if (!sessionPlayer) {
+      window.location.href = "./Login.html";
+      return;
+    }
+
+    if (!campaignId) {
+      content.innerHTML = "<div class='loading'>No campaign selected.</div>";
+      return;
+    }
+
+    try {
+
+      // 1️⃣ Campaign Players laden
+      const cpRes = await fetch(`/api/campaign-player/${campaignId}`);
+      const campaignPlayers = await cpRes.json();
+
+      const myEntry = campaignPlayers.find(cp => 
+        cp.playerId === sessionPlayer.id
+      );
+
+      if (!myEntry || !myEntry.characterId) {
+        content.innerHTML = "<div class='loading'>No character submitted yet.</div>";
+        return;
+      }
+
+      // 2️⃣ Character laden
+      const charRes = await fetch(`/api/character/${myEntry.characterId}`);
+      const character = await charRes.json();
+
+      render(character, sessionPlayer);
+
+    } catch (err) {
+      content.innerHTML = "<div class='loading'>Failed to load character.</div>";
+      console.error(err);
+    }
+  }
+
+  function render(character, player) {
+
+  const abilityIcons = {
+    Strength: "💪",
+    Dexterity: "🏹",
+    Constitution: "🛡️",
+    Intelligence: "🧠",
+    Wisdom: "🔮",
+    Charisma: "✨"
+  };
+
+  const abilities = Object.keys(abilityIcons);
+
+  function getScore(name) {
+    const found = character.abilityScores?.find(a =>
+      a.abilityName.toLowerCase() === name.toLowerCase()
+    );
+    return found ? found.score : 10;
+  }
+
+  const statsHTML = abilities.map(name => {
+    const score = getScore(name);
+    const mod = calculateModifier(score);
+
+    return `
+      <div class="stat-box">
+        <div class="stat-label">
+          ${abilityIcons[name]} ${name.substring(0,3).toUpperCase()}
+        </div>
+        <div class="stat-value">${score}</div>
+        <div class="stat-modifier">${formatModifier(mod)}</div>
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML = `
+    <div class="character-top">
+      <div class="avatar">
+        ${player.profilePicture 
+          ? `<img src="..${player.profilePicture}">`
+          : initials(player.name || player.username)}
+      </div>
+
+      <div class="name"> ${character.name}</div>
+
+      <div class="meta">
+        🏆 Level ${character.level || 1} <br>
+        🧬 ${character.race || "Unknown Race"} <br> 
+        ⚔️ ${character.characterClass?.name || "No Class"} <br>
+        ⚖️ ${character.alignment || "Unaligned"}
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <div class="section-title">Attributes</div>
+      <div class="stats-grid">
+        ${statsHTML}
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div class="section-title">Background Story</div>
+      <div class="info-box">
+        ${character.info || "This hero has not revealed their story yet..."}
+      </div>
+    </div>
+  `;
+}
+
+  loadCharacter();
+
+})();
+</script>
+
+</body>
+</html>
