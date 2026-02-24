@@ -895,6 +895,84 @@ const campaignId = params.get("campaignId");
 let players = [];
 let currentIndex = 0;
 let decisions = [];
+let eventSource = null;
+
+// ===== SSE CONNECTION =====
+function connectSSE() {
+    if (!campaignId) return;
+    eventSource = new EventSource('/api/campaign/' + campaignId + '/sse');
+
+    eventSource.addEventListener('connected', function(e) {
+        console.log('SSE connected', JSON.parse(e.data));
+    });
+
+    eventSource.addEventListener('turn', function(e) {
+        const data = JSON.parse(e.data);
+        const idx = players.findIndex(p => p.id === data.playerId);
+        if (idx >= 0) {
+            currentIndex = idx;
+            renderPlayers();
+        }
+    });
+
+    eventSource.addEventListener('dice', function(e) {
+        const data = JSON.parse(e.data);
+        // Show incoming dice roll from players in chat
+        if (data.playerId && data.playerName !== 'Dungeon Master') {
+            const chat = document.getElementById("chatMessages");
+            const div = document.createElement("div");
+            div.innerHTML = "🎲 <strong>" + escapeHTML(data.playerName) + "</strong> würfelt " + escapeHTML(data.diceType) + ": <strong>" + data.result + "</strong>";
+            div.style.color = "#ba68c8";
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+    });
+
+    eventSource.addEventListener('hp', function(e) {
+        const data = JSON.parse(e.data);
+        const player = players.find(p => p.id === data.playerId);
+        if (player) {
+            player.hp = data.currentHp;
+            player.maxHp = data.maxHp;
+            renderPlayers();
+        }
+    });
+
+    eventSource.addEventListener('decision', function(e) {
+        const data = JSON.parse(e.data);
+        // Always add from server (we no longer push locally)
+        if (!decisions.find(d => d.id === data.id)) {
+            decisions.push(data);
+            renderDecisions();
+        }
+    });
+
+    eventSource.addEventListener('vote', function(e) {
+        const data = JSON.parse(e.data);
+        const d = decisions.find(dec => dec.id === data.decisionId);
+        if (d) {
+            d.yes = data.yes;
+            d.no = data.no;
+            renderDecisions();
+        }
+    });
+
+    eventSource.addEventListener('decision_resolved', function(e) {
+        const data = JSON.parse(e.data);
+        const d = decisions.find(dec => dec.id === data.decisionId);
+        if (d) {
+            d.status = 'RESOLVED';
+            d.yes = data.yes;
+            d.no = data.no;
+            d.decisionMade = data.decisionMade;
+            renderDecisions();
+        }
+    });
+
+    eventSource.onerror = function() {
+        console.warn('SSE connection lost, reconnecting...');
+    };
+}
 
 // ===== Load players from DB =====
 async function loadPlayers() {
@@ -904,33 +982,29 @@ async function loadPlayers() {
     }
 
     try {
-        // Get all campaign players for this campaign
-        const cpRes = await fetch(`/api/campaign-player/${campaignId}`);
+        const cpRes = await fetch('/api/campaign-player/' + campaignId);
         const campaignPlayers = await cpRes.json();
-
-        // Filter to only actual PLAYERs (not DM)
         const playerEntries = campaignPlayers.filter(cp => cp.role === "PLAYER");
 
-        // Fetch player details + character data for each
         const loaded = [];
         for (const cp of playerEntries) {
             try {
-                const pRes = await fetch(`/api/player/id/${cp.playerId}`);
+                const pRes = await fetch('/api/player/id/' + cp.playerId);
                 if (pRes.ok) {
                     const playerData = await pRes.json();
-                    let hp = 10, strength = 10;
+                    let hp = 10, maxHp = 10;
 
-                    // If character exists, fetch its data for HP and Stärke
                     if (cp.characterId) {
                         try {
-                            const cRes = await fetch(`/api/character/${cp.characterId}`);
+                            const cRes = await fetch('/api/character/' + cp.characterId);
                             if (cRes.ok) {
                                 const charData = await cRes.json();
-                                const strScore = charData.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'strength');
                                 const conScore = charData.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'constitution');
-                                strength = strScore ? strScore.score : 10;
                                 const conMod = conScore ? Math.floor((conScore.score - 10) / 2) : 0;
-                                hp = 10 + conMod + ((charData.level || 1) - 1) * (6 + conMod);
+                                const lvl = charData.level || 1;
+                                maxHp = 10 + conMod + (lvl - 1) * (6 + conMod);
+                                if (maxHp < 1) maxHp = 1;
+                                hp = maxHp;
                             }
                         } catch (e) { /* use defaults */ }
                     }
@@ -942,7 +1016,7 @@ async function loadPlayers() {
                         characterId: cp.characterId,
                         characterStatus: cp.characterStatus,
                         hp: hp,
-                        strength: strength,
+                        maxHp: maxHp,
                         active: true
                     });
                 }
@@ -952,6 +1026,25 @@ async function loadPlayers() {
         }
 
         players = loaded;
+
+        // Register all player HP in server game state
+        for (const p of players) {
+            await fetch('/api/campaign/' + campaignId + '/game/init-hp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId: p.id, hp: p.hp, maxHp: p.maxHp })
+            });
+        }
+
+        // Set initial turn
+        if (players.length > 0) {
+            await fetch('/api/campaign/' + campaignId + '/game/turn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId: players[0].id, playerName: players[0].name })
+            });
+        }
+
         renderPlayers();
     } catch (err) {
         console.error("Failed to load campaign players", err);
@@ -972,29 +1065,56 @@ function renderPlayers() {
         const div = document.createElement("div");
         div.className = "player" + (index === currentIndex ? " active" : "");
 
+        const hpPct = player.maxHp > 0 ? Math.round((player.hp / player.maxHp) * 100) : 0;
+        let hpColor = '#69f0ae';
+        if (hpPct <= 50) hpColor = '#ffc107';
+        if (hpPct <= 25) hpColor = '#ff5252';
+
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="cursor:pointer;" onclick="event.stopPropagation();" class="player-name" data-index="${index}">${player.name}</span>
+                <span style="cursor:pointer;" class="player-name" data-index="${index}">${player.name}</span>
                 <button class="purple-btn" onclick="event.stopPropagation(); toggleActive(${index})" style="padding:6px 10px; font-size:12px;">
                     ${player.active ? "Aussetzen" : "Aktivieren"}
                 </button>
             </div>
+            <div style="margin-top:8px; font-size:13px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <span>❤️</span>
+                    <span style="color:${hpColor}; font-weight:700;">${player.hp} / ${player.maxHp}</span>
+                    <div style="display:flex; gap:4px; margin-left:auto;">
+                        <button onclick="event.stopPropagation(); changePlayerHp(${index}, -1)" style="width:28px; height:28px; border-radius:50%; padding:0; margin:0; font-size:14px; background:rgba(255,82,82,0.2); color:#ff8a80; border:1px solid rgba(255,82,82,0.4); cursor:pointer;">−</button>
+                        <button onclick="event.stopPropagation(); changePlayerHp(${index}, -5)" style="width:28px; height:28px; border-radius:50%; padding:0; margin:0; font-size:10px; background:rgba(255,82,82,0.3); color:#ff8a80; border:1px solid rgba(255,82,82,0.4); cursor:pointer;">-5</button>
+                        <button onclick="event.stopPropagation(); changePlayerHp(${index}, 5)" style="width:28px; height:28px; border-radius:50%; padding:0; margin:0; font-size:10px; background:rgba(105,240,174,0.2); color:#69f0ae; border:1px solid rgba(105,240,174,0.4); cursor:pointer;">+5</button>
+                        <button onclick="event.stopPropagation(); changePlayerHp(${index}, 1)" style="width:28px; height:28px; border-radius:50%; padding:0; margin:0; font-size:14px; background:rgba(105,240,174,0.2); color:#69f0ae; border:1px solid rgba(105,240,174,0.4); cursor:pointer;">+</button>
+                    </div>
+                </div>
+            </div>
         `;
 
-        // Active player shows details and Zug beenden button
         if (index === currentIndex) {
             div.innerHTML += `
-                <div style="margin-top:10px; font-size:14px;">
-                    ❤️ HP: ${player.hp}<br>
-                    <br>
-                    <button class="purple-btn" onclick="event.stopPropagation(); nextTurn()">Zug beenden</button>
+                <div style="margin-top:6px;">
+                    <button class="purple-btn" onclick="event.stopPropagation(); nextTurn()" style="width:100%;">Zug beenden</button>
                 </div>
             `;
         }
 
-        // Make player clickable to show character stats
         div.addEventListener("click", () => showCharacterModal(player));
         list.appendChild(div);
+    });
+}
+
+// ===== HP Change via Server =====
+async function changePlayerHp(index, delta) {
+    const player = players[index];
+    // Optimistic update
+    player.hp = Math.max(0, Math.min(player.maxHp, player.hp + delta));
+    renderPlayers();
+
+    await fetch('/api/campaign/' + campaignId + '/game/hp', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: player.id, delta: delta })
     });
 }
 
@@ -1012,20 +1132,19 @@ async function showCharacterModal(player) {
     const content = document.getElementById("charModalContent");
 
     if (!player.characterId) {
-        content.innerHTML = `
-            <h2>${player.name}</h2>
-            <div class="char-meta">This player hasn't submitted a character yet.</div>
-            <button class="close-btn" onclick="closeCharModal()">Close</button>
-        `;
+        content.innerHTML =
+            '<h2>' + player.name + '</h2>' +
+            '<div class="char-meta">This player hasn\'t submitted a character yet.</div>' +
+            '<button class="close-btn" onclick="closeCharModal()">Close</button>';
         overlay.classList.add("visible");
         return;
     }
 
-    content.innerHTML = `<div style="text-align:center;padding:30px;opacity:0.7;">Loading character...</div>`;
+    content.innerHTML = '<div style="text-align:center;padding:30px;opacity:0.7;">Loading character...</div>';
     overlay.classList.add("visible");
 
     try {
-        const res = await fetch(`/api/character/${player.characterId}`);
+        const res = await fetch('/api/character/' + player.characterId);
         if (!res.ok) throw new Error("Character not found");
         const character = await res.json();
 
@@ -1033,7 +1152,6 @@ async function showCharacterModal(player) {
             Strength: "💪", Dexterity: "🏹", Constitution: "🛡️",
             Intelligence: "🧠", Wisdom: "🔮", Charisma: "✨"
         };
-
         const abilities = Object.keys(abilityIcons);
 
         function getScore(name) {
@@ -1046,38 +1164,34 @@ async function showCharacterModal(player) {
         const statsHTML = abilities.map(name => {
             const score = getScore(name);
             const mod = calculateModifier(score);
-            return `
-                <div class="stat-box">
-                    <div class="stat-label">${abilityIcons[name]} ${name.substring(0,3).toUpperCase()}</div>
-                    <div class="stat-value">${score}</div>
-                    <div class="stat-modifier">${formatModifier(mod)}</div>
-                </div>
-            `;
+            return '<div class="stat-box">' +
+                '<div class="stat-label">' + abilityIcons[name] + ' ' + name.substring(0,3).toUpperCase() + '</div>' +
+                '<div class="stat-value">' + score + '</div>' +
+                '<div class="stat-modifier">' + formatModifier(mod) + '</div>' +
+            '</div>';
         }).join("");
 
-        content.innerHTML = `
-            <h2>${character.name || "Unnamed Character"}</h2>
-            <div class="char-meta">
-                👤 Player: ${player.name}<br>
-                🏆 Level ${character.level || 1}<br>
-                🧬 ${character.race || "Unknown Race"}<br>
-                ⚔️ ${character.characterClass?.name || "No Class"}<br>
-                📖 ${character.background?.name || "No Background"}<br>
-                ⚖️ ${character.alignment || "Unaligned"}
-            </div>
-            <div style="font-weight:600;margin-bottom:8px;">Ability Scores</div>
-            <div class="stats-grid">${statsHTML}</div>
-            <div style="font-weight:600;margin-bottom:6px;">Background Story</div>
-            <div class="info-box">${character.info || "This hero has not revealed their story yet..."}</div>
-            <button class="close-btn" onclick="closeCharModal()">Close</button>
-        `;
+        content.innerHTML =
+            '<h2>' + (character.name || "Unnamed Character") + '</h2>' +
+            '<div class="char-meta">' +
+                '👤 Player: ' + player.name + '<br>' +
+                '🏆 Level ' + (character.level || 1) + '<br>' +
+                '🧬 ' + (character.race || "Unknown Race") + '<br>' +
+                '⚔️ ' + (character.characterClass?.name || "No Class") + '<br>' +
+                '📖 ' + (character.background?.name || "No Background") + '<br>' +
+                '⚖️ ' + (character.alignment || "Unaligned") +
+            '</div>' +
+            '<div style="font-weight:600;margin-bottom:8px;">Ability Scores</div>' +
+            '<div class="stats-grid">' + statsHTML + '</div>' +
+            '<div style="font-weight:600;margin-bottom:6px;">Background Story</div>' +
+            '<div class="info-box">' + (character.info || "This hero has not revealed their story yet...") + '</div>' +
+            '<button class="close-btn" onclick="closeCharModal()">Close</button>';
     } catch (err) {
         console.error("Failed to load character", err);
-        content.innerHTML = `
-            <h2>${player.name}</h2>
-            <div class="char-meta">Failed to load character data.</div>
-            <button class="close-btn" onclick="closeCharModal()">Close</button>
-        `;
+        content.innerHTML =
+            '<h2>' + player.name + '</h2>' +
+            '<div class="char-meta">Failed to load character data.</div>' +
+            '<button class="close-btn" onclick="closeCharModal()">Close</button>';
     }
 }
 
@@ -1086,7 +1200,8 @@ function closeCharModal(event) {
     document.getElementById("charModalOverlay").classList.remove("visible");
 }
 
-function nextTurn() {
+// ===== Turn Management (synced) =====
+async function nextTurn() {
     if (players.length === 0) return;
     let found = false;
     let tries = 0;
@@ -1100,11 +1215,18 @@ function nextTurn() {
     }
 
     renderPlayers();
+
+    // Broadcast to all players via server
+    const p = players[currentIndex];
+    await fetch('/api/campaign/' + campaignId + '/game/turn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: p.id, playerName: p.name })
+    });
 }
 
 function toggleActive(index) {
     players[index].active = !players[index].active;
-
     if (players.length > 0 && !players[currentIndex].active) {
         nextTurn();
     } else {
@@ -1115,7 +1237,6 @@ function toggleActive(index) {
 /* Würfel */
 let selectedDiceSides = 20;
 
-// Chip selection
 document.getElementById("diceChipRow").addEventListener("click", e => {
     const chip = e.target.closest(".dice-chip");
     if (!chip) return;
@@ -1123,7 +1244,6 @@ document.getElementById("diceChipRow").addEventListener("click", e => {
     chip.classList.add("selected");
     selectedDiceSides = parseInt(chip.dataset.sides);
     document.getElementById("diceTypeLabel").textContent = "D" + selectedDiceSides;
-    // Update manual input max
     manualInput.max = selectedDiceSides;
 });
 
@@ -1137,7 +1257,6 @@ function rollDice() {
     const rollBtn = document.getElementById("rollBtn");
     rollBtn.disabled = true;
 
-    // Quick cascade animation
     let ticks = 0;
     const maxTicks = 12;
     const interval = setInterval(() => {
@@ -1148,17 +1267,29 @@ function rollDice() {
             const finalResult = Math.floor(Math.random() * selectedDiceSides) + 1;
             resultEl.textContent = finalResult;
             resultEl.classList.remove("rolling");
-            void resultEl.offsetWidth; // force reflow
+            void resultEl.offsetWidth;
             resultEl.classList.add("rolling");
             rollBtn.disabled = false;
 
-            if (finalResult === selectedDiceSides) {
+            if (finalResult === selectedDiceSides && selectedDiceSides === 20) {
                 showFeedback("🔥 Kritischer Treffer!", "#69f0ae");
-            } else if (finalResult === 1) {
+            } else if (finalResult === 1 && selectedDiceSides === 20) {
                 showFeedback("💀 Kritischer Fehlschlag!", "#ff5252");
             } else {
                 showFeedback("🎲 Gewürfelt: " + finalResult, "#69f0ae");
             }
+
+            // Broadcast dice roll to all players
+            fetch('/api/campaign/' + campaignId + '/game/dice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerId: null,
+                    playerName: 'Dungeon Master',
+                    diceType: 'd' + selectedDiceSides,
+                    result: finalResult
+                })
+            });
         }
     }, 55);
 }
@@ -1188,20 +1319,27 @@ function saveResult() {
     showFeedback("✓ Manuell gesetzt: " + manual, "#69f0ae");
     manualInput.value = "";
     rollBtn.disabled = false;
+
+    // Broadcast manual set to all players
+    fetch('/api/campaign/' + campaignId + '/game/dice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            playerId: null,
+            playerName: 'Dungeon Master',
+            diceType: 'd' + selectedDiceSides,
+            result: manual
+        })
+    });
 }
 
 const manualInput = document.getElementById("manualInput");
 const rollBtn = document.getElementById("rollBtn");
 
 manualInput.addEventListener("input", () => {
-    if (manualInput.value.trim() !== "") {
-        rollBtn.disabled = true;
-    } else {
-        rollBtn.disabled = false;
-    }
+    rollBtn.disabled = manualInput.value.trim() !== "";
 });
 
-// Allow Enter key on manual input
 manualInput.addEventListener("keydown", e => {
     if (e.key === "Enter") saveResult();
 });
@@ -1211,23 +1349,17 @@ function showFeedback(message, color) {
     fb.textContent = message;
     fb.style.color = color || "#69f0ae";
     fb.style.opacity = "1";
-
-    setTimeout(() => {
-        fb.style.opacity = "0";
-    }, 3000);
+    setTimeout(() => { fb.style.opacity = "0"; }, 3000);
 }
 
-/* Entscheidungen */
+/* Entscheidungen (synced) */
 function updateCounter(inputId, counterId, max) {
     const len = document.getElementById(inputId).value.length;
     const counter = document.getElementById(counterId);
     counter.textContent = len + ' / ' + max;
     counter.classList.remove('near-limit', 'at-limit');
-    if (len >= max) {
-        counter.classList.add('at-limit');
-    } else if (len >= max * 0.8) {
-        counter.classList.add('near-limit');
-    }
+    if (len >= max) counter.classList.add('at-limit');
+    else if (len >= max * 0.8) counter.classList.add('near-limit');
 }
 
 function openDecisionModal() {
@@ -1246,24 +1378,34 @@ function escapeHTML(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function saveDecision() {
+async function saveDecision() {
     const title = document.getElementById("decisionTitle").value.trim();
     const text = document.getElementById("decisionText").value.trim();
     if (!title || !text) return;
 
-    decisions.push({ id: Date.now(), title: escapeHTML(title), text: escapeHTML(text), yes: 0, no: 0, createdAt: Date.now() });
-    document.getElementById("decisionTitle").value = "";
-    document.getElementById("decisionText").value = "";
-    updateCounter('decisionTitle', 'titleCounter', 60);
-    updateCounter('decisionText', 'textCounter', 200);
-    renderDecisions();
+    const safeTitle = escapeHTML(title);
+    const safeText = escapeHTML(text);
+
     closeDecisionModal();
+
+    // Send to server — SSE 'decision' event will add it to our list
+    await fetch('/api/campaign/' + campaignId + '/game/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: safeTitle, text: safeText })
+    });
 }
 
-function vote(id, type) {
+async function vote(id, type) {
     const d = decisions.find(dec => dec.id === id);
-    d[type]++;
-    renderDecisions();
+    if (!d || d.status === 'RESOLVED') return;
+
+    // Send vote to server — SSE 'vote' event will update the counts
+    await fetch('/api/campaign/' + campaignId + '/game/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decisionId: id, vote: type, playerName: 'Dungeon Master' })
+    });
 }
 
 function formatTimeAgo(ts) {
@@ -1279,11 +1421,11 @@ function renderDecisions() {
     container.innerHTML = "";
 
     if (decisions.length === 0) {
-        container.innerHTML = `
-            <div class="decisions-empty">
-                <div class="decisions-empty-icon">⚖️</div>
-                <div class="decisions-empty-text">Noch keine Entscheidungen.<br>Klicke <strong>+</strong> um eine neue zu erstellen.</div>
-            </div>`;
+        container.innerHTML =
+            '<div class="decisions-empty">' +
+                '<div class="decisions-empty-icon">⚖️</div>' +
+                '<div class="decisions-empty-text">Noch keine Entscheidungen.<br>Klicke <strong>+</strong> um eine neue zu erstellen.</div>' +
+            '</div>';
         return;
     }
 
@@ -1291,29 +1433,35 @@ function renderDecisions() {
         const total = d.yes + d.no;
         const yesPct = total > 0 ? Math.round((d.yes / total) * 100) : 0;
         const noPct  = total > 0 ? 100 - yesPct : 0;
+        const isResolved = d.status === 'RESOLVED';
 
-        container.innerHTML += `
-        <div class="decision-card">
-            <div class="decision-time">🕐 ${formatTimeAgo(d.createdAt || d.id)}</div>
-            <h4>${d.title}</h4>
-            <div class="decision-desc">${d.text}</div>
-            ${total > 0 ? `
-            <div class="vote-bar-container">
-                <div class="vote-bar-labels">
-                    <span class="vote-yes">👍 Ja ${yesPct}%</span>
-                    <span class="vote-no">👎 Nein ${noPct}%</span>
-                </div>
-                <div class="vote-bar">
-                    <div class="vote-bar-yes" style="width:${yesPct}%"></div>
-                    <div class="vote-bar-no" style="width:${noPct}%"></div>
-                </div>
-            </div>` : ''}
-            <div class="vote-buttons">
-                <button class="vote-btn vote-btn-yes" onclick="vote(${d.id}, 'yes')">👍 Ja (${d.yes})</button>
-                <button class="vote-btn vote-btn-no" onclick="vote(${d.id}, 'no')">👎 Nein (${d.no})</button>
-            </div>
-            ${total > 0 ? `<div class="vote-total">${total} Stimme${total !== 1 ? 'n' : ''} abgegeben</div>` : ''}
-        </div>`;
+        container.innerHTML +=
+        '<div class="decision-card" style="' + (isResolved ? 'opacity:0.7; border-left: 3px solid #69f0ae;' : '') + '">' +
+            '<div class="decision-time">' +
+                (isResolved ? '✅ Abgeschlossen' : '🕐 ' + formatTimeAgo(d.createdAt || d.id)) +
+                (d.totalPlayers ? ' · ' + total + '/' + d.totalPlayers + ' Stimmen' : '') +
+            '</div>' +
+            '<h4>' + d.title + '</h4>' +
+            '<div class="decision-desc">' + d.text + '</div>' +
+            (total > 0 ?
+            '<div class="vote-bar-container">' +
+                '<div class="vote-bar-labels">' +
+                    '<span class="vote-yes">👍 Ja ' + yesPct + '%</span>' +
+                    '<span class="vote-no">👎 Nein ' + noPct + '%</span>' +
+                '</div>' +
+                '<div class="vote-bar">' +
+                    '<div class="vote-bar-yes" style="width:' + yesPct + '%"></div>' +
+                    '<div class="vote-bar-no" style="width:' + noPct + '%"></div>' +
+                '</div>' +
+            '</div>' : '') +
+            (isResolved
+                ? '<div style="text-align:center;padding:8px;font-weight:700;color:#69f0ae;">Ergebnis: ' + (d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein')) + '</div>'
+                : '<div class="vote-buttons">' +
+                    '<button class="vote-btn vote-btn-yes" onclick="vote(' + d.id + ', \'yes\')">👍 Ja (' + d.yes + ')</button>' +
+                    '<button class="vote-btn vote-btn-no" onclick="vote(' + d.id + ', \'no\')">👎 Nein (' + d.no + ')</button>' +
+                  '</div>') +
+            (total > 0 && !isResolved ? '<div class="vote-total">' + total + ' Stimme' + (total !== 1 ? 'n' : '') + ' abgegeben</div>' : '') +
+        '</div>';
     });
 }
 
@@ -1325,7 +1473,7 @@ function sendMessage() {
 
     const chat = document.getElementById("chatMessages");
     const div = document.createElement("div");
-    div.innerHTML = "<strong>Dungeon Master:</strong> " + msg;
+    div.innerHTML = "<strong>Dungeon Master:</strong> " + escapeHTML(msg);
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
     input.value = "";
@@ -1335,8 +1483,21 @@ document.getElementById("chatInput").addEventListener("keydown", e => {
     if (e.key === "Enter") sendMessage();
 });
 
+// ===== INIT =====
+async function loadDecisions() {
+    if (!campaignId) return;
+    try {
+        const res = await fetch('/api/campaign/' + campaignId + '/game/decisions');
+        if (res.ok) {
+            decisions = await res.json();
+            renderDecisions();
+        }
+    } catch(e) { console.warn('Failed to load decisions', e); }
+}
+
+connectSSE();
 loadPlayers();
-renderDecisions();
+loadDecisions();
 
 </script>
 

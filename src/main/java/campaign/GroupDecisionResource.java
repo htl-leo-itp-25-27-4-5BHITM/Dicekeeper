@@ -72,7 +72,8 @@ public class GroupDecisionResource {
                     .build();
         }
 
-        GroupDecision decision = new GroupDecision(campaignId, dto.title.trim(), dto.description);
+        long playerCount = CampaignPlayer.find("campaignId = ?1 and role = 'PLAYER'", campaignId).count();
+        GroupDecision decision = new GroupDecision(campaignId, dto.title.trim(), dto.description, (int) playerCount);
         if (dto.orderIndex != null) {
             decision.orderIndex = dto.orderIndex;
         }

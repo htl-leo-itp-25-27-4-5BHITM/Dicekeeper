@@ -34,14 +34,48 @@ public class GroupDecision extends PanacheEntity {
     @Column(name = "order_index")
     public Integer orderIndex;
 
+    @Column(name = "yes_votes", nullable = false)
+    public int yesVotes = 0;
+
+    @Column(name = "no_votes", nullable = false)
+    public int noVotes = 0;
+
+    @Column(name = "total_players", nullable = false)
+    public int totalPlayers = 0;
+
+    // Comma-separated list of player IDs that have voted
+    @Column(name = "voted_player_ids", length = 2000)
+    public String votedPlayerIds = "";
+
     public GroupDecision() {}
 
-    public GroupDecision(Long campaignId, String title, String description) {
+    public GroupDecision(Long campaignId, String title, String description, int totalPlayers) {
         this.campaignId = campaignId;
         this.title = title;
         this.description = description;
         this.createdAt = System.currentTimeMillis();
         this.status = "PENDING";
+        this.totalPlayers = totalPlayers;
+    }
+
+    public boolean hasPlayerVoted(Long playerId) {
+        if (votedPlayerIds == null || votedPlayerIds.isEmpty()) return false;
+        return ("," + votedPlayerIds + ",").contains("," + playerId + ",");
+    }
+
+    public void addVote(Long playerId, String voteType) {
+        if (hasPlayerVoted(playerId)) return;
+        if ("yes".equals(voteType)) yesVotes++;
+        else if ("no".equals(voteType)) noVotes++;
+        if (votedPlayerIds == null || votedPlayerIds.isEmpty()) {
+            votedPlayerIds = String.valueOf(playerId);
+        } else {
+            votedPlayerIds += "," + playerId;
+        }
+    }
+
+    public boolean allVoted() {
+        return totalPlayers > 0 && (yesVotes + noVotes) >= totalPlayers;
     }
 }
 

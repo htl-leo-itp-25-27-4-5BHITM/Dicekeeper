@@ -10,6 +10,9 @@ public class GroupDecisionDTO {
     public Long resolvedAt;
     public String status;
     public Integer orderIndex;
+    public int yesVotes;
+    public int noVotes;
+    public int totalPlayers;
 
     public GroupDecisionDTO() {}
 
@@ -23,6 +26,9 @@ public class GroupDecisionDTO {
         this.resolvedAt = decision.resolvedAt;
         this.status = decision.status;
         this.orderIndex = decision.orderIndex;
+        this.yesVotes = decision.yesVotes;
+        this.noVotes = decision.noVotes;
+        this.totalPlayers = decision.totalPlayers;
     }
 }
 
