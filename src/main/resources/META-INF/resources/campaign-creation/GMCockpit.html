@@ -1482,9 +1482,23 @@
     window.location.href = './CampaignDetail.html?id=' + campaignId;
   };
 
-  window.startCampaign = function(event) {
+  window.startCampaign = async function(event) {
     if (event) event.preventDefault();
-    window.location.href = './GM_Ui.html?campaignId=' + encodeURIComponent(campaignId);
+    try {
+      const res = await fetch('/api/campaign/' + encodeURIComponent(campaignId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ started: true })
+      });
+      if (!res.ok) {
+        showStatus('Kampagne konnte nicht gestartet werden', true);
+        return;
+      }
+      window.location.href = './GM_Ui.html?campaignId=' + encodeURIComponent(campaignId);
+    } catch (err) {
+      console.error(err);
+      showStatus('Fehler beim Starten der Kampagne', true);
+    }
   };
 
   // Initialize

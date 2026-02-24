@@ -21,4 +21,7 @@ public class Campaign extends PanacheEntity {
 
     @Column(name = "max_player_count", nullable = true)
     public Integer maxPlayerCount;
+
+    @Column(name = "started", nullable = false)
+    public Boolean started = false;
 }

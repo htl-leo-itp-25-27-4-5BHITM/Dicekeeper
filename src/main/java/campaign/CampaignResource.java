@@ -170,6 +170,9 @@ public class CampaignResource {
         if (updated.story != null) {
             existing.story = updated.story;
         }
+        if (updated.started != null) {
+            existing.started = updated.started;
+        }
 
         return Response.ok(existing).build();
     }

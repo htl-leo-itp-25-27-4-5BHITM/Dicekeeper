@@ -12,6 +12,7 @@ public class CampaignDTO {
     public String mapImagePath;
     public Boolean isPublic;
     public Integer maxPlayerCount;
+    public Boolean started;
 
     public CampaignDTO() {}
 
@@ -23,6 +24,7 @@ public class CampaignDTO {
         this.mapImagePath = campaign.mapImagePath;
         this.isPublic = campaign.isPublic;
         this.maxPlayerCount = campaign.maxPlayerCount;
+        this.started = campaign.started;
 
         // Only include story if requester is DM
         if (includeStory) {

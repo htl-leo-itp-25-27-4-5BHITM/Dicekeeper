@@ -66,8 +66,8 @@ insert into Player (id, email, username, name) values (3, 'lena@htl.at', 'LenaRP
 insert into Player (id, email, username, name) values (4, 'max@htl.at', 'MaxDragon', 'Max');
 
 -- Sample campaign created by user 1 (Alex)
-INSERT INTO campaign (id, name, description, story, player_id, is_public, max_player_count)
-VALUES (9001, 'Die Schatten von Grünwald', 'Eine mysteriöse Dunkelheit breitet sich im Grünwald aus. Mutige Abenteurer werden gesucht, um das Geheimnis zu lüften.', 'Die Spieler werden herausfinden, dass ein alter Nekromant namens Malachar in den Ruinen unter dem Wald erwacht ist. Er plant, eine Armee der Untoten zu erschaffen. Die Gruppe muss drei magische Artefakte finden, um ihn zu stoppen.', 1, true, 5);
+INSERT INTO campaign (id, name, description, story, player_id, is_public, max_player_count, started)
+VALUES (9001, 'Die Schatten von Grünwald', 'Eine mysteriöse Dunkelheit breitet sich im Grünwald aus. Mutige Abenteurer werden gesucht, um das Geheimnis zu lüften.', 'Die Spieler werden herausfinden, dass ein alter Nekromant namens Malachar in den Ruinen unter dem Wald erwacht ist. Er plant, eine Armee der Untoten zu erschaffen. Die Gruppe muss drei magische Artefakte finden, um ihn zu stoppen.', 1, true, 5, false);
 
 -- Sample character for user 2 (Fredl)
 INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)

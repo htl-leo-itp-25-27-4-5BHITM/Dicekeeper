@@ -2,292 +2,1825 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Character</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dicekeeper – Spieleransicht</title>
+<link rel="stylesheet" href="../common/header.css">
 
 <style>
 :root {
   --green-600: #004c3685;
+  --glass: rgba(20, 60, 45, 0.65);
+  --glass-dark: rgba(0, 0, 0, 0.28);
+  --glass-light: rgba(255, 255, 255, 0.06);
+  --accent-green: #69f0ae;
+  --accent-purple: #ba68c8;
+  --danger: #ff5252;
+  --gold: #ffc107;
+  --text: #e8f5e9;
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --bottom-nav-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: system-ui, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
+
+html { height: -webkit-fill-available; }
 
 body {
   background-image: url("../images/Background.png");
   background-size: cover;
-  background-attachment: fixed;
+  background-attachment: scroll; /* 'fixed' breaks on iOS */
   min-height: 100vh;
-  padding: 20px 14px 40px 14px;
-  color: white;
+  min-height: -webkit-fill-available;
+  color: var(--text);
+  padding-top: 60px;
+  overflow-x: hidden;
 }
 
-.container {
-  max-width: 520px;
-  margin: 0 auto;
+/* ===== GLASS CARD ===== */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 20px;
+  padding: 16px;
 }
 
-.card {
-  background: var(--green-600);
-  backdrop-filter: blur(16px);
-  border-radius: 32px;
-  overflow: hidden;
+/* ===== MOBILE BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--bottom-nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: rgba(10, 40, 30, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  z-index: 900;
 }
 
-/* HEADER */
-.character-top {
-  padding: 28px 20px 22px 20px;
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-item.active {
+  color: var(--accent-green);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  background: var(--accent-green);
+  border-radius: 0 0 3px 3px;
+}
+
+/* ===== PAGE SECTIONS ===== */
+.page-section {
+  display: none;
+  padding: 12px;
+  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 16px);
+  min-height: calc(100vh - 60px);
+}
+
+.page-section.active {
+  display: block;
+}
+
+/* ===== CHARACTER SECTION (mobile-optimized) ===== */
+.char-header-mobile {
   text-align: center;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.25), transparent);
+  padding: 20px 12px 16px;
 }
 
-.avatar {
-  width: 100px;
-  height: 100px;
+.char-avatar {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  overflow: hidden;
-  margin: 0 auto 14px auto;
+  margin: 0 auto 10px;
   background: linear-gradient(135deg, #6ee7b7, #34d399);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
   color: #064e3b;
+  box-shadow: 0 4px 16px rgba(52, 211, 153, 0.3);
 }
 
-.avatar img {
+.char-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
-.name {
-  font-size: 24px;
+.char-name {
+  font-size: 20px;
   font-weight: 700;
+  margin-bottom: 2px;
 }
 
-.meta {
+.char-meta-line {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.level-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--gold), #ffca28);
+  color: #1a1a2e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
   margin-top: 6px;
-  font-size: 14px;
-  opacity: 0.85;
 }
 
-/* STATS */
-.stats-section {
-  padding: 20px;
+/* ===== CORE STATS ROW ===== */
+.core-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px;
 }
 
-.stats-grid {
+.core-stat {
+  background: var(--glass-dark);
+  border-radius: 14px;
+  padding: 10px 4px;
+  text-align: center;
+}
+
+.core-stat-icon { font-size: 16px; margin-bottom: 1px; }
+.core-stat-value { font-size: 20px; font-weight: 700; }
+.core-stat-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* HP Controls — big enough for thumb taps */
+.hp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.hp-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hp-btn:active { transform: scale(0.9); }
+.hp-btn.damage { border-color: rgba(255,82,82,0.5); color: #ff8a80; }
+.hp-btn.damage:active { background: rgba(255,82,82,0.2); }
+.hp-btn.heal { border-color: rgba(105,240,174,0.5); color: #69f0ae; }
+.hp-btn.heal:active { background: rgba(105,240,174,0.2); }
+
+/* ===== SECTION TITLE ===== */
+.section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* ===== COLLAPSIBLE SECTIONS ===== */
+.collapse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collapse-header .section-title {
+  margin-bottom: 0;
+}
+
+.collapse-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.25s;
+}
+
+.collapse-header.open .collapse-arrow {
+  transform: rotate(180deg);
+}
+
+.collapse-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.collapse-body.open {
+  max-height: 2000px;
+}
+
+/* ===== ABILITY SCORES (mobile) ===== */
+.abilities-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
-.stat-box {
-  background: rgba(0,0,0,0.28);
-  border-radius: 18px;
-  padding: 16px;
+.ability-box {
+  background: var(--glass-dark);
+  border-radius: 14px;
+  padding: 10px 6px;
   text-align: center;
 }
 
-.stat-label {
-  font-size: 12px;
-  opacity: 0.7;
+.ability-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 1px;
 }
 
-.stat-value {
-  font-size: 26px;
+.ability-score {
+  font-size: 22px;
   font-weight: 700;
-  margin-top: 4px;
 }
 
-.stat-modifier {
+.ability-mod {
   font-size: 12px;
-  opacity: 0.8;
+  font-weight: 600;
+  color: var(--accent-green);
+  margin-top: 1px;
 }
 
-/* BACKGROUND */
-.info-section {
-  padding: 20px;
-  border-top: 1px solid rgba(255,255,255,0.2);
+.ability-mod.negative { color: #ff8a80; }
+
+/* ===== SAVING THROWS & SKILLS ===== */
+.save-row, .skill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  min-height: 40px; /* touch-friendly row height */
 }
 
-.info-box {
-  background: rgba(0,0,0,0.28);
-  border-radius: 18px;
-  padding: 16px;
+.save-row:active, .skill-row:active {
+  background: var(--glass-light);
+}
+
+.save-name { color: var(--text-muted); }
+.save-value { font-weight: 600; }
+.save-value.positive { color: var(--accent-green); }
+.save-value.negative { color: #ff8a80; }
+
+.skill-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.skill-proficient {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+}
+
+.skill-not-proficient {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+
+.skill-bonus { font-weight: 600; font-size: 13px; }
+.skill-bonus.positive { color: var(--accent-green); }
+.skill-bonus.negative { color: #ff8a80; }
+
+/* ===== SPACER between cards ===== */
+.card-gap { height: 12px; }
+
+/* ===== INFO CARDS (overview, proficiencies) ===== */
+.info-card {
+  background: var(--glass-dark);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.info-card-title {
   font-size: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.loading {
-  padding: 60px 20px;
+.info-card-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.info-tag {
+  display: inline-block;
+  background: rgba(105,240,174,0.12);
+  color: var(--accent-green);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin: 3px 4px 3px 0;
+}
+
+.info-tag.purple {
+  background: rgba(186,104,200,0.15);
+  color: var(--accent-purple);
+}
+
+/* ===== PROFICIENCIES ===== */
+.prof-group { margin-bottom: 16px; }
+.prof-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* ===== PARTY ===== */
+.party-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.party-card {
+  background: var(--glass-dark);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.party-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6ee7b7, #34d399);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #064e3b;
+  flex-shrink: 0;
+}
+
+.party-avatar.dm {
+  background: linear-gradient(135deg, #ba68c8, #7b1fa2);
+  color: white;
+}
+
+.party-info { flex: 1; min-width: 0; }
+.party-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-detail { font-size: 12px; color: var(--text-muted); }
+.party-role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.party-role-badge.dm { background: rgba(186,104,200,0.2); color: var(--accent-purple); }
+.party-role-badge.player { background: rgba(105,240,174,0.12); color: var(--accent-green); }
+
+/* ===== WÜRFEL (GM_Ui style) ===== */
+.dice-display {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.2 / 1;
+  background: rgba(0,0,0,0.4);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.dice-display::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(105,240,174,0.15);
+  pointer-events: none;
+}
+
+.dice-type-label {
+  font-size: 12px;
+  opacity: 0.5;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.dice-result-value {
+  font-size: 52px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #e8f5e9, #69f0ae);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  transition: transform 0.3s ease;
+}
+
+.dice-result-value.rolling {
+  animation: diceRoll 0.5s ease-out;
+}
+
+@keyframes diceRoll {
+  0%   { transform: scale(0.5) rotate(-15deg); opacity: 0.3; }
+  50%  { transform: scale(1.15) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.dice-feedback-text {
+  font-size: 12px;
+  min-height: 18px;
+  margin-top: 4px;
+  font-weight: 600;
+  transition: opacity 0.3s;
+}
+
+/* Dice chip row */
+.dice-chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.dice-chip {
+  padding: 8px 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(105,240,174,0.2);
+  background: rgba(105,240,174,0.06);
+  color: rgba(232,245,233,0.7);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 44px;
   text-align: center;
-  opacity: 0.8;
+}
+
+.dice-chip:active {
+  background: rgba(105,240,174,0.18);
+}
+
+.dice-chip.selected {
+  background: linear-gradient(135deg, #00c853, #69f0ae);
+  color: #003300;
+  border-color: transparent;
+  box-shadow: 0 2px 10px rgba(0,200,83,0.3);
+}
+
+/* Roll button */
+.roll-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #00c853, #69f0ae);
+  color: #003300;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.roll-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.roll-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Or divider */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+.or-divider span {
+  font-size: 11px;
+  opacity: 0.4;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Manual input */
+.manual-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.manual-row input {
+  flex: 1;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.07);
+  color: white;
+  font-size: 15px;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.manual-row input:focus {
+  border-color: var(--accent-purple);
+}
+
+.manual-row input::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+
+.manual-set-btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7b1fa2, #ba68c8);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s;
+}
+
+.manual-set-btn:active {
+  transform: scale(0.96);
+}
+
+/* Dice history */
+.dice-history { margin-top: 14px; max-height: 150px; overflow-y: auto; }
+.dice-history-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-radius: 8px;
+  min-height: 32px;
+  align-items: center;
+}
+.dice-history-entry:nth-child(odd) { background: var(--glass-light); }
+
+/* ===== NOTES ===== */
+.notes-area {
+  width: 100%;
+  min-height: 250px;
+  background: var(--glass-dark);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 14px;
+  color: white;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+
+.notes-area:focus { border-color: var(--accent-green); }
+.notes-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+/* ===== CAMPAIGN BAR (compact mobile) ===== */
+.campaign-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 8px;
+}
+
+.campaign-bar-info { flex: 1; min-width: 0; }
+.campaign-bar-name {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.campaign-bar-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-btn {
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: white;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.bar-btn:active { background: rgba(255,255,255,0.1); }
+
+/* ===== LOADING ===== */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 100px);
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== STATUS ===== */
+.status-message {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 3000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  max-width: 90vw;
+  text-align: center;
+}
+.status-message.show { opacity: 1; }
+.status-message.success { background: rgba(76, 175, 80, 0.95); color: white; }
+.status-message.error { background: rgba(244, 67, 54, 0.95); color: white; }
+
+/* ========================================= */
+/* ===== DESKTOP (≥ 768px) OVERRIDES ======= */
+/* ========================================= */
+@media (min-width: 768px) {
+  body { padding-bottom: 0; }
+
+  .bottom-nav { display: none; }
+
+  .page-section {
+    display: none !important;
+    padding-bottom: 16px;
+  }
+
+  /* Show desktop layout instead */
+  .desktop-layout {
+    display: grid !important;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    padding: 20px;
+    min-height: calc(100vh - 60px);
+  }
+
+  .desktop-sidebar {
+    display: flex !important;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(105,240,174,0.3) transparent;
+  }
+  .desktop-sidebar::-webkit-scrollbar { width: 5px; }
+  .desktop-sidebar::-webkit-scrollbar-thumb { background: rgba(105,240,174,0.3); border-radius: 10px; }
+
+  .desktop-main {
+    display: flex !important;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(105,240,174,0.3) transparent;
+  }
+  .desktop-main::-webkit-scrollbar { width: 5px; }
+  .desktop-main::-webkit-scrollbar-thumb { background: rgba(105,240,174,0.3); border-radius: 10px; }
+
+  /* Desktop tabs */
+  .desktop-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+
+  .desktop-tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .desktop-tab:hover { color: var(--text); }
+  .desktop-tab.active {
+    color: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+  }
+
+  .desktop-tab-panel {
+    display: none;
+    padding: 16px 20px;
+  }
+  .desktop-tab-panel.active { display: block; }
+
+  .glass { border-radius: 24px; padding: 20px; }
+  .char-avatar { width: 90px; height: 90px; font-size: 28px; }
+  .char-name { font-size: 22px; }
+  .dice-result-value { font-size: 48px; }
+  .hp-btn { width: 28px; height: 28px; font-size: 16px; }
+
+  .party-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .core-stats { grid-template-columns: repeat(2, 1fr); }
+  .abilities-grid { grid-template-columns: repeat(2, 1fr); }
+  .dice-chip { padding: 6px 10px; font-size: 12px; min-width: 38px; }
 }
 </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="card" id="content">
-    <div class="loading">Loading character...</div>
+<div id="statusMessage" class="status-message"></div>
+
+<!-- Loading state -->
+<div class="loading-screen" id="loadingScreen">
+  <span class="loading-spinner"></span> Spiel wird geladen...
+</div>
+
+<!-- ============================== -->
+<!-- MOBILE LAYOUT (< 768px)        -->
+<!-- ============================== -->
+
+<!-- Section: Character -->
+<div class="page-section active" id="mob-character" style="display:none;">
+  <div class="glass campaign-bar" id="mobCampaignBar"></div>
+  <div class="card-gap"></div>
+  <div class="glass char-header-mobile" id="mobCharHeader"></div>
+  <div class="card-gap"></div>
+  <div class="glass core-stats" id="mobCoreStats"></div>
+  <div class="card-gap"></div>
+  <div class="glass" style="padding:12px" id="mobAbilities">
+    <div class="section-title">Attributswerte</div>
+    <div class="abilities-grid" id="mobAbilitiesGrid"></div>
+  </div>
+  <div class="card-gap"></div>
+  <div class="glass" style="padding:12px" id="mobSaves">
+    <div class="collapse-header open" data-target="mobSavesBody">
+      <div class="section-title">Rettungswürfe</div>
+      <span class="collapse-arrow">▼</span>
+    </div>
+    <div class="collapse-body open" id="mobSavesBody">
+      <div id="mobSavesList"></div>
+    </div>
+  </div>
+  <div class="card-gap"></div>
+  <div class="glass" style="padding:12px" id="mobSkills">
+    <div class="collapse-header" data-target="mobSkillsBody">
+      <div class="section-title">Fertigkeiten</div>
+      <span class="collapse-arrow">▼</span>
+    </div>
+    <div class="collapse-body" id="mobSkillsBody">
+      <div id="mobSkillsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Overview -->
+<div class="page-section" id="mob-overview" style="display:none;">
+  <div id="mobOverviewContent"></div>
+</div>
+
+<!-- Section: Party -->
+<div class="page-section" id="mob-party" style="display:none;">
+  <div id="mobPartyContent"></div>
+</div>
+
+<!-- Section: Dice -->
+<div class="page-section" id="mob-dice" style="display:none;">
+  <div id="mobDiceContent"></div>
+</div>
+
+<!-- Section: Notes -->
+<div class="page-section" id="mob-notes" style="display:none;">
+  <div id="mobNotesContent"></div>
+</div>
+
+<!-- Mobile Bottom Nav -->
+<nav class="bottom-nav" id="bottomNav" style="display:none;">
+  <button class="nav-item active" data-section="mob-character">
+    <span class="nav-item-icon">🧙</span>
+    Charakter
+  </button>
+  <button class="nav-item" data-section="mob-overview">
+    <span class="nav-item-icon">📋</span>
+    Info
+  </button>
+  <button class="nav-item" data-section="mob-party">
+    <span class="nav-item-icon">👥</span>
+    Gruppe
+  </button>
+  <button class="nav-item" data-section="mob-dice">
+    <span class="nav-item-icon">🎲</span>
+    Würfel
+  </button>
+  <button class="nav-item" data-section="mob-notes">
+    <span class="nav-item-icon">📝</span>
+    Notizen
+  </button>
+</nav>
+
+<!-- ============================== -->
+<!-- DESKTOP LAYOUT (≥ 768px)       -->
+<!-- ============================== -->
+<div class="desktop-layout" id="desktopLayout" style="display:none;">
+  <!-- Sidebar -->
+  <div class="desktop-sidebar">
+    <div class="glass char-header-mobile" id="deskCharHeader"></div>
+    <div class="glass core-stats" id="deskCoreStats"></div>
+    <div class="glass" style="padding:12px">
+      <div class="section-title">Attributswerte</div>
+      <div class="abilities-grid" id="deskAbilitiesGrid"></div>
+    </div>
+    <div class="glass" style="padding:12px">
+      <div class="collapse-header open" data-target="deskSavesBody">
+        <div class="section-title">Rettungswürfe</div>
+        <span class="collapse-arrow">▼</span>
+      </div>
+      <div class="collapse-body open" id="deskSavesBody">
+        <div id="deskSavesList"></div>
+      </div>
+    </div>
+    <div class="glass" style="padding:12px">
+      <div class="collapse-header open" data-target="deskSkillsBody">
+        <div class="section-title">Fertigkeiten</div>
+        <span class="collapse-arrow">▼</span>
+      </div>
+      <div class="collapse-body open" id="deskSkillsBody">
+        <div id="deskSkillsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="desktop-main">
+    <div class="glass campaign-bar" id="deskCampaignBar"></div>
+    <div class="glass" style="padding:0;">
+      <div class="desktop-tabs">
+        <button class="desktop-tab active" data-tab="desk-overview">📋 Übersicht</button>
+        <button class="desktop-tab" data-tab="desk-proficiencies">🛡️ Übung</button>
+        <button class="desktop-tab" data-tab="desk-party">👥 Gruppe</button>
+        <button class="desktop-tab" data-tab="desk-dice">🎲 Würfel</button>
+        <button class="desktop-tab" data-tab="desk-notes">📝 Notizen</button>
+      </div>
+      <div class="desktop-tab-panel active" id="desk-overview">
+        <div id="deskOverviewContent"></div>
+      </div>
+      <div class="desktop-tab-panel" id="desk-proficiencies">
+        <div id="deskProfContent"></div>
+      </div>
+      <div class="desktop-tab-panel" id="desk-party">
+        <div id="deskPartyContent"></div>
+      </div>
+      <div class="desktop-tab-panel" id="desk-dice">
+        <div style="padding:16px" id="deskDiceContent"></div>
+      </div>
+      <div class="desktop-tab-panel" id="desk-notes">
+        <div id="deskNotesContent"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 (function() {
 
-  const params = new URLSearchParams(window.location.search);
-  const campaignId = params.get("campaignId");
+  var params = new URLSearchParams(window.location.search);
+  var campaignId = params.get("campaignId");
 
-  const content = document.getElementById("content");
+  var currentPlayer = null;
+  var campaign = null;
+  var character = null;
+  var campaignPlayers = [];
+  var playerNameMap = {};
+  var characterMap = {};
+  var currentHP = 0;
+  var maxHP = 0;
+  var diceHistory = [];
+
+  // ===== UTILITIES =====
+
+  function showStatus(message, isError) {
+    var el = document.getElementById('statusMessage');
+    el.textContent = message;
+    el.className = 'status-message show ' + (isError ? 'error' : 'success');
+    setTimeout(function() { el.className = 'status-message'; }, 3000);
+  }
 
   function getSessionPlayer() {
     try {
-      const raw = sessionStorage.getItem("player");
+      var raw = sessionStorage.getItem("player");
       return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    } catch(e) { return null; }
   }
 
-  function calculateModifier(score) {
-    return Math.floor((score - 10) / 2);
-  }
-
-  function formatModifier(mod) {
-    return mod >= 0 ? "+" + mod : mod;
-  }
+  function calcMod(score) { return Math.floor((score - 10) / 2); }
+  function fmtMod(mod) { return mod >= 0 ? "+" + mod : "" + mod; }
 
   function initials(name) {
     if (!name) return "?";
-    const parts = name.split(" ");
+    var parts = name.trim().split(/\s+/);
     return parts.length > 1
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : parts[0].substring(0,2).toUpperCase();
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
   }
 
-  async function loadCharacter() {
+  function esc(s) {
+    return String(s || '').replace(/[&<>"]/g, function(ch) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch];
+    });
+  }
 
-    const sessionPlayer = getSessionPlayer();
+  function getScore(abilityName) {
+    if (!character || !character.abilityScores) return 10;
+    var found = character.abilityScores.find(function(a) {
+      return a.abilityName && a.abilityName.toLowerCase() === abilityName.toLowerCase();
+    });
+    return found ? found.score : 10;
+  }
 
-    if (!sessionPlayer) {
-      window.location.href = "./Login.html";
-      return;
-    }
+  function getProfBonus() {
+    var lvl = character ? character.level || 1 : 1;
+    return Math.floor((lvl - 1) / 4) + 2;
+  }
 
+  var SKILLS = [
+    { name: "Acrobatics", de: "Akrobatik", ability: "Dexterity" },
+    { name: "Animal Handling", de: "Tierführung", ability: "Wisdom" },
+    { name: "Arcana", de: "Arkane Kunde", ability: "Intelligence" },
+    { name: "Athletics", de: "Athletik", ability: "Strength" },
+    { name: "Deception", de: "Täuschung", ability: "Charisma" },
+    { name: "History", de: "Geschichte", ability: "Intelligence" },
+    { name: "Insight", de: "Motiv erkennen", ability: "Wisdom" },
+    { name: "Intimidation", de: "Einschüchtern", ability: "Charisma" },
+    { name: "Investigation", de: "Nachforschen", ability: "Intelligence" },
+    { name: "Medicine", de: "Heilkunde", ability: "Wisdom" },
+    { name: "Nature", de: "Naturkunde", ability: "Intelligence" },
+    { name: "Perception", de: "Wahrnehmung", ability: "Wisdom" },
+    { name: "Performance", de: "Auftreten", ability: "Charisma" },
+    { name: "Persuasion", de: "Überzeugen", ability: "Charisma" },
+    { name: "Religion", de: "Religion", ability: "Intelligence" },
+    { name: "Sleight of Hand", de: "Fingerfertigkeit", ability: "Dexterity" },
+    { name: "Stealth", de: "Heimlichkeit", ability: "Dexterity" },
+    { name: "Survival", de: "Überlebenskunst", ability: "Wisdom" }
+  ];
+
+  var ICONS = {
+    Strength:"💪", Dexterity:"🏹", Constitution:"🛡️",
+    Intelligence:"🧠", Wisdom:"🔮", Charisma:"✨"
+  };
+
+  var ABILITY_DE = {
+    Strength:"Stärke", Dexterity:"Geschick", Constitution:"Konstitution",
+    Intelligence:"Intelligenz", Wisdom:"Weisheit", Charisma:"Charisma"
+  };
+
+  var ABILITY_ABBR_DE = {
+    Strength:"STÄ", Dexterity:"GES", Constitution:"KON",
+    Intelligence:"INT", Wisdom:"WEI", Charisma:"CHA"
+  };
+
+  var ABILITIES = ["Strength","Dexterity","Constitution","Intelligence","Wisdom","Charisma"];
+
+  // ===== DETECT MOBILE / DESKTOP =====
+  function isMobile() { return window.innerWidth < 768; }
+
+  // ===== LOAD DATA =====
+
+  async function loadGame() {
+    currentPlayer = getSessionPlayer();
+    if (!currentPlayer) { window.location.href = "./Login.html"; return; }
     if (!campaignId) {
-      content.innerHTML = "<div class='loading'>No campaign selected.</div>";
+      document.getElementById('loadingScreen').innerHTML = '<span>Keine Kampagne ausgewählt.</span>';
       return;
     }
 
     try {
+      var campRes = await fetch('/api/campaign/' + encodeURIComponent(campaignId) + '?playerId=' + encodeURIComponent(currentPlayer.id), { cache: 'no-store' });
+      if (!campRes.ok) throw new Error('Kampagne nicht gefunden');
+      campaign = await campRes.json();
 
-      // 1️⃣ Campaign Players laden
-      const cpRes = await fetch(`/api/campaign-player/${campaignId}`);
-      const campaignPlayers = await cpRes.json();
+      var cpRes = await fetch('/api/campaign-player/' + encodeURIComponent(campaignId), { cache: 'no-store' });
+      if (!cpRes.ok) throw new Error('Spieler konnten nicht geladen werden');
+      campaignPlayers = await cpRes.json();
 
-      const myEntry = campaignPlayers.find(cp => 
-        cp.playerId === sessionPlayer.id
-      );
-
+      var myEntry = campaignPlayers.find(function(cp) { return cp.playerId === currentPlayer.id; });
       if (!myEntry || !myEntry.characterId) {
-        content.innerHTML = "<div class='loading'>No character submitted yet.</div>";
+        document.getElementById('loadingScreen').innerHTML = '<span>Kein Charakter für diese Kampagne eingereicht.</span>';
         return;
       }
 
-      // 2️⃣ Character laden
-      const charRes = await fetch(`/api/character/${myEntry.characterId}`);
-      const character = await charRes.json();
+      var charRes = await fetch('/api/character/' + encodeURIComponent(myEntry.characterId), { cache: 'no-store' });
+      if (!charRes.ok) throw new Error('Charakter konnte nicht geladen werden');
+      character = await charRes.json();
 
-      render(character, sessionPlayer);
+      var playerPromises = campaignPlayers.map(async function(cp) {
+        try {
+          var pRes = await fetch('/api/player/id/' + encodeURIComponent(cp.playerId), { cache: 'no-store' });
+          if (pRes.ok) {
+            var p = await pRes.json();
+            playerNameMap[cp.playerId] = p.username || p.name || ('Spieler ' + cp.playerId);
+          }
+        } catch(e) {}
+        if (cp.characterId && cp.playerId !== currentPlayer.id) {
+          try {
+            var cRes = await fetch('/api/character/' + encodeURIComponent(cp.characterId), { cache: 'no-store' });
+            if (cRes.ok) { characterMap[cp.playerId] = await cRes.json(); }
+          } catch(e) {}
+        }
+      });
+      await Promise.all(playerPromises);
+      characterMap[currentPlayer.id] = character;
+
+      var conMod = calcMod(getScore("Constitution"));
+      var lvl = character.level || 1;
+      maxHP = 10 + (conMod * lvl);
+      if (maxHP < 1) maxHP = 1;
+      var savedHP = sessionStorage.getItem('hp_' + campaignId + '_' + character.id);
+      currentHP = savedHP !== null ? parseInt(savedHP) : maxHP;
+
+      renderAll();
+
+      document.getElementById('loadingScreen').style.display = 'none';
+      showLayout();
 
     } catch (err) {
-      content.innerHTML = "<div class='loading'>Failed to load character.</div>";
       console.error(err);
+      document.getElementById('loadingScreen').innerHTML = '<span>Spieldaten konnten nicht geladen werden.</span>';
     }
   }
 
-  function render(character, player) {
-
-  const abilityIcons = {
-    Strength: "💪",
-    Dexterity: "🏹",
-    Constitution: "🛡️",
-    Intelligence: "🧠",
-    Wisdom: "🔮",
-    Charisma: "✨"
-  };
-
-  const abilities = Object.keys(abilityIcons);
-
-  function getScore(name) {
-    const found = character.abilityScores?.find(a =>
-      a.abilityName.toLowerCase() === name.toLowerCase()
-    );
-    return found ? found.score : 10;
+  function showLayout() {
+    if (isMobile()) {
+      document.getElementById('mob-character').style.display = 'block';
+      document.getElementById('bottomNav').style.display = 'flex';
+      document.getElementById('desktopLayout').style.display = 'none';
+    } else {
+      document.getElementById('desktopLayout').style.display = 'grid';
+      document.getElementById('bottomNav').style.display = 'none';
+      // hide all mobile sections
+      ['mob-character','mob-overview','mob-party','mob-dice','mob-notes'].forEach(function(id) {
+        document.getElementById(id).style.display = 'none';
+      });
+    }
   }
 
-  const statsHTML = abilities.map(name => {
-    const score = getScore(name);
-    const mod = calculateModifier(score);
+  // ===== RENDER ALL =====
 
-    return `
-      <div class="stat-box">
-        <div class="stat-label">
-          ${abilityIcons[name]} ${name.substring(0,3).toUpperCase()}
-        </div>
-        <div class="stat-value">${score}</div>
-        <div class="stat-modifier">${formatModifier(mod)}</div>
-      </div>
-    `;
-  }).join("");
+  function renderAll() {
+    // Render into both mobile AND desktop containers
+    renderCharHeader('mobCharHeader');
+    renderCharHeader('deskCharHeader');
+    renderCoreStats('mobCoreStats');
+    renderCoreStats('deskCoreStats');
+    renderAbilities('mobAbilitiesGrid');
+    renderAbilities('deskAbilitiesGrid');
+    renderSavingThrows('mobSavesList');
+    renderSavingThrows('deskSavesList');
+    renderSkills('mobSkillsList');
+    renderSkills('deskSkillsList');
+    renderCampaignBar('mobCampaignBar');
+    renderCampaignBar('deskCampaignBar');
+    renderOverview('mobOverviewContent');
+    renderOverview('deskOverviewContent');
+    renderProficiencies('mobOverviewContent', true); // append to mobile overview
+    renderProficiencies('deskProfContent', false);
+    renderParty('mobPartyContent');
+    renderParty('deskPartyContent');
+    renderDice('mobDiceContent');
+    renderDice('deskDiceContent');
+    renderNotes('mobNotesContent');
+    renderNotes('deskNotesContent');
+    setupCollapsible();
+    setupMobileNav();
+    setupDesktopTabs();
+  }
 
-  content.innerHTML = `
-    <div class="character-top">
-      <div class="avatar">
-        ${player.profilePicture 
-          ? `<img src="..${player.profilePicture}">`
-          : initials(player.name || player.username)}
-      </div>
+  // ===== CHARACTER HEADER =====
 
-      <div class="name"> ${character.name}</div>
+  function renderCharHeader(elId) {
+    var el = document.getElementById(elId);
+    var cn = character.characterClass ? character.characterClass.name : 'Keine Klasse';
+    var race = character.race || 'Unbekannte Rasse';
+    var align = character.alignment || 'Ohne Gesinnung';
+    var lvl = character.level || 1;
 
-      <div class="meta">
-        🏆 Level ${character.level || 1} <br>
-        🧬 ${character.race || "Unknown Race"} <br> 
-        ⚔️ ${character.characterClass?.name || "No Class"} <br>
-        ⚖️ ${character.alignment || "Unaligned"}
-      </div>
-    </div>
+    el.innerHTML =
+      '<div class="char-avatar">' +
+        (currentPlayer.profilePicture
+          ? '<img src="..' + esc(currentPlayer.profilePicture) + '" alt="avatar">'
+          : initials(character.name || currentPlayer.name)) +
+      '</div>' +
+      '<div class="char-name">' + esc(character.name) + '</div>' +
+      '<div class="char-meta-line">' + esc(race) + ' · ' + esc(cn) + ' · ' + esc(align) + '</div>' +
+      '<span class="level-badge">⭐ Stufe ' + lvl + '</span>';
+  }
 
-    <div class="stats-section">
-      <div class="section-title">Attributes</div>
-      <div class="stats-grid">
-        ${statsHTML}
-      </div>
-    </div>
+  // ===== CORE STATS =====
 
-    <div class="info-section">
-      <div class="section-title">Background Story</div>
-      <div class="info-box">
-        ${character.info || "This hero has not revealed their story yet..."}
-      </div>
-    </div>
-  `;
-}
+  function renderCoreStats(elId) {
+    var el = document.getElementById(elId);
+    var dexMod = calcMod(getScore("Dexterity"));
+    var ac = 10 + dexMod;
+    var init = dexMod;
 
-  loadCharacter();
+    var pct = maxHP > 0 ? Math.round((currentHP / maxHP) * 100) : 0;
+    var hpColor = 'var(--accent-green)';
+    if (pct <= 50) hpColor = 'var(--gold)';
+    if (pct <= 25) hpColor = 'var(--danger)';
+
+    el.innerHTML =
+      '<div class="core-stat">' +
+        '<div class="core-stat-icon">❤️</div>' +
+        '<div class="core-stat-value" style="color:' + hpColor + '">' + currentHP + '</div>' +
+        '<div class="core-stat-label">TP (' + maxHP + ')</div>' +
+        '<div class="hp-controls">' +
+          // '<button class="hp-btn damage" data-hp="-1" title="Schaden">−</button>' +
+          // '<button class="hp-btn heal" data-hp="1" title="Heilen">+</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="core-stat">' +
+        '<div class="core-stat-icon">🛡️</div>' +
+        '<div class="core-stat-value">' + ac + '</div>' +
+        '<div class="core-stat-label">RK</div>' +
+      '</div>' +
+      '<div class="core-stat">' +
+        '<div class="core-stat-icon">⚡</div>' +
+        '<div class="core-stat-value">' + fmtMod(init) + '</div>' +
+        '<div class="core-stat-label">Initiative</div>' +
+      '</div>' +
+      '<div class="core-stat">' +
+        '<div class="core-stat-icon">🏃</div>' +
+        '<div class="core-stat-value">30</div>' +
+        '<div class="core-stat-label">Tempo</div>' +
+      '</div>';
+
+    el.querySelectorAll('.hp-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        changeHP(parseInt(btn.dataset.hp));
+      });
+    });
+  }
+
+  function changeHP(delta) {
+    currentHP = Math.max(0, Math.min(maxHP, currentHP + delta));
+    sessionStorage.setItem('hp_' + campaignId + '_' + character.id, currentHP);
+    renderCoreStats('mobCoreStats');
+    renderCoreStats('deskCoreStats');
+  }
+
+  // ===== ABILITIES =====
+
+  function renderAbilities(gridId) {
+    var grid = document.getElementById(gridId);
+    grid.innerHTML = ABILITIES.map(function(name) {
+      var score = getScore(name);
+      var mod = calcMod(score);
+      return '<div class="ability-box" title="' + ABILITY_DE[name] + '">' +
+        '<div class="ability-label">' + ICONS[name] + ' ' + ABILITY_ABBR_DE[name] + '</div>' +
+        '<div class="ability-score">' + score + '</div>' +
+        '<div class="ability-mod' + (mod < 0 ? ' negative' : '') + '">' + fmtMod(mod) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ===== SAVING THROWS =====
+
+  function renderSavingThrows(listId) {
+    var el = document.getElementById(listId);
+    el.innerHTML = ABILITIES.map(function(name) {
+      var mod = calcMod(getScore(name));
+      return '<div class="save-row">' +
+        '<span class="save-name">' + ICONS[name] + ' ' + ABILITY_DE[name] + '</span>' +
+        '<span class="save-value' + (mod >= 0 ? ' positive' : ' negative') + '">' + fmtMod(mod) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ===== SKILLS =====
+
+  function renderSkills(listId) {
+    var el = document.getElementById(listId);
+    var bgSkills = character.background && character.background.skills
+      ? character.background.skills.split(',').map(function(s) { return s.trim().toLowerCase(); })
+      : [];
+
+    el.innerHTML = SKILLS.map(function(skill) {
+      var mod = calcMod(getScore(skill.ability));
+      var prof = bgSkills.some(function(s) { return s === skill.name.toLowerCase(); });
+      var bonus = prof ? mod + getProfBonus() : mod;
+      return '<div class="skill-row">' +
+        '<span class="skill-name">' +
+          '<span class="' + (prof ? 'skill-proficient' : 'skill-not-proficient') + '"></span>' +
+          skill.de +
+          ' <span style="font-size:10px;color:var(--text-muted)">(' + ABILITY_ABBR_DE[skill.ability] + ')</span>' +
+        '</span>' +
+        '<span class="skill-bonus' + (bonus >= 0 ? ' positive' : ' negative') + '">' + fmtMod(bonus) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ===== CAMPAIGN BAR =====
+
+  function renderCampaignBar(elId) {
+    var el = document.getElementById(elId);
+    el.innerHTML =
+      '<div class="campaign-bar-info">' +
+        '<div class="campaign-bar-name">⚔️ ' + esc(campaign.name) + '</div>' +
+        '<div class="campaign-bar-desc">' + esc(campaign.description || '') + '</div>' +
+      '</div>' +
+      '<button class="bar-btn" data-action="back">← Zurück</button>';
+    el.querySelector('[data-action="back"]').addEventListener('click', function() {
+      window.location.href = './Campaigns.html';
+    });
+  }
+
+  // ===== OVERVIEW =====
+
+  function renderOverview(elId) {
+    var el = document.getElementById(elId);
+    var bgFeat = character.background ? character.background.feat : '';
+    var classDesc = character.characterClass ? character.characterClass.description : '';
+    var html = '';
+
+    html += '<div class="info-card">' +
+      '<div class="info-card-title">📖 Hintergrundgeschichte</div>' +
+      '<div class="info-card-body">' + (esc(character.info) || 'Dieser Held hat seine Geschichte noch nicht offenbart...') + '</div>' +
+    '</div>';
+
+    if (character.characterClass) {
+      html += '<div class="info-card">' +
+        '<div class="info-card-title">⚔️ ' + esc(character.characterClass.name) + '</div>' +
+        '<div class="info-card-body">' + classDesc + '</div>' +
+      '</div>';
+    }
+
+    if (character.background) {
+      html += '<div class="info-card">' +
+        '<div class="info-card-title">🏛️ Hintergrund: ' + esc(character.background.name) + '</div>' +
+        '<div class="info-card-body">' + esc(character.background.description || '') + '</div>' +
+        (bgFeat ? '<div style="margin-top:8px"><span class="info-tag purple">Talent: ' + esc(bgFeat) + '</span></div>' : '') +
+      '</div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  // ===== PROFICIENCIES =====
+
+  function renderProficiencies(elId, append) {
+    var el = document.getElementById(elId);
+    var html = '';
+
+    var bgSkills = character.background && character.background.skills ? character.background.skills : '';
+    if (bgSkills) {
+      html += '<div class="prof-group">' +
+        '<div class="prof-group-title">Fertigkeitsübung</div>' +
+        '<div>' + bgSkills.split(',').map(function(s) { return '<span class="info-tag">' + esc(s.trim()) + '</span>'; }).join('') + '</div>' +
+      '</div>';
+    }
+
+    var bgTools = character.background && character.background.toolProficiencies ? character.background.toolProficiencies : '';
+    if (bgTools) {
+      html += '<div class="prof-group">' +
+        '<div class="prof-group-title">Werkzeugübung</div>' +
+        '<div>' + bgTools.split(',').map(function(s) { return '<span class="info-tag purple">' + esc(s.trim()) + '</span>'; }).join('') + '</div>' +
+      '</div>';
+    }
+
+    var bgEquip = character.background && character.background.equipment ? character.background.equipment : '';
+    if (bgEquip) {
+      html += '<div class="prof-group">' +
+        '<div class="prof-group-title">Ausrüstung</div>' +
+        '<div class="info-card" style="margin:0"><div class="info-card-body">' + esc(bgEquip) + '</div></div>' +
+      '</div>';
+    }
+
+    html += '<div class="prof-group">' +
+      '<div class="prof-group-title">Übungsbonus</div>' +
+      '<div><span class="info-tag" style="font-size:14px;padding:6px 14px">+' + getProfBonus() + '</span></div>' +
+    '</div>';
+
+    if (append) {
+      el.innerHTML += html;
+    } else {
+      el.innerHTML = html;
+    }
+  }
+
+  // ===== PARTY =====
+
+  function renderParty(elId) {
+    var el = document.getElementById(elId);
+    if (campaignPlayers.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Noch keine Gruppenmitglieder.</div>';
+      return;
+    }
+
+    var html = '<div class="party-grid">';
+    campaignPlayers.forEach(function(cp) {
+      var name = playerNameMap[cp.playerId] || ('Spieler ' + cp.playerId);
+      var isDM = cp.role === 'DM';
+      var ch = characterMap[cp.playerId];
+      var detail = isDM ? 'Spielleiter'
+        : (ch ? [ch.race || '', ch.characterClass ? ch.characterClass.name : ''].filter(Boolean).join(' · ') || 'Abenteurer' : 'Abenteurer');
+
+      html += '<div class="party-card">' +
+        '<div class="party-avatar' + (isDM ? ' dm' : '') + '">' +
+          (isDM ? '👑' : initials(ch ? ch.name : name)) +
+        '</div>' +
+        '<div class="party-info">' +
+          '<div class="party-name">' + esc(isDM ? name : (ch ? ch.name : name)) + '</div>' +
+          '<div class="party-detail">' + esc(detail) + '</div>' +
+          (!isDM && ch ? '<div class="party-detail">Stufe ' + (ch.level || 1) + '</div>' : '') +
+        '</div>' +
+        '<span class="party-role-badge' + (isDM ? ' dm' : ' player') + '">' + cp.role + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  // ===== WÜRFEL =====
+
+  var selectedDiceSides = 20;
+
+  function renderDice(elId) {
+    var el = document.getElementById(elId);
+    var diceTypes = [4, 6, 8, 10, 12, 20, 100];
+
+    var html = '<h3 style="margin:0 0 14px 0;font-size:16px">🎲 Würfel</h3>';
+
+    // Display area
+    html += '<div class="dice-display" id="diceDisplay_' + elId + '">' +
+      '<div class="dice-type-label" id="diceLabel_' + elId + '">D20</div>' +
+      '<div class="dice-result-value" id="diceVal_' + elId + '">—</div>' +
+      '<div class="dice-feedback-text" id="diceFb_' + elId + '"></div>' +
+    '</div>';
+
+    // Chip row
+    html += '<div class="dice-chip-row" id="diceChips_' + elId + '">';
+    diceTypes.forEach(function(s) {
+      html += '<button class="dice-chip' + (s === 20 ? ' selected' : '') + '" data-sides="' + s + '">d' + s + '</button>';
+    });
+    html += '</div>';
+
+    // Roll button
+    html += '<button class="roll-btn" id="rollBtn_' + elId + '">🎲 Würfeln</button>';
+
+    // Or divider
+    html += '<div class="or-divider"><span>oder</span></div>';
+
+    // Manual input
+    html += '<div class="manual-row">' +
+      '<input type="number" id="manualIn_' + elId + '" min="1" max="20" step="1" placeholder="Manuell…">' +
+      '<button class="manual-set-btn" id="manualBtn_' + elId + '">Setzen</button>' +
+    '</div>';
+
+    // History
+    html += '<div style="margin-top:14px"><div class="section-title">Verlauf</div>' +
+      '<div class="dice-history" id="diceHist_' + elId + '">' +
+        '<div class="dice-history-entry" style="justify-content:center;color:var(--text-muted)">Noch keine Würfe</div>' +
+      '</div></div>';
+
+    el.innerHTML = html;
+
+    // Chip selection
+    var chipRow = document.getElementById('diceChips_' + elId);
+    chipRow.addEventListener('click', function(e) {
+      var chip = e.target.closest('.dice-chip');
+      if (!chip) return;
+      chipRow.querySelectorAll('.dice-chip').forEach(function(c) { c.classList.remove('selected'); });
+      chip.classList.add('selected');
+      selectedDiceSides = parseInt(chip.dataset.sides);
+      // Sync both containers
+      syncChipSelection(selectedDiceSides);
+      // Update label in both displays
+      updateDiceLabel(selectedDiceSides);
+      // Update manual max
+      var manIn = document.getElementById('manualIn_' + elId);
+      if (manIn) manIn.max = selectedDiceSides;
+    });
+
+    // Roll button
+    var rollBtn = document.getElementById('rollBtn_' + elId);
+    var manualIn = document.getElementById('manualIn_' + elId);
+
+    rollBtn.addEventListener('click', function() {
+      if (manualIn.value.trim() !== '') {
+        showDiceFeedback('Manuelles Ergebnis aktiv – lösche es zuerst', '#ffd740');
+        return;
+      }
+      performRoll();
+    });
+
+    // Manual input disables roll button
+    manualIn.addEventListener('input', function() {
+      rollBtn.disabled = manualIn.value.trim() !== '';
+      // Sync other container
+      syncManualInput(elId, manualIn.value);
+    });
+
+    manualIn.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') performManualSet(elId);
+    });
+
+    // Manual set button
+    document.getElementById('manualBtn_' + elId).addEventListener('click', function() {
+      performManualSet(elId);
+    });
+  }
+
+  function syncChipSelection(sides) {
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var row = document.getElementById('diceChips_' + elId);
+      if (!row) return;
+      row.querySelectorAll('.dice-chip').forEach(function(c) {
+        c.classList.toggle('selected', parseInt(c.dataset.sides) === sides);
+      });
+    });
+  }
+
+  function updateDiceLabel(sides) {
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var lbl = document.getElementById('diceLabel_' + elId);
+      if (lbl) lbl.textContent = 'D' + sides;
+      var manIn = document.getElementById('manualIn_' + elId);
+      if (manIn) manIn.max = sides;
+    });
+  }
+
+  function syncManualInput(sourceElId, value) {
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      if (elId === sourceElId) return;
+      var manIn = document.getElementById('manualIn_' + elId);
+      var rollBtn = document.getElementById('rollBtn_' + elId);
+      if (manIn) manIn.value = value;
+      if (rollBtn) rollBtn.disabled = value.trim() !== '';
+    });
+  }
+
+  function performRoll() {
+    // Determine final result once
+    var finalResult = Math.floor(Math.random() * selectedDiceSides) + 1;
+
+    // Disable buttons in both containers
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var rollBtn = document.getElementById('rollBtn_' + elId);
+      if (rollBtn) rollBtn.disabled = true;
+    });
+
+    // Animate cascade in both containers
+    var ticks = 0;
+    var maxTicks = 12;
+    var interval = setInterval(function() {
+      var fake = Math.floor(Math.random() * selectedDiceSides) + 1;
+      ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+        var resultEl = document.getElementById('diceVal_' + elId);
+        if (resultEl) resultEl.textContent = fake;
+      });
+      ticks++;
+      if (ticks >= maxTicks) {
+        clearInterval(interval);
+        ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+          var resultEl = document.getElementById('diceVal_' + elId);
+          var rollBtn = document.getElementById('rollBtn_' + elId);
+          if (resultEl) {
+            resultEl.textContent = finalResult;
+            resultEl.classList.remove('rolling');
+            void resultEl.offsetWidth;
+            resultEl.classList.add('rolling');
+          }
+          if (rollBtn) rollBtn.disabled = false;
+        });
+
+        if (finalResult === selectedDiceSides && selectedDiceSides === 20) {
+          showDiceFeedback('🔥 Kritischer Treffer!', '#69f0ae');
+        } else if (finalResult === 1 && selectedDiceSides === 20) {
+          showDiceFeedback('💀 Kritischer Fehlschlag!', '#ff5252');
+        } else {
+          showDiceFeedback('🎲 Gewürfelt: ' + finalResult, '#69f0ae');
+        }
+        diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: finalResult, time: new Date().toLocaleTimeString() });
+        if (diceHistory.length > 20) diceHistory.pop();
+        renderDiceHistory();
+      }
+    }, 55);
+  }
+
+  function performManualSet(sourceElId) {
+    var manIn = document.getElementById('manualIn_' + sourceElId);
+    var val = parseInt(manIn.value);
+
+    if (isNaN(val)) {
+      showDiceFeedback('Bitte eine gültige Zahl eingeben', '#ff5252');
+      return;
+    }
+    if (val < 1 || val > selectedDiceSides) {
+      showDiceFeedback('Zahl muss zwischen 1 und ' + selectedDiceSides + ' liegen', '#ff5252');
+      return;
+    }
+
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var resultEl = document.getElementById('diceVal_' + elId);
+      var rollBtn = document.getElementById('rollBtn_' + elId);
+      var mIn = document.getElementById('manualIn_' + elId);
+      if (resultEl) {
+        resultEl.textContent = val;
+        resultEl.classList.remove('rolling');
+        void resultEl.offsetWidth;
+        resultEl.classList.add('rolling');
+      }
+      if (mIn) mIn.value = '';
+      if (rollBtn) rollBtn.disabled = false;
+    });
+
+    showDiceFeedback('✓ Manuell gesetzt: ' + val, '#69f0ae');
+    diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() });
+    if (diceHistory.length > 20) diceHistory.pop();
+    renderDiceHistory();
+  }
+
+  function showDiceFeedback(message, color) {
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var fb = document.getElementById('diceFb_' + elId);
+      if (!fb) return;
+      fb.textContent = message;
+      fb.style.color = color || '#69f0ae';
+      fb.style.opacity = '1';
+      setTimeout(function() { fb.style.opacity = '0'; }, 3000);
+    });
+  }
+
+  function renderDiceHistory() {
+    ['mobDiceContent','deskDiceContent'].forEach(function(elId) {
+      var el = document.getElementById('diceHist_' + elId);
+      if (!el) return;
+      if (diceHistory.length === 0) {
+        el.innerHTML = '<div class="dice-history-entry" style="justify-content:center;color:var(--text-muted)">Noch keine Würfe</div>';
+        return;
+      }
+      el.innerHTML = diceHistory.map(function(h) {
+        return '<div class="dice-history-entry">' +
+          '<span>' + h.dice + '</span>' +
+          '<span style="font-weight:600;color:var(--accent-green)">' + h.result + '</span>' +
+          '<span>' + h.time + '</span>' +
+        '</div>';
+      }).join('');
+    });
+  }
+
+
+  // ===== NOTES =====
+
+  function renderNotes(elId) {
+    var el = document.getElementById(elId);
+    var key = 'notes_' + campaignId + '_' + currentPlayer.id;
+    var saved = localStorage.getItem(key) || '';
+
+    el.innerHTML =
+      '<div class="section-title" style="margin-bottom:8px">Sitzungsnotizen</div>' +
+      '<textarea class="notes-area" placeholder="NPCs, Orte, Questziele, Beute und alles Wichtige aus dem Abenteuer notieren...">' + esc(saved) + '</textarea>' +
+      '<div class="notes-hint">💾 Wird automatisch im Browser gespeichert.</div>';
+
+    var textarea = el.querySelector('textarea');
+    var t;
+    textarea.addEventListener('input', function() {
+      clearTimeout(t);
+      t = setTimeout(function() { localStorage.setItem(key, textarea.value); }, 500);
+    });
+  }
+
+  // ===== COLLAPSIBLE =====
+
+  function setupCollapsible() {
+    document.querySelectorAll('.collapse-header').forEach(function(header) {
+      header.addEventListener('click', function() {
+        var bodyId = header.getAttribute('data-target');
+        var body = document.getElementById(bodyId);
+        if (!body) return;
+        header.classList.toggle('open');
+        body.classList.toggle('open');
+      });
+    });
+  }
+
+  // ===== MOBILE BOTTOM NAV =====
+
+  function setupMobileNav() {
+    var items = document.querySelectorAll('.nav-item');
+    var sections = document.querySelectorAll('.page-section');
+
+    items.forEach(function(item) {
+      item.addEventListener('click', function() {
+        var target = item.dataset.section;
+
+        items.forEach(function(i) { i.classList.remove('active'); });
+        item.classList.add('active');
+
+        sections.forEach(function(s) {
+          s.style.display = 'none';
+          s.classList.remove('active');
+        });
+
+        var sec = document.getElementById(target);
+        if (sec) {
+          sec.style.display = 'block';
+          sec.classList.add('active');
+          window.scrollTo(0, 0);
+        }
+      });
+    });
+  }
+
+  // ===== DESKTOP TABS =====
+
+  function setupDesktopTabs() {
+    var tabs = document.querySelectorAll('.desktop-tab');
+    var panels = document.querySelectorAll('.desktop-tab-panel');
+
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        tab.classList.add('active');
+        var panel = document.getElementById(tab.dataset.tab);
+        if (panel) panel.classList.add('active');
+      });
+    });
+  }
+
+  // ===== HANDLE RESIZE =====
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(showLayout, 150);
+  });
+
+  // ===== INIT =====
+  loadGame();
 
 })();
 </script>
 
+<script src="../common/header.js" defer></script>
 </body>
 </html>
+

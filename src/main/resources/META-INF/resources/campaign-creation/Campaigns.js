@@ -17,7 +17,7 @@
 
     function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]) }) }
 
-    function createCampaignCard(campaign, player, campaignPlayerData = null) {
+    function createCampaignCard(campaign, player, campaignPlayerData = null, isDM = false) {
       const card = document.createElement('div')
       card.className = 'campaign'
 
@@ -47,10 +47,21 @@
 
       // Make entire card clickable
       card.addEventListener('click', () => {
-        // If player has joined this campaign (not as DM)
-        if (campaignPlayerData) {
+        // If the current user is the DM for this campaign
+        if (isDM) {
+          if (campaign.started) {
+            // Campaign is started, go to GM UI
+            window.location.href = './GM_Ui.html?campaignId=' + encodeURIComponent(campaign.id)
+          } else {
+            // Campaign not started yet, go to campaign detail
+            window.location.href = './CampaignDetail.html?id=' + encodeURIComponent(campaign.id)
+          }
+        } else if (campaignPlayerData) {
+          // If campaign is started and character is approved, go to player game UI
+          if (campaign.started && campaignPlayerData.characterStatus === 'APPROVED') {
+            window.location.href = './Spieler_Ui.html?campaignId=' + encodeURIComponent(campaign.id)
           // If character was rejected, redirect to edit page
-          if (campaignPlayerData.characterStatus === 'REJECTED' && campaignPlayerData.characterId) {
+          } else if (campaignPlayerData.characterStatus === 'REJECTED' && campaignPlayerData.characterId) {
             window.location.href = '../character-creation/CharacterEdit.html?id=' + encodeURIComponent(campaignPlayerData.characterId) + '&campaignId=' + encodeURIComponent(campaign.id)
           } else if (campaignPlayerData.characterStatus === 'PENDING' || campaignPlayerData.characterStatus === 'APPROVED') {
             // Character has been submitted, go to campaign detail
@@ -120,6 +131,8 @@
 
         // Create a set of campaign IDs that the user owns or has joined
         const myCampaignIds = new Set(allMyCampaigns.map(c => c.id))
+        // Create a set of campaign IDs that the user created (is DM for)
+        const dmCampaignIds = new Set(myCampaigns.map(c => c.id))
 
         // Populate "My Campaigns" section
         myCampaignsListEl.innerHTML = ''
@@ -129,7 +142,8 @@
           for(const c of allMyCampaigns){
             // Check if this is a joined campaign (not created by user) and get player data
             const campaignPlayerData = joinedCampaignMap.get(c.id) || null
-            myCampaignsListEl.appendChild(createCampaignCard(c, player, campaignPlayerData))
+            const isDM = dmCampaignIds.has(c.id)
+            myCampaignsListEl.appendChild(createCampaignCard(c, player, campaignPlayerData, isDM))
           }
         }
 
