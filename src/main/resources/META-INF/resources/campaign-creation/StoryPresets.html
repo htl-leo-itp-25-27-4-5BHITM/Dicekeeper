@@ -2,112 +2,246 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8" />
-    <title>Storyauswahl</title>
+    <title>Kampagne auswählen</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="./StoryPresets.css" />
+    <style>
+        /* Kleine Ergänzungen für Buttons/Toasts */
+        body{
+            background-image: url("../images/Background.png");
+            background-size: cover;
+            background-attachment: fixed;
+            background-blend-mode: lighten;
+        }
+
+        .generate-area{ display:flex; justify-content:center; }
+
+        .controls {
+            margin-top: 18px;
+            display:flex;
+            gap:14px;
+            align-items:center;
+            justify-content:center; /* zentriert die Buttons */
+            flex-wrap:wrap;
+        }
+
+        .btn {
+            padding:14px 20px; /* größer */
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:700;
+            font-size:1.05rem; /* etwas größere Schrift */
+            min-width:160px; /* gleiche Breite für bessere Optik */
+            text-align:center;
+        }
+
+        .primary {
+            background:#22c55e;
+            color:#062017;
+            border:none;
+            box-shadow:0 6px 18px rgba(16,185,129,0.12);
+        }
+
+        .secondary {
+            background: linear-gradient(90deg, #7b1fa2, #ba68c8);
+            border:1px solid rgba(0,0,0,0.08);
+            color:#fff;
+        }
+
+        .toast {
+            display:none;
+            padding:8px 12px;
+            background:rgba(34,197,94,0.12);
+            color:#22c55e;
+            border-radius:8px;
+            margin-left:8px;
+        }
+
+        @media (max-width:520px){
+            .btn { min-width:120px; padding:12px 16px; font-size:1rem; }
+        }
+    </style>
 </head>
 <body>
-<h2>Kampagne auswählen</h2>
 
-<div class="card-container">
+<div class="page">
 
-    <div class="card">
-        <img src="../images/greek-cover.jpg" alt="Antike Story" />
-        <div class="card-overlay">
+    <div class="header-box">
+        <h1>Neue Kampagne erstellen</h1>
+        <p>Wähle ein Setting – die KI generiert eine vollständige Story mit Plot, NPCs und Twists.</p>
+    </div>
+
+    <div class="preset-grid">
+
+        <div class="preset-card"
+             data-genre="Antike Mythologie"
+             data-tone="episch, göttlich, dramatisch"
+             tabindex="0">
+
+            <div class="preset-icon">⚡</div>
             <h3>Antike Götter</h3>
-            <div>
-                <p>In einer Welt, die stark an das antike Griechenland erinnert,</p>
-                <p>erwachen alte Götter aus ihrem Schlaf, weil Sterbliche begonnen haben,</p>
-                <p>ihr Schicksal selbst zu verändern.</p>
-                <p>Die Helden geraten zwischen</p>
-                <p>rivalisierende Gottheiten, Orakel und Titanen,</p>
-                <p>die aus ihren Gefängnissen ausbrechen wollen.</p>
-                <p>Jede Entscheidung der Gruppe kann</p>
-                <p>göttliche Gunst oder ewigen Zorn nach sich ziehen.</p>
-                <p>Am Ende steht die Frage: </p>
-                <p>Dienen die Helden den Göttern – oder stürzen sie sie?</p>
-            </div>
+            <p>Erwachte Gottheiten, Titanen und sterbliche Helden im Kampf um das Schicksal.</p>
         </div>
-    </div>
 
-    <div class="card">
-        <img src="../images/medieval-cover.jpeg" alt="Mittelalter Story" />
-        <div class="card-overlay">
+        <div class="preset-card"
+             data-genre="Dark Fantasy Mittelalter"
+             data-tone="düster, tragisch, moralisch komplex"
+             tabindex="0">
+
+            <div class="preset-icon">☠</div>
             <h3>Zerfallenes Königreich</h3>
-            <div>
-                <p>Ein zerfallendes Königreich wird von einer  </p>
-                <p>mysteriösen Seuche heimgesucht, die Tote </p>
-                <p>wieder aufstehen lässt, aber ihr Bewusstsein behält.</p>
-                <p> Die Kirche, der Adel und geheime Zirkel</p>
-                <p>kämpfen um die Deutung der Apokalypse.</p>
-                <p>Die Charaktere decken auf, dass die Seuche kein</p>
-                <p>Fluch, sondern das Nebenprodukt eines fehlgeschlagenen</p>
-                <p> Unsterblichkeitsrituals ist. Um das Reich zu retten, müssen sie entscheiden,</p>
-                <p>ob Wissen begraben oder vollendet wird.</p>
-            </div>
+            <p>Eine Seuche, Untote und ein verbotenes Ritual bedrohen das Reich.</p>
         </div>
+
+        <div class="preset-card"
+             data-genre="Cyberpunk Sci-Fi"
+             data-tone="dystopisch, technologisch, identitätsbezogen"
+             tabindex="0">
+
+            <div class="preset-icon">⌬</div>
+            <h3>Neon-Zukunft</h3>
+            <p>Konzerne manipulieren Erinnerungen – ihr seid die fehlerhafte Variable.</p>
+        </div>
+
     </div>
 
-    <div class="card">
-        <img src="../images/cyberpunk-cover.jpg" alt="Cyberpunk Story" />
-        <div class="card-overlay">
-            <h3>Neon-Zukunft</h3>
-            <div>
-                <p>In einer neongetränkten Megastadt kontrollieren Konzerne </p>
-                <p>nicht nur Wirtschaft, sondern auch Erinnerungen.</p>
-                <p>Die Gruppe entdeckt, dass ihre eigenen </p>
-                <p>Vergangenheiten manipuliert wurden, </p>
-                <p>um sie als perfekte Werkzeuge einzusetzen.</p>
-                <p>Während sie gegen KI-gesteuerte Sicherheitskräfte</p>
-                <p> und Datengötter kämpfen, setzen sie Stück </p>
-                <p>für Stück ihre Identität wieder zusammen. </p>
-                <p>Am Ende müssen sie wählen, ob sie das System </p>
-                <p>zerstören oder selbst die neuen Architekten</p>
-                <p>der Realität werden.</p>
-            </div>
+    <div class="generate-area">
+        <div class="controls">
+            <button id="copyBtn" class="btn primary" disabled>Kopieren</button>
+            <button id="openChatBtn" class="btn secondary" disabled>Senden an ChatGPT</button>
+            <div id="toast" class="toast">Prompt kopiert — in ChatGPT einfügen mit Strg\/Cmd+V</div>
         </div>
     </div>
 
 </div>
 
-<div class="selection-box"></div>
-
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        const cards = document.querySelectorAll(".card");
-        const selectionBox = document.querySelector(".selection-box");
 
-        let selectedCard = null;
+        const cards = Array.from(document.querySelectorAll(".preset-card"));
+        const copyBtn = document.getElementById("copyBtn");
+        const openChatBtn = document.getElementById("openChatBtn");
+        const toast = document.getElementById("toast");
+        let selected = null;
+
+        function buildPrompt(data){
+            return [
+                `System: Du bist ein professioneller Pen & Paper Kampagnenautor. Schreibe eine vollständige, spielbare Kampagne im folgenden Stil.`,
+                `---`,
+                `Titel: ${data.title}`,
+                `Genre: ${data.genre}`,
+                `Ton: ${data.tone}`,
+                `---`,
+                `Anforderungen:`,
+                `- Schreibe atmosphärisch, spannend und sofort spielbereit.`,
+                `- Gliedere wie folgt:`,
+                `  1) Einführung (Setting, Hook, Einstiegsszene)`,
+                `  2) Zentrale Bedrohung (Motivation, Mechanik, Bedrohungsaufbau)`,
+                `  3) Drei wichtige NPCs mit kurzer Motivation und Spielführung (Statusempfehlung optional)`,
+                `  4) Hauptplot in 5 Akten (je Akt eine kurze Zusammenfassung mit Zielen und möglichen Konflikten)`,
+                `  5) Mindestens ein überraschender Plot-Twist`,
+                `  6) Ein alternatives Ende (abhängig von Spielerentscheidungen)`,
+                `  7) Drei Nebenquests mit Belohnungen und möglichen Verknüpfungen zum Hauptplot`,
+                `---`,
+                `Zusätzliche Vorgaben: Verwende konkrete Schauplätze, typische Handlungsorte, und gib Spielleitertipps (Schwierigkeit, mögliche Hürden). Vermeide zu lange Floskeln, halte Abschnitte klar und verwendbar.`,
+                `---`,
+                `Ausgabe: Gliedere mit Überschriften und kurzen Absätzen, Aufzählungen wo sinnvoll.`
+            ].join('\n');
+        }
+
+        function enableButtonsFor(card){
+            cards.forEach(c => c.classList.remove("active"));
+            card.classList.add("active");
+            selected = {
+                title: card.querySelector("h3").textContent.trim(),
+                genre: card.dataset.genre,
+                tone: card.dataset.tone
+            };
+            copyBtn.disabled = false;
+            openChatBtn.disabled = false;
+        }
 
         cards.forEach(card => {
-            card.addEventListener("click", () => {
-
-                // Alte Auswahl entfernen
-                cards.forEach(c => c.classList.remove("selected"));
-
-                // Neue Auswahl setzen
-                card.classList.add("selected");
-                selectedCard = card;
-
-                // Button-Box leeren
-                selectionBox.innerHTML = "";
-
-                // Button erstellen
-                const button = document.createElement("button");
-                button.textContent = "Auswählen";
-                button.classList.add("select-button");
-
-                button.addEventListener("click", () => {
-                    const title = selectedCard.querySelector("h3").textContent;
-                    alert("Story ausgewählt: " + title);
-                });
-
-                // Button in Box einsetzen
-                selectionBox.appendChild(button);
+            card.addEventListener("click", () => enableButtonsFor(card));
+            card.addEventListener("keydown", (e) => {
+                if(e.key === "Enter" || e.key === " ") { e.preventDefault(); enableButtonsFor(card); }
             });
         });
+
+        async function copyToClipboard(text){
+            try{
+                await navigator.clipboard.writeText(text);
+                return true;
+            }catch(e){
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand("copy"); document.body.removeChild(ta); return true; }
+                catch(err){ document.body.removeChild(ta); return false; }
+            }
+        }
+
+        function showToast(msg){
+            toast.textContent = msg;
+            toast.style.display = "inline-block";
+            setTimeout(()=> toast.style.display = "none", 2200);
+        }
+
+        copyBtn.addEventListener("click", async () => {
+            if(!selected) return;
+            const txt = buildPrompt(selected);
+            const ok = await copyToClipboard(txt);
+            if(ok) showToast("Prompt kopiert — jetzt einfügen mit Strg\/Cmd+V");
+            else alert("Kopieren fehlgeschlagen – bitte markieren und manuell kopieren.");
+        });
+
+        openChatBtn.addEventListener("click", async () => {
+            if(!selected) return;
+            const txt = buildPrompt(selected);
+            const ok = await copyToClipboard(txt);
+            const chatUrl = "https://chat.openai.com/";
+            const w = window.open(chatUrl, "_blank");
+            if(w){
+                showToast("Prompt kopiert — im neuen Tab Strg\/Cmd+V drücken, um einzufügen");
+                w.focus();
+            }else{
+                const help = window.open("", "_blank", "width=600,height=380");
+                if(!help){
+                    alert("Popup blockiert und kein Platz für eine Hilfeseite. Bitte erlauben Popups oder kopiere den Prompt manuell.");
+                    return;
+                }
+                help.document.title = "Prompt bereit — Weiter zu ChatGPT";
+                const body = help.document.body;
+                body.style.fontFamily = "system-ui, Arial, sans-serif";
+                body.style.padding = "18px";
+                body.innerHTML = "";
+                const h = help.document.createElement("h2");
+                h.textContent = "Prompt kopiert";
+                const p = help.document.createElement("p");
+                p.textContent = "Der Prompt wurde in die Zwischenablage kopiert. Klicke auf den Button, um ChatGPT zu öffnen, und füge den Prompt dort mit Strg\/Cmd+V ein.";
+                const btn = help.document.createElement("button");
+                btn.textContent = "ChatGPT öffnen";
+                btn.style.padding = "10px 14px";
+                btn.style.borderRadius = "8px";
+                btn.style.background = "#22c55e";
+                btn.style.border = "none";
+                btn.style.cursor = "pointer";
+                btn.addEventListener("click", () => {
+                    help.open(chatUrl, "_blank");
+                });
+                body.appendChild(h);
+                body.appendChild(p);
+                body.appendChild(btn);
+            }
+        });
+
+        if(cards.length > 0){
+            enableButtonsFor(cards[0]);
+        }
+
     });
 </script>
-
 
 </body>
 </html>
