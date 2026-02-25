@@ -165,7 +165,11 @@
     }
 
     newBtn.addEventListener('click', ()=>{ window.location.href = './Campaign.html' })
-    backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = '/api/auth/logout' })
+    backLogin.addEventListener('click', ()=>{
+      const hadPlayerSession = Boolean(sessionStorage.getItem('player'))
+      sessionStorage.removeItem('player')
+      window.location.href = hadPlayerSession ? '/api/auth/logout' : '/404.html?reason=faulty-logout'
+    })
 
     load()
   })()

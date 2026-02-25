@@ -203,7 +203,17 @@
 
       // Logout button
       logoutBtn.addEventListener('click', () => {
+        const hadPlayerSession = Boolean(sessionStorage.getItem('player'));
         sessionStorage.removeItem('player');
+
+        if (!hadPlayerSession) {
+          setStatus('Keine aktive Session gefunden. Weiterleitung zur Fehlerseite...', 'error');
+          setTimeout(() => {
+            window.location.href = '/404.html?reason=faulty-logout';
+          }, 1000);
+          return;
+        }
+
         setStatus('Abgemeldet. Weiterleitung...', 'success');
         setTimeout(() => {
           window.location.href = '/api/auth/logout';
