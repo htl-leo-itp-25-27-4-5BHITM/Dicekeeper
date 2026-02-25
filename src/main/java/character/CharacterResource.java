@@ -4,6 +4,7 @@ import character.ability.AbilityScoreDTO;
 import character.ability.CharacterAbility;
 import background.Background;
 import characterclass.CharacterClass;
+import io.quarkus.security.Authenticated;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @Path("/api/character")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Authenticated
 public class CharacterResource {
 
     /**

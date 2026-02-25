@@ -97,3 +97,16 @@ Dicekeeper **ersetzt nicht den Dungeon Master**, sondern versteht sich als **Ass
 - **KI-Features:** OpenAI API
 
 ---
+
+## Local Env (Keycloak)
+
+1. Copy `.env.example` to `.env`.
+2. Set your Keycloak values in `.env`.
+3. Load the env file before starting Quarkus:
+
+```bash
+set -a
+source .env
+set +a
+./mvnw quarkus:dev
+```

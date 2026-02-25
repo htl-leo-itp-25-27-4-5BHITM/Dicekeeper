@@ -1,5 +1,6 @@
 package characterclass;
 
+import io.quarkus.security.Authenticated;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 
 @Path("/api/classes")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class ClassResource {
 
     @GET
@@ -34,4 +36,3 @@ public class ClassResource {
         return Response.ok(ClassDTO.fromEntity(clazz)).build();
     }
 }
-

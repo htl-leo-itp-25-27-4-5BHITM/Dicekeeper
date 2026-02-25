@@ -1,40 +1,78 @@
 package campaign;
 
 import character.Character;
-import notification.Notification;
-import player.Player;
+import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import notification.Notification;
+import player.Player;
+import security.SecurityIdentityService;
 
 import java.util.List;
 
 @Path("/api/campaign-player")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class CampaignPlayerResource {
+
+    @Inject
+    SecurityIdentityService securityIdentityService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
 
     @GET
     @Path("{campaignId}")
-    public List<CampaignPlayer> getCampaignPlayers(@PathParam("campaignId") Long campaignId) {
+    public Response getCampaignPlayers(@PathParam("campaignId") Long campaignId) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
-            throw new WebApplicationException("Campaign not found", Response.Status.NOT_FOUND);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Campaign not found")
+                    .build();
         }
-        return CampaignPlayer.find("campaignId", campaignId).list();
+
+        Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        CampaignPlayer requesterMembership = findMembership(campaignId, requesterId);
+        if (requesterMembership == null && !Boolean.TRUE.equals(campaign.isPublic)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("You are not a member of this campaign")
+                    .build();
+        }
+
+        List<CampaignPlayer> members = CampaignPlayer.find("campaignId", campaignId).list();
+        return Response.ok(members).build();
     }
 
     @GET
     @Path("{campaignId}/pending-characters")
-    public List<CampaignPlayer> getPendingCharacters(@PathParam("campaignId") Long campaignId) {
-        return CampaignPlayer.find("campaignId = ?1 and characterStatus = 'PENDING'", campaignId).list();
+    public Response getPendingCharacters(@PathParam("campaignId") Long campaignId) {
+        Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (!isDm(campaignId, requesterId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can view pending characters")
+                    .build();
+        }
+
+        List<CampaignPlayer> pending = CampaignPlayer.find("campaignId = ?1 and characterStatus = 'PENDING'", campaignId).list();
+        return Response.ok(pending).build();
     }
 
     @GET
     @Path("{campaignId}/{playerId}/role")
     public Response getPlayerRole(@PathParam("campaignId") Long campaignId,
                                   @PathParam("playerId") Long playerId) {
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
+        Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (!requesterId.equals(playerId) && !isDm(campaignId, requesterId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("You can only view your own role")
+                    .build();
+        }
+
+        CampaignPlayer cp = findMembership(campaignId, playerId);
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Player not in campaign")
@@ -45,12 +83,21 @@ public class CampaignPlayerResource {
 
     @GET
     @Path("player/{playerId}")
-    public List<CampaignPlayer> getPlayerCampaigns(@PathParam("playerId") Long playerId) {
+    public Response getPlayerCampaigns(@PathParam("playerId") Long playerId) {
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, playerId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
         Player player = Player.findById(playerId);
         if (player == null) {
-            throw new WebApplicationException("Player not found", Response.Status.NOT_FOUND);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Player not found")
+                    .build();
         }
-        return CampaignPlayer.find("playerId", playerId).list();
+
+        List<CampaignPlayer> campaigns = CampaignPlayer.find("playerId", playerId).list();
+        return Response.ok(campaigns).build();
     }
 
     @POST
@@ -58,7 +105,7 @@ public class CampaignPlayerResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
     public Response joinCampaign(@PathParam("campaignId") Long campaignId,
-                                 String playerIdJson) {
+                                 String ignoredPlayerIdJson) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -72,13 +119,7 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        Long playerId = extractPlayerId(playerIdJson);
-        if (playerId == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Invalid player ID")
-                    .build();
-        }
-
+        Long playerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         Player player = Player.findById(playerId);
         if (player == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -86,8 +127,7 @@ public class CampaignPlayerResource {
                     .build();
         }
 
-        CampaignPlayer existing = CampaignPlayer.find("campaignId = ?1 and playerId = ?2",
-                                                       campaignId, playerId).firstResult();
+        CampaignPlayer existing = findMembership(campaignId, playerId);
         if (existing != null) {
             return Response.status(Response.Status.CONFLICT)
                     .entity("Player already in campaign")
@@ -122,7 +162,18 @@ public class CampaignPlayerResource {
     public Response submitCharacter(@PathParam("campaignId") Long campaignId,
                                     @PathParam("playerId") Long playerId,
                                     CharacterSubmitDTO submitDTO) {
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, playerId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
+        if (submitDTO == null || submitDTO.characterId == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("characterId is required")
+                    .build();
+        }
+
+        CampaignPlayer cp = findMembership(campaignId, playerId);
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Player not in campaign")
@@ -155,7 +206,8 @@ public class CampaignPlayerResource {
                 campaign.playerId, // DM's player ID
                 "CHARACTER_SUBMITTED",
                 "Character Submitted for Approval",
-                player.username + " has submitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
+                (player.name != null && !player.name.isBlank() ? player.name : player.username)
+                        + " has submitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
                 campaignId,
                 cp.id // CampaignPlayer ID for easy lookup
         );
@@ -172,9 +224,11 @@ public class CampaignPlayerResource {
     @Transactional
     public Response approveCharacter(@PathParam("campaignId") Long campaignId,
                                      @PathParam("campaignPlayerId") Long campaignPlayerId,
-                                     @QueryParam("dmPlayerId") Long dmPlayerId) {
+                                     @QueryParam("dmPlayerId") Long ignoredDmPlayerId) {
+        Long dmPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+
         // Verify the requester is the DM
-        CampaignPlayer dmCp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, dmPlayerId).firstResult();
+        CampaignPlayer dmCp = findMembership(campaignId, dmPlayerId);
         if (dmCp == null || !"DM".equals(dmCp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("Only the DM can approve characters")
@@ -223,10 +277,12 @@ public class CampaignPlayerResource {
     @Transactional
     public Response rejectCharacter(@PathParam("campaignId") Long campaignId,
                                     @PathParam("campaignPlayerId") Long campaignPlayerId,
-                                    @QueryParam("dmPlayerId") Long dmPlayerId,
+                                    @QueryParam("dmPlayerId") Long ignoredDmPlayerId,
                                     CharacterRejectDTO rejectDTO) {
+        Long dmPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+
         // Verify the requester is the DM
-        CampaignPlayer dmCp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, dmPlayerId).firstResult();
+        CampaignPlayer dmCp = findMembership(campaignId, dmPlayerId);
         if (dmCp == null || !"DM".equals(dmCp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("Only the DM can reject characters")
@@ -247,7 +303,7 @@ public class CampaignPlayerResource {
         }
 
         playerCp.characterStatus = "REJECTED";
-        playerCp.dmNotes = rejectDTO.notes;
+        playerCp.dmNotes = rejectDTO != null ? rejectDTO.notes : null;
 
         // Notify the player
         Campaign campaign = Campaign.findById(campaignId);
@@ -274,7 +330,12 @@ public class CampaignPlayerResource {
     @Transactional
     public Response resubmitCharacter(@PathParam("campaignId") Long campaignId,
                                       @PathParam("playerId") Long playerId) {
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, playerId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
+        CampaignPlayer cp = findMembership(campaignId, playerId);
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Player not in campaign")
@@ -298,7 +359,8 @@ public class CampaignPlayerResource {
                 campaign.playerId,
                 "CHARACTER_SUBMITTED",
                 "Character Resubmitted",
-                player.username + " has resubmitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
+                (player.name != null && !player.name.isBlank() ? player.name : player.username)
+                        + " has resubmitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
                 campaignId,
                 cp.id
         );
@@ -312,40 +374,50 @@ public class CampaignPlayerResource {
     @Transactional
     public Response leaveCampaign(@PathParam("campaignId") Long campaignId,
                                   @PathParam("playerId") Long playerId) {
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2",
-                                                campaignId, playerId).firstResult();
-        if (cp == null) {
+        CampaignPlayer targetMembership = findMembership(campaignId, playerId);
+        if (targetMembership == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Player not in campaign")
                     .build();
         }
 
-        if ("DM".equals(cp.role)) {
+        Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        boolean selfLeave = requesterId.equals(playerId);
+
+        if (selfLeave) {
+            if ("DM".equals(targetMembership.role)) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity("DM cannot leave campaign")
+                        .build();
+            }
+
+            targetMembership.delete();
+            return Response.noContent().build();
+        }
+
+        if (!isDm(campaignId, requesterId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("DM cannot leave campaign")
+                    .entity("Only the DM can remove other players")
                     .build();
         }
 
-        cp.delete();
+        if ("DM".equals(targetMembership.role)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("The DM cannot be removed")
+                    .build();
+        }
+
+        targetMembership.delete();
         return Response.noContent().build();
     }
 
-    private Long extractPlayerId(String json) {
-        if (json == null || json.isEmpty()) return null;
-        try {
-            int start = json.indexOf("\"playerId\"");
-            if (start == -1) return null;
-            int colonIndex = json.indexOf(":", start);
-            int commaIndex = json.indexOf(",", colonIndex);
-            int braceIndex = json.indexOf("}", colonIndex);
-            int endIndex = commaIndex > 0 ? Math.min(commaIndex, braceIndex) : braceIndex;
-            if (endIndex == -1) return null;
+    private CampaignPlayer findMembership(Long campaignId, Long playerId) {
+        return CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
+    }
 
-            String idStr = json.substring(colonIndex + 1, endIndex).trim();
-            return Long.parseLong(idStr);
-        } catch (Exception e) {
-            return null;
-        }
+    private boolean isDm(Long campaignId, Long playerId) {
+        CampaignPlayer cp = findMembership(campaignId, playerId);
+        return cp != null && "DM".equals(cp.role);
     }
 
     // Response class for join campaign

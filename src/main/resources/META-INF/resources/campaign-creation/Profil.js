@@ -206,7 +206,7 @@
         sessionStorage.removeItem('player');
         setStatus('Abgemeldet. Weiterleitung...', 'success');
         setTimeout(() => {
-          window.location.href = './Login.html';
+          window.location.href = '/api/auth/logout';
         }, 1000);
       });
 

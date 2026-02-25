@@ -1,12 +1,15 @@
 package campaign;
 
-import player.Player;
+import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
+import security.SecurityIdentityService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,9 +20,16 @@ import java.util.UUID;
 
 @Path("/api/campaign")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class CampaignResource {
 
     private static final java.nio.file.Path UPLOAD_DIR = Paths.get("src/main/resources/META-INF/resources/campaign-creation/uploads");
+
+    @Inject
+    SecurityIdentityService securityIdentityService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
 
     @GET
     public List<Campaign> list() {
@@ -34,7 +44,7 @@ public class CampaignResource {
 
     @GET
     @Path("{id}")
-    public Response get(@PathParam("id") Long id, @QueryParam("playerId") Long playerId) {
+    public Response get(@PathParam("id") Long id, @QueryParam("playerId") Long ignoredPlayerId) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -43,11 +53,9 @@ public class CampaignResource {
         }
 
         // Check if the requester is the DM - if not, hide the story
-        boolean isDM = false;
-        if (playerId != null) {
-            CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
-            isDM = cp != null && "DM".equals(cp.role);
-        }
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
+        boolean isDM = cp != null && "DM".equals(cp.role);
 
         CampaignDTO dto = new CampaignDTO(campaign, isDM);
         return Response.ok(dto).build();
@@ -55,7 +63,7 @@ public class CampaignResource {
 
     @GET
     @Path("{id}/story")
-    public Response getStory(@PathParam("id") Long id, @QueryParam("playerId") Long playerId) {
+    public Response getStory(@PathParam("id") Long id, @QueryParam("playerId") Long ignoredPlayerId) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -63,14 +71,8 @@ public class CampaignResource {
                     .build();
         }
 
-        // Only DM can see the story
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("Only the DM can view the story")
@@ -84,7 +86,7 @@ public class CampaignResource {
     @Path("{id}/story")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
-    public Response updateStory(@PathParam("id") Long id, @QueryParam("playerId") Long playerId, StoryUpdateDTO storyUpdate) {
+    public Response updateStory(@PathParam("id") Long id, @QueryParam("playerId") Long ignoredPlayerId, StoryUpdateDTO storyUpdate) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -92,14 +94,8 @@ public class CampaignResource {
                     .build();
         }
 
-        // Only DM can update the story
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
-        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, playerId).firstResult();
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("Only the DM can update the story")
@@ -120,22 +116,14 @@ public class CampaignResource {
                     .build();
         }
 
-        if (campaign.playerId != null) {
-            Player player = Player.findById(campaign.playerId);
-            if (player == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Player with id " + campaign.playerId + " not found")
-                        .build();
-            }
-        }
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
 
         campaign.id = null;
+        campaign.playerId = currentPlayerId;
         campaign.persist();
 
-        if (campaign.playerId != null) {
-            CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
-            dm.persist();
-        }
+        CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
+        dm.persist();
 
         return Response.status(Response.Status.CREATED).entity(campaign).build();
     }
@@ -152,14 +140,18 @@ public class CampaignResource {
                     .build();
         }
 
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (existing.playerId == null || !existing.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can update this campaign")
+                    .build();
+        }
+
         if (updated.name != null) {
             existing.name = updated.name;
         }
         if (updated.description != null) {
             existing.description = updated.description;
-        }
-        if (updated.playerId != null) {
-            existing.playerId = updated.playerId;
         }
         if (updated.isPublic != null) {
             existing.isPublic = updated.isPublic;
@@ -187,6 +179,14 @@ public class CampaignResource {
                     .entity("Campaign with id " + id + " not found")
                     .build();
         }
+
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (existing.playerId == null || !existing.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can delete this campaign")
+                    .build();
+        }
+
         existing.delete();
         return Response.noContent().build();
     }
@@ -201,6 +201,13 @@ public class CampaignResource {
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Campaign with id " + id + " not found")
+                    .build();
+        }
+
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Only the DM can upload maps")
                     .build();
         }
 
@@ -241,8 +248,13 @@ public class CampaignResource {
 
     @GET
     @Path("/player/{playerId}")
-    public List<Campaign> getCampaignsByPlayer(@PathParam("playerId") Long playerId) {
-        return Campaign.list("playerId", playerId);
+    public Response getCampaignsByPlayer(@PathParam("playerId") Long playerId) {
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, playerId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+        List<Campaign> campaigns = Campaign.list("playerId", playerId);
+        return Response.ok(campaigns).build();
     }
 
     private boolean isValidImageType(String filename) {

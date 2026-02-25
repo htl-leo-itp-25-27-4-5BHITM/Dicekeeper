@@ -2,6 +2,7 @@ package character.ability;
 
 import ability.Ability;
 import character.Character;
+import io.quarkus.security.Authenticated;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -10,6 +11,7 @@ import jakarta.ws.rs.core.Response;
 @Path("/api/character-ability")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class CharacterAbilityResource {
 
     /**
@@ -54,4 +56,3 @@ public class CharacterAbilityResource {
         return Response.ok(AbilityScoreDTO.fromEntity(ca)).build();
     }
 }
-

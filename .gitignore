@@ -4,3 +4,6 @@ target
 .portforward.pid
 mvnw
 mvnw.cmd
+.env
+.env.*
+!.env.example

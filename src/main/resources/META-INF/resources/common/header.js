@@ -72,9 +72,9 @@
             <div class="user-avatar" id="userAvatar">
               ${player.profilePicture 
                 ? `<img src="${escapeHtml(player.profilePicture)}" alt="Avatar">` 
-                : escapeHtml((player.username || player.name || 'U').charAt(0).toUpperCase())}
+                : escapeHtml((player.name || player.username || 'U').charAt(0).toUpperCase())}
             </div>
-            <span class="user-name">${escapeHtml(player.username || player.name || 'User')}</span>
+            <span class="user-name">${escapeHtml(player.name || player.username || 'User')}</span>
           </div>
         </div>
       </header>

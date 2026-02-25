@@ -1,5 +1,6 @@
 package ability;
 
+import io.quarkus.security.Authenticated;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
 
 @Path("/api/ability")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class AbilityResource {
 
     @GET
@@ -23,4 +25,3 @@ public class AbilityResource {
         return Response.ok(dtos).build();
     }
 }
-

@@ -165,7 +165,7 @@
     }
 
     newBtn.addEventListener('click', ()=>{ window.location.href = './Campaign.html' })
-    backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = './Login.html' })
+    backLogin.addEventListener('click', ()=>{ sessionStorage.removeItem('player'); window.location.href = '/api/auth/logout' })
 
     load()
   })()
