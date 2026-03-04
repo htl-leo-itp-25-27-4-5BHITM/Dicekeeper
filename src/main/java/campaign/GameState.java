@@ -1,8 +1,9 @@
 package campaign;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * In-memory per-campaign game state for real-time synchronization.
@@ -20,7 +21,17 @@ public class GameState {
         public volatile Long currentTurnPlayerId;
         public final ConcurrentHashMap<Long, Integer> playerHp = new ConcurrentHashMap<>();
         public final ConcurrentHashMap<Long, Integer> playerMaxHp = new ConcurrentHashMap<>();
+        /** Tracks which players are active (not sitting out). True = active. */
+        public final ConcurrentHashMap<Long, Boolean> playerActive = new ConcurrentHashMap<>();
         public volatile DiceRollInfo lastDiceRoll;
+
+        // Map markers: markerId -> MapMarker
+        public final ConcurrentHashMap<String, MapMarker> mapMarkers = new ConcurrentHashMap<>();
+        private final AtomicLong markerSeq = new AtomicLong(1);
+
+        public String nextMarkerId() {
+            return "m" + markerSeq.getAndIncrement();
+        }
 
         public void setTurn(Long playerId) {
             this.currentTurnPlayerId = playerId;
@@ -51,10 +62,51 @@ public class GameState {
             snap.put("currentTurnPlayerId", currentTurnPlayerId != null ? currentTurnPlayerId : -1);
             snap.put("playerHp", new ConcurrentHashMap<>(playerHp));
             snap.put("playerMaxHp", new ConcurrentHashMap<>(playerMaxHp));
+            snap.put("playerActive", new ConcurrentHashMap<>(playerActive));
             if (lastDiceRoll != null) {
                 snap.put("lastDiceRoll", lastDiceRoll);
             }
+            snap.put("mapMarkers", new ArrayList<>(mapMarkers.values()));
             return snap;
+        }
+    }
+
+    public static class MapMarker {
+        public String id;
+        /** "player-group", "player", "structure", "quest", "checkpoint" */
+        public String type;
+        public String label;
+        public double x; // 0.0–1.0 relative to map
+        public double y; // 0.0–1.0 relative to map
+        public String groupId; // null for non-grouped, group id for grouped markers
+        /** Comma-separated player IDs (for player/player-group type) */
+        public String playerIds;
+        public String icon; // emoji or icon id
+
+        public MapMarker() {}
+
+        public MapMarker(String id, String type, String label, double x, double y, String groupId, String playerIds, String icon) {
+            this.id = id;
+            this.type = type;
+            this.label = label;
+            this.x = x;
+            this.y = y;
+            this.groupId = groupId;
+            this.playerIds = playerIds;
+            this.icon = icon;
+        }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", id);
+            m.put("type", type);
+            m.put("label", label != null ? label : "");
+            m.put("x", x);
+            m.put("y", y);
+            m.put("groupId", groupId);
+            m.put("playerIds", playerIds);
+            m.put("icon", icon);
+            return m;
         }
     }
 
