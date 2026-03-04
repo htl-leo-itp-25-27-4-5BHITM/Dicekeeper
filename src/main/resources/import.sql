@@ -60,7 +60,7 @@ insert into Ability (id, name, description) values (6, 'Charisma', 'measuring fo
 
 -- insert into character_ability (id, character_id, ability_id, score) values (1, 1, 1, 15);
 
-insert into Player (id, email, username, name) values (1, 'test@gmail.com', 'testuser', 'Alex');
+insert into Player (id, email, username, name) values (1, 'alex@htl.at', 'AlexDM', 'Alex');
 insert into Player (id, email, username, name) values (2, 'fredl@htl.at', 'Fredl', 'Fredl');
 insert into Player (id, email, username, name) values (3, 'lena@htl.at', 'LenaRPG', 'Lena');
 insert into Player (id, email, username, name) values (4, 'max@htl.at', 'MaxDragon', 'Max');

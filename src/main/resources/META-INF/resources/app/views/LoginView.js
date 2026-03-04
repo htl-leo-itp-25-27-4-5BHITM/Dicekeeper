@@ -1,5 +1,5 @@
 /**
- * Login View – matches original Login.html exactly
+ * Login View – Dicekeeper branded login screen
  */
 import { setPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
@@ -10,15 +10,36 @@ export default async function LoginView() {
 
   app.innerHTML = `
     <div class="login-page">
-      <div class="login-box" role="form" aria-labelledby="login-title">
-        <h1 id="login-title" class="login-title">Login</h1>
-        <div class="form-group">
-          <label for="email" class="label">Email</label>
-          <input type="email" id="email" name="email" class="input" placeholder="name@example.com" autocomplete="email" required />
+      <div class="login-ambient"></div>
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-dice">
+            <svg viewBox="0 0 100 100" class="login-dice-svg">
+              <polygon points="50,2 95,27 95,73 50,98 5,73 5,27" fill="none" stroke="rgba(52,211,153,0.5)" stroke-width="2"/>
+              <polygon points="50,2 95,27 50,50 5,27" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+              <polygon points="95,27 95,73 50,50" fill="rgba(52,211,153,0.05)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+              <polygon points="5,27 50,50 5,73" fill="rgba(52,211,153,0.04)" stroke="rgba(52,211,153,0.15)" stroke-width="1"/>
+              <text x="50" y="56" text-anchor="middle" fill="rgba(52,211,153,0.9)" font-size="22" font-weight="700" font-family="system-ui">20</text>
+            </svg>
+          </div>
+          <h1 class="login-app-name">Dicekeeper</h1>
+          <p class="login-tagline">Dein digitaler Spieltisch für Pen &amp; Paper</p>
         </div>
-        <button type="button" class="btn-login" id="loginBtn">Sign in</button>
-        <div id="loginStatus" style="margin-top:12px;font-size:0.95rem;color:#98a2b3;"></div>
+
+        <div class="login-form-section">
+          <label for="email" class="login-label">E-Mail Adresse</label>
+          <div class="login-input-wrap">
+            <span class="login-input-icon">✉</span>
+            <input type="email" id="email" name="email" class="login-input" placeholder="name@example.com" autocomplete="email" required />
+          </div>
+          <button type="button" class="login-submit" id="loginBtn">
+            <span class="login-submit-text">Anmelden</span>
+            <span class="login-submit-arrow">→</span>
+          </button>
+          <div id="loginStatus" class="login-status"></div>
+        </div>
       </div>
+      <div class="login-footer">© 2026 Dicekeeper — Roll with it.</div>
     </div>
   `;
 
@@ -28,38 +49,42 @@ export default async function LoginView() {
 
   function setStatus(msg, isError = false) {
     statusEl.textContent = msg || '';
-    statusEl.style.color = isError ? '#f97373' : '#98a2b3';
+    statusEl.className = 'login-status' + (isError ? ' error' : msg ? ' info' : '');
   }
 
   async function login() {
     const email = (emailInput.value || '').trim();
     if (!email) { setStatus('Bitte gib eine E-Mail-Adresse ein.', true); emailInput.focus(); return; }
     btn.disabled = true;
-    const origText = btn.textContent;
-    btn.textContent = 'Signing in...';
-    setStatus('Logging in...');
+    btn.querySelector('.login-submit-text').textContent = 'Wird angemeldet…';
+    btn.querySelector('.login-submit-arrow').innerHTML = '<span class="login-spinner"></span>';
+    setStatus('');
     try {
       const res = await fetch('/api/player/' + encodeURIComponent(email), { cache: 'no-store' });
       if (!res.ok) {
         let txt = null;
         try { txt = await res.text(); } catch (e) {}
-        setStatus('Login failed: ' + (txt || res.statusText || ('HTTP ' + res.status)), true);
+        setStatus('Anmeldung fehlgeschlagen: ' + (txt || res.statusText || ('HTTP ' + res.status)), true);
         return;
       }
       const player = await res.json();
       setPlayer(player);
-      setStatus('Login successful. Redirecting…');
+      setStatus('Willkommen zurück! Weiterleitung…');
       navigate('/campaigns');
     } catch (err) {
-      setStatus('Login failed: ' + (err.message || 'Unknown error'), true);
+      setStatus('Anmeldung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'), true);
     } finally {
       btn.disabled = false;
-      btn.textContent = origText;
+      btn.querySelector('.login-submit-text').textContent = 'Anmelden';
+      btn.querySelector('.login-submit-arrow').textContent = '→';
     }
   }
 
   btn.addEventListener('click', login);
   emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); login(); } });
+
+  // Auto-focus email field
+  setTimeout(() => emailInput.focus(), 100);
 
   return () => {};
 }
