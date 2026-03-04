@@ -3,9 +3,10 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials } from '../services/utils.js';
+import { esc, initials, resolveMapUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
+import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function CockpitView({ id }) {
   const player = requirePlayer();
@@ -25,6 +26,7 @@ export default async function CockpitView({ id }) {
   initHeader();
 
   let campaign = null, campaignPlayers = [], playerNameMap = {};
+  let ckMapCanvas = null;
 
   try {
     const cRes = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
@@ -62,6 +64,7 @@ export default async function CockpitView({ id }) {
           </div>
           <div class="ck-hero-actions">
             <button class="ck-btn ck-btn-edit" id="ckEdit">✏️ Bearbeiten</button>
+            <button class="ck-btn ck-btn-edit" id="ckTableView" title="Tischansicht in neuem Tab öffnen">📺 Tischansicht</button>
             <button class="ck-btn ck-btn-start" id="ckStartGame" ${!canStart ? 'disabled' : ''}>
               <span class="ck-btn-icon">⚔️</span> Kampagne starten
             </button>
@@ -86,6 +89,41 @@ export default async function CockpitView({ id }) {
           ${!canStart && playerCount > 0 ? '<div class="ck-warning">⚠️ Alle Charaktere müssen genehmigt werden, bevor das Spiel gestartet werden kann.</div>' : ''}
           ${playerCount === 0 ? '<div class="ck-empty">Noch keine Spieler beigetreten. Teile den Kampagnenlink!</div>' : ''}
           <div class="ck-player-list" id="ckPlayers"></div>
+        </div>
+
+        <div class="ck-card ck-map-card">
+          <div class="ck-card-header">
+            <span class="ck-card-icon">🗺️</span>
+            <h3>Karte</h3>
+            <div class="ck-map-tools">
+              <button class="ck-map-btn" id="ckMapZoomIn" title="Zoom +">🔍+</button>
+              <button class="ck-map-btn" id="ckMapZoomOut" title="Zoom −">🔍−</button>
+              <button class="ck-map-btn" id="ckMapReset" title="Reset">↺</button>
+              <button class="ck-map-btn ck-map-add" id="ckMapAddPoint" title="Punkt hinzufügen">+ Punkt</button>
+            </div>
+          </div>
+          <div class="ck-map-box" id="ckMapBox">
+            ${campaign.mapImagePath ? '' : '<div class="ck-empty" style="padding:40px;">Keine Karte hochgeladen. Bearbeite die Kampagne, um eine Karte hinzuzufügen.</div>'}
+          </div>
+          <div class="ck-map-marker-list" id="ckMarkerList"></div>
+        </div>
+      </div>
+
+      <div id="ckAddPointModal" class="modal">
+        <div class="modal-content decision-modal">
+          <div class="decision-modal-header"><span>📍</span><h3>Punkt hinzufügen</h3></div>
+          <label class="modal-label">Typ</label>
+          <select id="ckPointType" style="width:100%;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.08);color:white;border:1px solid rgba(255,255,255,0.15);margin-bottom:12px;">
+            <option value="structure">🏠 Gebäude</option>
+            <option value="quest">❗ Quest</option>
+            <option value="checkpoint">🚩 Checkpoint</option>
+          </select>
+          <label class="modal-label">Name</label>
+          <input type="text" id="ckPointLabel" placeholder="z.B. Taverne" maxlength="40" style="width:100%;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.08);color:white;border:1px solid rgba(255,255,255,0.15);margin-bottom:12px;">
+          <div class="decision-modal-actions">
+            <button class="modal-cancel-btn" id="ckPointCancel">Abbrechen</button>
+            <button class="modal-save-btn" id="ckPointSave">✓ Hinzufügen</button>
+          </div>
         </div>
       </div>
     `;
@@ -148,11 +186,16 @@ export default async function CockpitView({ id }) {
 
     document.getElementById('ckBack').addEventListener('click', () => navigate('/campaign/' + campaignId));
     document.getElementById('ckEdit').addEventListener('click', () => navigate('/campaign/' + campaignId));
+    document.getElementById('ckTableView').addEventListener('click', () => {
+      window.open('#/campaign/' + campaignId + '/table', '_blank');
+    });
 
     document.getElementById('ckStartGame').addEventListener('click', async () => {
       const btn = document.getElementById('ckStartGame');
       btn.disabled = true; btn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> Starte…';
       try {
+        // Reset game state (clears fog exploration from any previous runs)
+        await fetch('/api/campaign/' + campaignId + '/game/state', { method: 'DELETE' });
         await fetch('/api/campaign/' + campaignId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ started: true }) });
         showToast('Kampagne gestartet!');
         navigate('/campaign/' + campaignId + '/gm');
@@ -162,9 +205,125 @@ export default async function CockpitView({ id }) {
       }
     });
 
+    // ===== MAP EDITING IN COCKPIT =====
+    let ckMapMarkers = [];
+
+    async function loadCkMarkers() {
+      try {
+        const r = await fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' });
+        if (r.ok) ckMapMarkers = await r.json();
+      } catch (e) {}
+    }
+
+    function renderCkMarkerList() {
+      const list = document.getElementById('ckMarkerList');
+      if (!list) return;
+      if (ckMapMarkers.length === 0) {
+        list.innerHTML = '<div class="ck-empty" style="padding:8px;font-size:12px;">Keine Punkte auf der Karte</div>';
+        return;
+      }
+      const typeIcons = { 'player-group': '👥', player: '🧙', structure: '🏠', quest: '❗', checkpoint: '🚩' };
+      list.innerHTML = ckMapMarkers.map(m => {
+        const icon = typeIcons[m.type] || m.icon || '📌';
+        return `<div class="ck-marker-item">
+          <span class="ck-marker-icon">${icon}</span>
+          <span class="ck-marker-label">${esc(m.label || m.type)}</span>
+          <button class="ck-marker-del" data-mid="${m.id}" title="Entfernen">✕</button>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.ck-marker-del').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch('/api/campaign/' + campaignId + '/game/map-marker/' + btn.dataset.mid, { method: 'DELETE' });
+          ckMapMarkers = ckMapMarkers.filter(m => m.id !== btn.dataset.mid);
+          if (ckMapCanvas) ckMapCanvas.updateMarkers(ckMapMarkers);
+          renderCkMarkerList();
+          showToast('Punkt entfernt');
+        });
+      });
+    }
+
+    async function initCkMap() {
+      if (!campaign.mapImagePath) return;
+      await loadCkMarkers();
+      const box = document.getElementById('ckMapBox');
+
+      // Build player list for map
+      const mapPlayers = campaignPlayers
+        .filter(cp => cp.role === 'PLAYER')
+        .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
+
+      // If no player/player-group markers exist yet, auto-create a default group with all players
+      if (mapPlayers.length > 0 && ckMapMarkers.filter(m => m.type === 'player' || m.type === 'player-group').length === 0) {
+        const allPids = mapPlayers.map(p => String(p.id)).join(',');
+        try {
+          const res = await fetch('/api/campaign/' + campaignId + '/game/map-marker', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'player-group', label: 'Gruppe', x: 0.5, y: 0.5, playerIds: allPids, icon: '👥' })
+          });
+          if (res.ok) {
+            const marker = await res.json();
+            ckMapMarkers.push(marker);
+          }
+        } catch (e) {}
+      }
+
+      ckMapCanvas = createMapCanvas(box, {
+        mapImageUrl: resolveMapUrl(campaign.mapImagePath),
+        markers: ckMapMarkers,
+        readOnly: false,
+        isMaximized: false,
+        players: mapPlayers,
+        fogOfWar: false,
+        gameStarted: false,
+        onMarkerMove: async (m) => {
+          await fetch('/api/campaign/' + campaignId + '/game/map-marker', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: m.id, x: m.x, y: m.y })
+          });
+        }
+      });
+
+      renderCkMarkerList();
+
+      document.getElementById('ckMapZoomIn').addEventListener('click', () => { if (ckMapCanvas) ckMapCanvas.setZoom(Math.min(5, ckMapCanvas.getZoom() + 0.3)); });
+      document.getElementById('ckMapZoomOut').addEventListener('click', () => { if (ckMapCanvas) ckMapCanvas.setZoom(Math.max(0.5, ckMapCanvas.getZoom() - 0.3)); });
+      document.getElementById('ckMapReset').addEventListener('click', () => { if (ckMapCanvas) ckMapCanvas.resetView(); });
+    }
+
+    // Add point modal
+    document.getElementById('ckMapAddPoint').addEventListener('click', () => {
+      document.getElementById('ckAddPointModal').style.display = 'flex';
+      document.getElementById('ckPointLabel').value = '';
+    });
+    document.getElementById('ckPointCancel').addEventListener('click', () => {
+      document.getElementById('ckAddPointModal').style.display = 'none';
+    });
+    document.getElementById('ckPointSave').addEventListener('click', async () => {
+      const type = document.getElementById('ckPointType').value;
+      const label = document.getElementById('ckPointLabel').value.trim();
+      if (!label) { showToast('Name ist erforderlich', 'error'); return; }
+      const icons = { structure: '🏠', quest: '❗', checkpoint: '🚩' };
+      try {
+        const res = await fetch('/api/campaign/' + campaignId + '/game/map-marker', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, label, x: 0.5, y: 0.5, icon: icons[type] || '📌' })
+        });
+        if (res.ok) {
+          const marker = await res.json();
+          ckMapMarkers.push(marker);
+          if (ckMapCanvas) ckMapCanvas.updateMarkers(ckMapMarkers);
+          renderCkMarkerList();
+          showToast('Punkt hinzugefügt');
+        }
+      } catch (e) { showToast('Fehler', 'error'); }
+      document.getElementById('ckAddPointModal').style.display = 'none';
+    });
+
+    initCkMap();
+
   } catch (err) {
     document.getElementById('ckContent').innerHTML = '<div style="text-align:center;padding:60px;color:#f97373;">Fehler: ' + esc(err.message) + '</div>';
   }
 
-  return () => { destroyHeader(); };
+  return () => { destroyHeader(); if (ckMapCanvas) { ckMapCanvas.destroy(); ckMapCanvas = null; } };
 }

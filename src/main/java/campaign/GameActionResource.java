@@ -519,6 +519,48 @@ public class GameActionResource {
         }
     }
 
+    // ===== FOG EXPLORATION PERSISTENCE =====
+
+    @GET
+    @Path("fog-exploration")
+    public Response getFogExploration(@PathParam("campaignId") Long campaignId) {
+        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        String data = state.fogExploration;
+        if (data == null) {
+            return Response.ok(Map.of("data", "")).build();
+        }
+        return Response.ok(Map.of("data", data)).build();
+    }
+
+    @PUT
+    @Path("fog-exploration")
+    public Response saveFogExploration(@PathParam("campaignId") Long campaignId,
+                                       Map<String, Object> body) {
+        String data = (String) body.get("data");
+        if (data == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("data required").build();
+        }
+        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        state.fogExploration = data;
+        return Response.ok(Map.of("saved", true)).build();
+    }
+
+    // ===== RESET GAME STATE =====
+
+    @DELETE
+    @Path("state")
+    public Response resetState(@PathParam("campaignId") Long campaignId) {
+        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        state.fogExploration = null;
+        state.currentTurnPlayerId = null;
+        state.playerHp.clear();
+        state.playerMaxHp.clear();
+        state.playerActive.clear();
+        state.lastDiceRoll = null;
+        // Keep map markers (they are placed before the game starts)
+        return Response.ok(Map.of("reset", true)).build();
+    }
+
     // ===== HELPER =====
 
     private Long toLong(Object obj) {

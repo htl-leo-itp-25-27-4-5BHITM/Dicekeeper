@@ -22,6 +22,7 @@ export default async function GMView({ id }) {
             <button class="map-tb-btn" id="gmMapZoomIn" title="Zoom in">🔍+</button>
             <button class="map-tb-btn" id="gmMapZoomOut" title="Zoom out">🔍−</button>
             <button class="map-tb-btn" id="gmMapReset" title="Ansicht zurücksetzen">↺</button>
+            <button class="map-tb-btn" id="gmTableView" title="Tischansicht öffnen" style="color:#64b5f6 !important;border-color:rgba(100,181,246,0.3) !important;">📺 Tischansicht</button>
             <button class="map-tb-btn map-tb-popout" id="gmMapPopout" title="Karte maximieren">⛶</button>
           </div>
           <div class="map-box" id="gmMapBox"></div>
@@ -207,6 +208,9 @@ export default async function GMView({ id }) {
   // Map toolbar events
   document.getElementById('gmMapPopout').addEventListener('click', openMaximized);
   document.getElementById('gmMapClose').addEventListener('click', closeMaximized);
+  document.getElementById('gmTableView').addEventListener('click', () => {
+    window.open('#/campaign/' + campaignId + '/table', '_blank');
+  });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isMaximized) closeMaximized(); });
 
   document.getElementById('gmMapZoomIn').addEventListener('click', () => { if (mapCanvas) mapCanvas.setZoom(Math.min(5, mapCanvas.getZoom() + 0.3)); });

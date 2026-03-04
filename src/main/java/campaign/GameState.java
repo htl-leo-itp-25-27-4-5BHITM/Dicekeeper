@@ -25,6 +25,9 @@ public class GameState {
         public final ConcurrentHashMap<Long, Boolean> playerActive = new ConcurrentHashMap<>();
         public volatile DiceRollInfo lastDiceRoll;
 
+        /** Base64-encoded PNG of the 256×256 fog exploration memory canvas (nullable). */
+        public volatile String fogExploration;
+
         // Map markers: markerId -> MapMarker
         public final ConcurrentHashMap<String, MapMarker> mapMarkers = new ConcurrentHashMap<>();
         private final AtomicLong markerSeq = new AtomicLong(1);
@@ -67,6 +70,9 @@ public class GameState {
                 snap.put("lastDiceRoll", lastDiceRoll);
             }
             snap.put("mapMarkers", new ArrayList<>(mapMarkers.values()));
+            if (fogExploration != null) {
+                snap.put("fogExploration", fogExploration);
+            }
             return snap;
         }
     }

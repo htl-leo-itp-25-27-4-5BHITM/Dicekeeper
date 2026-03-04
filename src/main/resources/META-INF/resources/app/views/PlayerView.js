@@ -1,5 +1,5 @@
 /**
- * Player Game View – Spieler UI (SPA version)
+ * Player Game View – Redesigned immersive Spieler UI
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
@@ -33,31 +33,52 @@ export default async function PlayerView({ id }) {
   document.body.classList.add('has-header');
 
   app.innerHTML = renderHeader() + `
-    <div id="pvStatusMsg" class="pv-status-message"></div>
-    <div id="pvTurnBanner" class="turn-banner"></div>
+    <div id="pvTurnBanner" class="pv2-turn-banner"></div>
     <div id="pvDiceToast" class="dice-toast"><div class="toast-title" id="pvToastTitle"></div><div class="toast-result" id="pvToastResult"></div></div>
-    <div class="loading-screen" id="pvLoading"><span class="loading-spinner"></span> Spiel wird geladen...</div>
-    <div class="player-view-desktop" id="pvDesktop" style="display:none;">
-      <div class="pv-sidebar" id="pvSidebar"></div>
-      <div class="pv-main">
-        <div class="glass pv-campaign-bar" id="pvCampBar"></div>
-        <div class="glass" style="padding:0;">
-          <div class="pv-tabs">
-            <button class="pv-tab active" data-tab="pv-overview">📋 Übersicht</button>
-            <button class="pv-tab" data-tab="pv-map">🗺️ Karte</button>
-            <button class="pv-tab" data-tab="pv-prof">🛡️ Übung</button>
-            <button class="pv-tab" data-tab="pv-party">👥 Gruppe</button>
-            <button class="pv-tab" data-tab="pv-dice">🎲 Würfel</button>
-            <button class="pv-tab" data-tab="pv-notes">📝 Notizen</button>
+    <div class="pv2-loading" id="pvLoading"><span class="loading-spinner"></span> Spiel wird geladen...</div>
+    <div class="pv2-shell" id="pvDesktop" style="display:none;">
+      <!-- Left rail: character identity + core stats -->
+      <aside class="pv2-rail" id="pvRail"></aside>
+
+      <!-- Centre: map + decisions + dice -->
+      <main class="pv2-centre">
+        <div class="pv2-map-card" id="pvMapCard">
+          <div class="pv2-map-header">
+            <h3>🗺️ Karte</h3>
+            <div class="pv2-map-tools">
+              <button class="pv2-icon-btn" id="pvMapZoomIn" title="Zoom +">🔍+</button>
+              <button class="pv2-icon-btn" id="pvMapZoomOut" title="Zoom −">🔍−</button>
+              <button class="pv2-icon-btn" id="pvMapReset" title="Reset">↺</button>
+            </div>
           </div>
-          <div class="pv-tab-panel active" id="pv-overview"></div>
-          <div class="pv-tab-panel pv-map-panel" id="pv-map"></div>
-          <div class="pv-tab-panel" id="pv-prof"></div>
-          <div class="pv-tab-panel" id="pv-party"></div>
-          <div class="pv-tab-panel" id="pv-dice" style="padding:16px;"></div>
-          <div class="pv-tab-panel" id="pv-notes"></div>
+          <div class="pv2-map-canvas" id="pvMapCanvasBox"></div>
         </div>
-      </div>
+
+        <div class="pv2-bottom-row">
+          <div class="pv2-decisions-card">
+            <div class="pv2-card-header"><span>⚖️</span><h3>Abstimmungen</h3></div>
+            <div class="pv2-decisions-body" id="pvDecisions"></div>
+          </div>
+
+          <div class="pv2-dice-card">
+            <div class="pv2-card-header"><span>🎲</span><h3>Würfel</h3></div>
+            <div class="pv2-dice-body" id="pvDiceBody"></div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right rail: party + notes -->
+      <aside class="pv2-right-rail">
+        <div class="pv2-party-card">
+          <div class="pv2-card-header"><span>👥</span><h3>Gruppe</h3></div>
+          <div class="pv2-party-list" id="pvPartyList"></div>
+        </div>
+        <div class="pv2-notes-card">
+          <div class="pv2-card-header"><span>📝</span><h3>Notizen</h3></div>
+          <textarea class="pv2-notes-area" id="pvNotesArea" placeholder="NPCs, Orte, Questziele…"></textarea>
+          <div class="pv2-notes-hint">💾 Automatisch gespeichert</div>
+        </div>
+      </aside>
     </div>
   `;
   initHeader();
@@ -66,6 +87,7 @@ export default async function PlayerView({ id }) {
   let currentHP = 0, maxHP = 0, diceHistory = [], decisions = [], votedDecisions = {};
   let eventSource = null, currentTurnPlayerId = null, selectedDiceSides = 20;
   let playerMapCanvas = null, playerMapMarkers = [];
+  let fogExplorationData = null;
 
   function getScore(name) {
     if (!character?.abilityScores) return 10;
@@ -74,23 +96,20 @@ export default async function PlayerView({ id }) {
   }
   function getProfBonus() { return Math.floor(((character?.level || 1) - 1) / 4) + 2; }
 
-  function showStatus(msg, isError) {
-    showToast(msg, isError ? 'error' : 'success');
-  }
-
-  // SSE
+  // ===== SSE =====
   function connectSSE() {
     eventSource = new EventSource('/api/campaign/' + campaignId + '/sse');
     eventSource.addEventListener('turn', e => {
       const d = JSON.parse(e.data); currentTurnPlayerId = d.playerId;
       updateTurnBanner(d.playerId, d.playerName);
+      renderParty();
     });
     eventSource.addEventListener('hp', e => {
       const d = JSON.parse(e.data);
       if (d.playerId === currentPlayer.id) {
         currentHP = d.currentHp; maxHP = d.maxHp; renderCoreStats();
-        if (d.delta < 0) showStatus('Du hast ' + Math.abs(d.delta) + ' Schaden erhalten! ❤️ ' + currentHP + '/' + maxHP, true);
-        else if (d.delta > 0) showStatus('Du wurdest um ' + d.delta + ' geheilt! ❤️ ' + currentHP + '/' + maxHP, false);
+        if (d.delta < 0) showToast('Du hast ' + Math.abs(d.delta) + ' Schaden erhalten! ❤️ ' + currentHP + '/' + maxHP, 'error');
+        else if (d.delta > 0) showToast('Du wurdest um ' + d.delta + ' geheilt! ❤️ ' + currentHP + '/' + maxHP, 'success');
       }
     });
     eventSource.addEventListener('dice', e => {
@@ -98,7 +117,8 @@ export default async function PlayerView({ id }) {
       if (d.playerId !== currentPlayer.id) showDiceToast(d.playerName, d.diceType, d.result);
     });
     eventSource.addEventListener('decision', e => {
-      const d = JSON.parse(e.data); decisions.push(d); renderDecisions(); showStatus('⚖️ Neue Abstimmung: ' + d.title, false);
+      const d = JSON.parse(e.data); decisions.push(d); renderDecisions();
+      showToast('⚖️ Neue Abstimmung: ' + d.title, 'info');
     });
     eventSource.addEventListener('vote', e => {
       const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
@@ -108,31 +128,44 @@ export default async function PlayerView({ id }) {
       const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
       if (dec) { dec.status = 'RESOLVED'; dec.yes = d.yes; dec.no = d.no; dec.decisionMade = d.decisionMade; renderDecisions(); }
     });
-    // Map marker SSE events
     eventSource.addEventListener('marker_add', e => {
       const m = JSON.parse(e.data);
-      if (!playerMapMarkers.find(x => x.id === m.id)) { playerMapMarkers.push(m); if (playerMapCanvas) playerMapCanvas.updateMarkers(playerMapMarkers); }
+      if (!playerMapMarkers.find(x => x.id === m.id)) { playerMapMarkers.push(m); syncPlayerMap(); }
     });
     eventSource.addEventListener('marker_move', e => {
       const d = JSON.parse(e.data);
       const m = playerMapMarkers.find(x => x.id === d.id);
-      if (m) { m.x = d.x; m.y = d.y; if (playerMapCanvas) playerMapCanvas.updateMarkers(playerMapMarkers); }
+      if (m) { m.x = d.x; m.y = d.y; syncPlayerMap(); }
     });
     eventSource.addEventListener('marker_remove', e => {
       const d = JSON.parse(e.data);
       playerMapMarkers = playerMapMarkers.filter(m => m.id !== d.id);
-      if (playerMapCanvas) playerMapCanvas.updateMarkers(playerMapMarkers);
+      syncPlayerMap();
     });
     eventSource.addEventListener('marker_group', e => {
       const d = JSON.parse(e.data);
-      if (d.allMarkers) { playerMapMarkers = d.allMarkers; if (playerMapCanvas) playerMapCanvas.updateMarkers(playerMapMarkers); }
+      if (d.allMarkers) { playerMapMarkers = d.allMarkers; syncPlayerMap(); }
     });
+    eventSource.addEventListener('player_active', e => {
+      renderParty();
+    });
+  }
+
+  function syncPlayerMap() {
+    if (playerMapCanvas) {
+      playerMapCanvas.updateMarkers(playerMapMarkers);
+    }
   }
 
   function updateTurnBanner(playerId, playerName) {
     const b = document.getElementById('pvTurnBanner');
-    if (playerId === currentPlayer.id) { b.className = 'turn-banner my-turn visible'; b.innerHTML = '🟢 <strong>Du bist am Zug!</strong>'; }
-    else { b.className = 'turn-banner other-turn visible'; b.innerHTML = '⏳ ' + esc(playerName || 'Ein Spieler') + ' ist am Zug'; }
+    if (playerId === currentPlayer.id) {
+      b.className = 'pv2-turn-banner my-turn visible';
+      b.innerHTML = '<span class="pv2-turn-dot"></span> <strong>Du bist am Zug!</strong>';
+    } else {
+      b.className = 'pv2-turn-banner other-turn visible';
+      b.innerHTML = '⏳ ' + esc(playerName || 'Ein Spieler') + ' ist am Zug';
+    }
   }
 
   let toastTimeout = null;
@@ -144,7 +177,7 @@ export default async function PlayerView({ id }) {
     toastTimeout = setTimeout(() => document.getElementById('pvDiceToast').classList.remove('visible'), 4000);
   }
 
-  // LOAD
+  // ===== LOAD =====
   async function loadGame() {
     try {
       const campRes = await fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' });
@@ -186,9 +219,8 @@ export default async function PlayerView({ id }) {
       } catch(e) {}
 
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }); if (r.ok) decisions = await r.json(); } catch(e) {}
-
-      // Load map markers
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }); if (r.ok) playerMapMarkers = await r.json(); } catch(e) {}
+      try { const r = await fetch('/api/campaign/' + campaignId + '/game/fog-exploration', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d.data) fogExplorationData = d.data; } } catch(e) {}
 
       connectSSE();
       renderAll();
@@ -198,47 +230,62 @@ export default async function PlayerView({ id }) {
   }
 
   function renderAll() {
-    renderSidebar(); renderCampaignBar(); renderOverview(); renderDecisions();
-    renderProficiencies(); renderParty(); renderDice(); renderNotes(); renderMap(); setupTabs();
+    renderRail();
+    renderMap();
+    renderDecisions();
+    renderDice();
+    renderParty();
+    renderNotes();
   }
 
-  function renderSidebar() {
-    const s = document.getElementById('pvSidebar');
+  // ===== LEFT RAIL =====
+  function renderRail() {
+    const rail = document.getElementById('pvRail');
     const cn = character.characterClass?.name || 'Keine Klasse';
-    const race = character.race || 'Unbekannte Rasse';
+    const race = character.race || 'Unbekannt';
     const lvl = character.level || 1;
-
-    let html = `<div class="glass" style="text-align:center;padding:20px 12px 16px;">
-      <div class="char-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(currentPlayer.profilePicture) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : initials(character.name || currentPlayer.name)}</div>
-      <div class="char-name">${esc(character.name)}</div>
-      <div class="char-meta-line">${esc(race)} · ${esc(cn)} · ${esc(character.alignment || '')}</div>
-      <span class="level-badge">⭐ Stufe ${lvl}</span>
-    </div>`;
-
-    html += `<div class="glass core-stats" id="pvCoreStats"></div>`;
-
-    html += `<div class="glass" style="padding:12px"><div class="section-title">Attributswerte</div><div class="abilities-grid">`;
-    html += ABILITIES.map(name => {
-      const s = getScore(name); const m = calcMod(s);
-      return `<div class="ability-box" title="${ABILITY_DE[name]}"><div class="ability-label">${ICONS[name]} ${ABILITY_ABBR[name]}</div><div class="ability-score">${s}</div><div class="ability-mod${m < 0 ? ' negative' : ''}">${fmtMod(m)}</div></div>`;
-    }).join('') + '</div></div>';
-
-    html += `<div class="glass" style="padding:12px"><div class="section-title">Rettungswürfe</div>`;
-    html += ABILITIES.map(name => {
-      const m = calcMod(getScore(name));
-      return `<div class="save-row"><span class="save-name">${ICONS[name]} ${ABILITY_DE[name]}</span><span class="save-value${m >= 0 ? ' positive' : ' negative'}">${fmtMod(m)}</span></div>`;
-    }).join('') + '</div>';
-
-    html += `<div class="glass" style="padding:12px"><div class="section-title">Fertigkeiten</div>`;
     const bgSkills = character.background?.skills ? character.background.skills.split(',').map(s => s.trim().toLowerCase()) : [];
-    html += SKILLS.map(skill => {
-      const m = calcMod(getScore(skill.ability));
-      const prof = bgSkills.some(s => s === skill.name.toLowerCase());
-      const bonus = prof ? m + getProfBonus() : m;
-      return `<div class="skill-row"><span class="skill-name"><span class="${prof ? 'skill-proficient' : 'skill-not-proficient'}"></span>${skill.de} <span style="font-size:10px;color:rgba(255,255,255,0.6)">(${ABILITY_ABBR[skill.ability]})</span></span><span class="skill-bonus${bonus >= 0 ? ' positive' : ' negative'}">${fmtMod(bonus)}</span></div>`;
-    }).join('') + '</div>';
 
-    s.innerHTML = html;
+    let html = `
+      <div class="pv2-identity">
+        <div class="pv2-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(currentPlayer.profilePicture) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
+        <div class="pv2-char-name">${esc(character.name)}</div>
+        <div class="pv2-char-meta">${esc(race)} · ${esc(cn)}</div>
+        <div class="pv2-level-badge">⭐ Stufe ${lvl}</div>
+      </div>
+
+      <div class="pv2-core-stats" id="pvCoreStats"></div>
+
+      <div class="pv2-section">
+        <div class="pv2-section-title">Attribute</div>
+        <div class="pv2-abilities-grid">
+          ${ABILITIES.map(name => {
+            const s = getScore(name); const m = calcMod(s);
+            return `<div class="pv2-ability">
+              <div class="pv2-ability-icon">${ICONS[name]}</div>
+              <div class="pv2-ability-abbr">${ABILITY_ABBR[name]}</div>
+              <div class="pv2-ability-score">${s}</div>
+              <div class="pv2-ability-mod ${m < 0 ? 'neg' : ''}">${fmtMod(m)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="pv2-section pv2-scrollable">
+        <div class="pv2-section-title">Fertigkeiten</div>
+        ${SKILLS.map(skill => {
+          const m = calcMod(getScore(skill.ability));
+          const prof = bgSkills.some(s => s === skill.name.toLowerCase());
+          const bonus = prof ? m + getProfBonus() : m;
+          return `<div class="pv2-skill-row">
+            <span class="pv2-skill-dot ${prof ? 'prof' : ''}"></span>
+            <span class="pv2-skill-name">${skill.de}</span>
+            <span class="pv2-skill-bonus ${bonus >= 0 ? 'pos' : 'neg'}">${fmtMod(bonus)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    rail.innerHTML = html;
     renderCoreStats();
   }
 
@@ -246,121 +293,113 @@ export default async function PlayerView({ id }) {
     const el = document.getElementById('pvCoreStats'); if (!el) return;
     const dexMod = calcMod(getScore('Dexterity'));
     const pct = maxHP > 0 ? Math.round((currentHP / maxHP) * 100) : 0;
-    let hpColor = 'var(--accent-green,#69f0ae)'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
+    let hpColor = '#69f0ae'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
     el.innerHTML = `
-      <div class="core-stat"><div class="core-stat-icon">❤️</div><div class="core-stat-value" style="color:${hpColor}">${currentHP}</div><div class="core-stat-label">TP (${maxHP})</div></div>
-      <div class="core-stat"><div class="core-stat-icon">🛡️</div><div class="core-stat-value">${10 + dexMod}</div><div class="core-stat-label">RK</div></div>
-      <div class="core-stat"><div class="core-stat-icon">⚡</div><div class="core-stat-value">${fmtMod(dexMod)}</div><div class="core-stat-label">Initiative</div></div>
-      <div class="core-stat"><div class="core-stat-icon">🏃</div><div class="core-stat-value">30</div><div class="core-stat-label">Tempo</div></div>
+      <div class="pv2-core-stat">
+        <div class="pv2-core-icon" style="color:${hpColor}">❤️</div>
+        <div class="pv2-core-val" style="color:${hpColor}">${currentHP}<span class="pv2-core-max">/${maxHP}</span></div>
+        <div class="pv2-core-label">Trefferpunkte</div>
+        <div class="pv2-hp-bar"><div class="pv2-hp-fill" style="width:${pct}%;background:${hpColor};"></div></div>
+      </div>
+      <div class="pv2-core-row">
+        <div class="pv2-core-mini"><span>🛡️</span><strong>${10 + dexMod}</strong><small>RK</small></div>
+        <div class="pv2-core-mini"><span>⚡</span><strong>${fmtMod(dexMod)}</strong><small>Initiative</small></div>
+        <div class="pv2-core-mini"><span>🏃</span><strong>30</strong><small>Tempo</small></div>
+        <div class="pv2-core-mini"><span>📐</span><strong>+${getProfBonus()}</strong><small>Übung</small></div>
+      </div>
     `;
   }
 
-  function renderCampaignBar() {
-    const el = document.getElementById('pvCampBar');
-    el.innerHTML = `<div style="flex:1;min-width:0;"><div style="font-size:16px;font-weight:700;">⚔️ ${esc(campaign.name)}</div><div style="font-size:12px;color:rgba(255,255,255,0.6);">${esc(campaign.description || '')}</div></div><button class="bar-btn" id="pvBack">← Zurück</button>`;
-    document.getElementById('pvBack').addEventListener('click', () => navigate('/campaigns'));
+  // ===== MAP =====
+  function renderMap() {
+    const box = document.getElementById('pvMapCanvasBox');
+    if (!campaign.mapImagePath) {
+      box.innerHTML = '<div class="pv2-no-map"><span>🗺️</span><p>Keine Karte verfügbar</p></div>';
+      return;
+    }
+    const allPlayers = campaignPlayers
+      .filter(cp => cp.role === 'PLAYER')
+      .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
+
+    playerMapCanvas = createMapCanvas(box, {
+      mapImageUrl: resolveMapUrl(campaign.mapImagePath),
+      markers: playerMapMarkers,
+      readOnly: true,
+      isMaximized: false,
+      players: allPlayers,
+      fogOfWar: true,
+      fogSolid: true,
+      initialExplorationData: fogExplorationData,
+      gameStarted: true,
+      onExplorationChange: (dataUrl) => {
+        fetch('/api/campaign/' + campaignId + '/game/fog-exploration', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: dataUrl })
+        }).catch(() => {});
+      }
+    });
+
+    document.getElementById('pvMapZoomIn').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.setZoom(Math.min(5, playerMapCanvas.getZoom() + 0.3)); });
+    document.getElementById('pvMapZoomOut').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.setZoom(Math.max(0.5, playerMapCanvas.getZoom() - 0.3)); });
+    document.getElementById('pvMapReset').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.resetView(); });
   }
 
-  function renderOverview() {
-    const el = document.getElementById('pv-overview');
-    let html = '<div style="padding:16px;">';
-    html += '<div id="pvDecisions"></div>';
-    html += `<div class="info-card"><div class="info-card-title">📖 Hintergrundgeschichte</div><div class="info-card-body">${esc(character.info) || 'Noch keine Geschichte...'}</div></div>`;
-    if (character.characterClass) html += `<div class="info-card"><div class="info-card-title">⚔️ ${esc(character.characterClass.name)}</div><div class="info-card-body">${character.characterClass.description || ''}</div></div>`;
-    if (character.background) html += `<div class="info-card"><div class="info-card-title">🏛️ ${esc(character.background.name)}</div><div class="info-card-body">${esc(character.background.description || '')}</div>${character.background.feat ? '<div style="margin-top:8px"><span class="info-tag purple">Talent: ' + esc(character.background.feat) + '</span></div>' : ''}</div>`;
-    html += '</div>';
-    el.innerHTML = html;
-  }
-
+  // ===== DECISIONS =====
   function renderDecisions() {
     const container = document.getElementById('pvDecisions'); if (!container) return;
-    if (decisions.length === 0) { container.innerHTML = ''; return; }
-    let html = '<div class="section-title" style="margin-bottom:8px">⚖️ Gruppenentscheidungen</div>';
-    decisions.slice().reverse().forEach(d => {
+    if (decisions.length === 0) { container.innerHTML = '<div class="pv2-empty">Keine Abstimmungen</div>'; return; }
+    container.innerHTML = decisions.slice().reverse().map(d => {
       const total = (d.yes || 0) + (d.no || 0);
       const yP = total > 0 ? Math.round((d.yes / total) * 100) : 0;
       const nP = total > 0 ? 100 - yP : 0;
       const voted = votedDecisions[d.id];
       const resolved = d.status === 'RESOLVED';
-      html += `<div class="decision-card-player" style="${resolved ? 'opacity:0.7;border-left-color:#69f0ae;' : ''}">
-        <h4>${d.title || ''}${resolved ? ' ✅' : ''}</h4><div class="decision-desc">${d.text || ''}</div>`;
-      if (resolved) html += `<div style="text-align:center;padding:8px;font-weight:700;color:#69f0ae;">Ergebnis: ${d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein')}</div>`;
-      else if (!voted) html += `<div class="vote-buttons"><button class="vote-btn vote-btn-yes" data-did="${d.id}" data-v="yes">👍 Ja</button><button class="vote-btn vote-btn-no" data-did="${d.id}" data-v="no">👎 Nein</button></div>`;
-      else html += `<div class="vote-buttons"><button class="vote-btn vote-btn-yes voted" disabled>👍 Ja (${d.yes})</button><button class="vote-btn vote-btn-no voted" disabled>👎 Nein (${d.no})</button></div>`;
-      if (total > 0) html += `<div class="vote-bar"><div class="vote-bar-yes" style="width:${yP}%"></div><div class="vote-bar-no" style="width:${nP}%"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;font-weight:600;"><span style="color:#69f0ae;">👍 ${yP}%</span><span style="color:#ff5252;">👎 ${nP}%</span></div>`;
+      let html = `<div class="pv2-decision ${resolved ? 'resolved' : ''}">
+        <div class="pv2-decision-title">${esc(d.title || '')}${resolved ? ' ✅' : ''}</div>
+        <div class="pv2-decision-desc">${esc(d.text || '')}</div>`;
+      if (resolved) html += `<div class="pv2-decision-result">Ergebnis: ${esc(d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein'))}</div>`;
+      else if (!voted) html += `<div class="pv2-vote-row"><button class="pv2-vote-btn yes" data-did="${d.id}" data-v="yes">👍 Ja</button><button class="pv2-vote-btn no" data-did="${d.id}" data-v="no">👎 Nein</button></div>`;
+      else html += `<div class="pv2-vote-row"><button class="pv2-vote-btn yes voted" disabled>👍 ${d.yes}</button><button class="pv2-vote-btn no voted" disabled>👎 ${d.no}</button></div>`;
+      if (total > 0) html += `<div class="pv2-vote-bar"><div class="pv2-vote-yes" style="width:${yP}%"></div></div><div class="pv2-vote-labels"><span class="yes">${yP}%</span><span class="no">${nP}%</span></div>`;
       html += '</div>';
-    });
-    container.innerHTML = html;
-    container.querySelectorAll('.vote-btn[data-did]').forEach(btn => {
+      return html;
+    }).join('');
+    container.querySelectorAll('.pv2-vote-btn[data-did]').forEach(btn => {
       btn.addEventListener('click', () => {
         const did = parseInt(btn.dataset.did); const vt = btn.dataset.v;
         if (votedDecisions[did]) return;
         votedDecisions[did] = vt; renderDecisions();
         const name = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Unknown';
         fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decisionId: did, vote: vt, playerName: name, playerId: currentPlayer.id })
-        });
+          body: JSON.stringify({ decisionId: did, vote: vt, playerName: name, playerId: currentPlayer.id }) });
       });
     });
   }
 
-  function renderProficiencies() {
-    const el = document.getElementById('pv-prof'); let html = '<div style="padding:16px;">';
-    const bgSkills = character.background?.skills || '';
-    if (bgSkills) html += `<div class="prof-group"><div class="prof-group-title">Fertigkeitsübung</div><div>${bgSkills.split(',').map(s => '<span class="info-tag">' + esc(s.trim()) + '</span>').join('')}</div></div>`;
-    const bgTools = character.background?.toolProficiencies || '';
-    if (bgTools) html += `<div class="prof-group"><div class="prof-group-title">Werkzeugübung</div><div>${bgTools.split(',').map(s => '<span class="info-tag purple">' + esc(s.trim()) + '</span>').join('')}</div></div>`;
-    html += `<div class="prof-group"><div class="prof-group-title">Übungsbonus</div><div><span class="info-tag" style="font-size:14px;padding:6px 14px">+${getProfBonus()}</span></div></div>`;
-    html += '</div>'; el.innerHTML = html;
-  }
-
-  function renderParty() {
-    const el = document.getElementById('pv-party');
-    let html = '<div style="padding:16px;"><div class="party-grid">';
-    campaignPlayers.forEach(cp => {
-      const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
-      const isDM = cp.role === 'DM'; const ch = characterMap[cp.playerId];
-      const detail = isDM ? 'Spielleiter' : (ch ? [ch.race, ch.characterClass?.name].filter(Boolean).join(' · ') || 'Abenteurer' : 'Abenteurer');
-      const isTurn = currentTurnPlayerId === cp.playerId;
-      html += `<div class="party-card" style="${isTurn ? 'border:1px solid #69f0ae;box-shadow:0 0 12px rgba(105,240,174,0.2);' : ''}">
-        <div class="party-avatar${isDM ? ' dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
-        <div class="party-info"><div class="party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isTurn && !isDM ? ' 🟢' : ''}</div><div class="party-detail">${esc(detail)}</div></div>
-        <span class="party-role-badge${isDM ? ' dm' : ' player'}">${cp.role}</span>
-      </div>`;
-    });
-    html += '</div></div>'; el.innerHTML = html;
-  }
-
+  // ===== DICE =====
   function renderDice() {
-    const el = document.getElementById('pv-dice');
+    const el = document.getElementById('pvDiceBody');
     const types = [4, 6, 8, 10, 12, 20, 100];
-    el.innerHTML = `<h3 style="margin:0 0 14px;font-size:16px;">🎲 Würfel</h3>
-      <div class="dice-display"><div class="dice-type-label" id="pvDiceLabel">D20</div><div class="dice-result-value" id="pvDiceVal">—</div><div class="dice-feedback-text" id="pvDiceFb"></div></div>
-      <div class="dice-chip-row" id="pvDiceChips">${types.map(s => `<button class="dice-chip${s === 20 ? ' selected' : ''}" data-sides="${s}">d${s}</button>`).join('')}</div>
-      <button class="roll-btn" id="pvRollBtn">🎲 Würfeln</button>
-      <div class="or-divider"><span>oder</span></div>
-      <div class="manual-row"><input type="number" id="pvManualIn" min="1" max="20" placeholder="Manuell…"><button class="manual-set-btn" id="pvManualSet">Setzen</button></div>
-      <div style="margin-top:14px"><div class="section-title">Verlauf</div><div id="pvDiceHist" class="dice-history"><div class="dice-history-entry" style="justify-content:center;color:rgba(255,255,255,0.6);">Noch keine Würfe</div></div></div>
+    el.innerHTML = `
+      <div class="pv2-dice-display"><div class="pv2-dice-type" id="pvDiceLabel">D20</div><div class="pv2-dice-value" id="pvDiceVal">—</div><div class="pv2-dice-fb" id="pvDiceFb"></div></div>
+      <div class="pv2-dice-chips">${types.map(s => `<button class="pv2-dice-chip${s === 20 ? ' active' : ''}" data-sides="${s}">d${s}</button>`).join('')}</div>
+      <button class="pv2-roll-btn" id="pvRollBtn">🎲 Würfeln</button>
+      <div class="pv2-dice-manual"><input type="number" id="pvManualIn" min="1" placeholder="Manuell…"><button class="pv2-manual-btn" id="pvManualSet">Setzen</button></div>
+      <div class="pv2-dice-history" id="pvDiceHist"><div class="pv2-hist-empty">Noch keine Würfe</div></div>
     `;
-
-    document.getElementById('pvDiceChips').addEventListener('click', e => {
-      const c = e.target.closest('.dice-chip'); if (!c) return;
-      document.querySelectorAll('#pvDiceChips .dice-chip').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected'); selectedDiceSides = parseInt(c.dataset.sides);
+    el.querySelector('.pv2-dice-chips').addEventListener('click', e => {
+      const c = e.target.closest('.pv2-dice-chip'); if (!c) return;
+      el.querySelectorAll('.pv2-dice-chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active'); selectedDiceSides = parseInt(c.dataset.sides);
       document.getElementById('pvDiceLabel').textContent = 'D' + selectedDiceSides;
     });
-
-    function showFb(msg, color) {
-      const fb = document.getElementById('pvDiceFb'); fb.textContent = msg; fb.style.color = color; fb.style.opacity = '1';
-      setTimeout(() => { fb.style.opacity = '0'; }, 3000);
-    }
-
+    function showFb(msg, color) { const fb = document.getElementById('pvDiceFb'); fb.textContent = msg; fb.style.color = color; fb.style.opacity = '1'; setTimeout(() => { fb.style.opacity = '0'; }, 3000); }
     function renderHist() {
-      const el = document.getElementById('pvDiceHist');
-      if (diceHistory.length === 0) { el.innerHTML = '<div class="dice-history-entry" style="justify-content:center;">Noch keine Würfe</div>'; return; }
-      el.innerHTML = diceHistory.map(h => `<div class="dice-history-entry"><span>${h.dice}</span><span style="font-weight:600;color:#69f0ae;">${h.result}</span><span>${h.time}</span></div>`).join('');
+      const h = document.getElementById('pvDiceHist');
+      if (diceHistory.length === 0) { h.innerHTML = '<div class="pv2-hist-empty">Noch keine Würfe</div>'; return; }
+      h.innerHTML = diceHistory.map(e => `<div class="pv2-hist-row"><span class="pv2-hist-dice">${e.dice}</span><span class="pv2-hist-result">${e.result}</span><span class="pv2-hist-time">${e.time}</span></div>`).join('');
     }
-
     document.getElementById('pvRollBtn').addEventListener('click', () => {
       const manIn = document.getElementById('pvManualIn');
       if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', '#ffd740'); return; }
@@ -377,18 +416,15 @@ export default async function PlayerView({ id }) {
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', '#ff5252');
           else showFb('🎲 Gewürfelt: ' + f, '#69f0ae');
           diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: f, time: new Date().toLocaleTimeString() });
-          if (diceHistory.length > 20) diceHistory.pop();
-          renderHist();
+          if (diceHistory.length > 20) diceHistory.pop(); renderHist();
           const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
           fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
         }
       }, 55);
     });
-
     const manIn = document.getElementById('pvManualIn');
     manIn.addEventListener('input', () => { document.getElementById('pvRollBtn').disabled = manIn.value.trim() !== ''; });
     manIn.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pvManualSet').click(); });
-
     document.getElementById('pvManualSet').addEventListener('click', () => {
       const val = parseInt(manIn.value);
       if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig', '#ff5252'); return; }
@@ -396,65 +432,42 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, '#69f0ae'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
-      diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() });
-      renderHist();
+      diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() }); renderHist();
       const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
       fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
     });
   }
 
+  // ===== PARTY =====
+  function renderParty() {
+    const list = document.getElementById('pvPartyList'); if (!list) return;
+    list.innerHTML = campaignPlayers.map(cp => {
+      const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
+      const isDM = cp.role === 'DM';
+      const ch = characterMap[cp.playerId];
+      const detail = isDM ? 'Spielleiter' : (ch ? [ch.race, ch.characterClass?.name].filter(Boolean).join(' · ') || 'Abenteurer' : 'Abenteurer');
+      const isTurn = currentTurnPlayerId === cp.playerId;
+      const isMe = cp.playerId === currentPlayer.id;
+      return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
+        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
+        <div class="pv2-party-info">
+          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}${isTurn && !isDM ? ' 🟢' : ''}</div>
+          <div class="pv2-party-detail">${esc(detail)}</div>
+        </div>
+        <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ===== NOTES =====
   function renderNotes() {
-    const el = document.getElementById('pv-notes');
     const key = 'notes_' + campaignId + '_' + currentPlayer.id;
-    const saved = localStorage.getItem(key) || '';
-    el.innerHTML = `<div style="padding:16px;"><div class="section-title" style="margin-bottom:8px">Sitzungsnotizen</div>
-      <textarea class="notes-area" id="pvNotesArea" placeholder="NPCs, Orte, Questziele...">${esc(saved)}</textarea>
-      <div class="notes-hint">💾 Wird automatisch gespeichert.</div></div>`;
+    const area = document.getElementById('pvNotesArea');
+    area.value = localStorage.getItem(key) || '';
     let t;
-    document.getElementById('pvNotesArea').addEventListener('input', function() {
+    area.addEventListener('input', function() {
       clearTimeout(t); t = setTimeout(() => localStorage.setItem(key, this.value), 500);
     });
-  }
-
-  function setupTabs() {
-    document.querySelectorAll('.pv-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.pv-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.pv-tab-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.tab)?.classList.add('active');
-        // Resize map canvas when switching to map tab
-        if (tab.dataset.tab === 'pv-map' && playerMapCanvas) {
-          setTimeout(() => playerMapCanvas.resize(), 50);
-        }
-      });
-    });
-  }
-
-  function renderMap() {
-    const el = document.getElementById('pv-map');
-    if (!el) return;
-    if (!campaign.mapImagePath) {
-      el.innerHTML = '<div style="padding:40px;text-align:center;opacity:0.5;">🗺️ Keine Karte verfügbar</div>';
-      return;
-    }
-    el.innerHTML = '<div class="pv-map-toolbar"><button class="map-tb-btn" id="pvMapZoomIn">🔍+</button><button class="map-tb-btn" id="pvMapZoomOut">🔍−</button><button class="map-tb-btn" id="pvMapReset">↺</button></div><div class="pv-map-canvas-box" id="pvMapCanvasBox"></div>';
-
-    const allPlayers = campaignPlayers
-      .filter(cp => cp.role === 'PLAYER')
-      .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
-
-    playerMapCanvas = createMapCanvas(document.getElementById('pvMapCanvasBox'), {
-      mapImageUrl: resolveMapUrl(campaign.mapImagePath),
-      markers: playerMapMarkers,
-      readOnly: true,
-      isMaximized: false,
-      players: allPlayers
-    });
-
-    document.getElementById('pvMapZoomIn').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.setZoom(Math.min(5, playerMapCanvas.getZoom() + 0.3)); });
-    document.getElementById('pvMapZoomOut').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.setZoom(Math.max(0.5, playerMapCanvas.getZoom() - 0.3)); });
-    document.getElementById('pvMapReset').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.resetView(); });
   }
 
   loadGame();

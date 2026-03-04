@@ -20,8 +20,17 @@ export function createMapCanvas(container, opts = {}) {
     onMarkerRemove = null,
     readOnly = false,
     isMaximized = false,
-    players = [] // { id, name } for labeling
+    players = [], // { id, name } for labeling
+    fogOfWar = false,
+    fogSolid = false, // (legacy, fog is now always solid+stylized when fogOfWar is true)
+    fogPositions: initialFogPositions = [], // [{ x, y }] relative 0-1
+    fogRadius = 0.225, // reveal radius as fraction of map size
+    initialExplorationData = null, // base64 data URL of a previously saved 256×256 exploration PNG
+    onExplorationChange = null, // callback(dataUrl) called when exploration map changes (debounced)
+    gameStarted: initialGameStarted = false // exploration only tracked when game has started
   } = opts;
+
+  let gameStarted = initialGameStarted;
 
   let markers = [...initialMarkers];
   let zoom = 1;
@@ -34,6 +43,76 @@ export function createMapCanvas(container, opts = {}) {
   let selectedMarkers = new Set();
   let hoverMarkerId = null;
   let didDrag = false;
+  let fogPositions = [...initialFogPositions];
+
+  // Exploration memory: a persistent offscreen canvas (at 256×256 resolution)
+  // that accumulates every position players have visited.
+  // Coordinate system: 0-1 relative to the map square. Each pixel represents
+  // whether that map area has been explored (alpha > 0 = explored).
+  const FOG_MEM_SIZE = 256;
+  let fogMemoryCanvas = null;
+  let fogMemoryCtx = null;
+  let explorationSaveTimer = null;
+  if (fogOfWar) {
+    fogMemoryCanvas = document.createElement('canvas');
+    fogMemoryCanvas.width = FOG_MEM_SIZE;
+    fogMemoryCanvas.height = FOG_MEM_SIZE;
+    fogMemoryCtx = fogMemoryCanvas.getContext('2d');
+
+    // Restore from saved data if available
+    if (initialExplorationData) {
+      const restoreImg = new Image();
+      restoreImg.onload = () => {
+        fogMemoryCtx.drawImage(restoreImg, 0, 0, FOG_MEM_SIZE, FOG_MEM_SIZE);
+        // Now stamp current positions on top
+        stampExploration(initialFogPositions);
+        const initialPlayerPositions = initialMarkers
+          .filter(m => m.type === 'player' || m.type === 'player-group')
+          .map(m => ({ x: m.x, y: m.y }));
+        stampExploration(initialPlayerPositions);
+        draw();
+      };
+      restoreImg.src = initialExplorationData;
+    } else {
+      // No saved data — stamp initial positions
+      stampExploration(initialFogPositions);
+      const initialPlayerPositions = initialMarkers
+        .filter(m => m.type === 'player' || m.type === 'player-group')
+        .map(m => ({ x: m.x, y: m.y }));
+      stampExploration(initialPlayerPositions);
+    }
+  }
+
+  // Stamp the current player positions onto the exploration memory
+  // Only stamps when the game has started (not during pre-game setup in cockpit)
+  function stampExploration(positions) {
+    if (!fogMemoryCtx || !positions || positions.length === 0) return;
+    if (!gameStarted) return; // Don't track exploration before game starts
+    const r = fogRadius * FOG_MEM_SIZE; // reveal radius in memory-canvas pixels
+    for (const pos of positions) {
+      const cx = pos.x * FOG_MEM_SIZE;
+      const cy = pos.y * FOG_MEM_SIZE;
+      const grad = fogMemoryCtx.createRadialGradient(cx, cy, r * 0.05, cx, cy, r);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.6, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.85, 'rgba(255,255,255,0.5)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      fogMemoryCtx.fillStyle = grad;
+      fogMemoryCtx.beginPath();
+      fogMemoryCtx.arc(cx, cy, r, 0, Math.PI * 2);
+      fogMemoryCtx.fill();
+    }
+    // Notify parent to persist (debounced to avoid spamming on rapid moves)
+    scheduleExplorationSave();
+  }
+
+  function scheduleExplorationSave() {
+    if (!onExplorationChange || !fogMemoryCanvas) return;
+    clearTimeout(explorationSaveTimer);
+    explorationSaveTimer = setTimeout(() => {
+      onExplorationChange(fogMemoryCanvas.toDataURL('image/png'));
+    }, 2000); // save 2s after last change
+  }
 
   // Create DOM
   const wrap = document.createElement('div');
@@ -115,6 +194,11 @@ export function createMapCanvas(container, opts = {}) {
         const my = y + m.y * size;
         drawMarker(ctx, m, mx, my, size, selectedMarkers.has(m.id), hoverMarkerId === m.id);
       });
+
+      // Fog of war overlay
+      if (fogOfWar) {
+        drawFogOfWar(ctx, x, y, size);
+      }
     }
   }
 
@@ -232,6 +316,325 @@ export function createMapCanvas(container, opts = {}) {
     }
 
     ctx.restore();
+  }
+
+  function drawFogOfWar(ctx, mapX, mapY, mapSize) {
+    const dpr = window.devicePixelRatio || 1;
+    // Use full physical pixel dimensions for offscreen canvases to avoid
+    // sub-pixel gaps when the DPR transform scales them onto the main canvas.
+    const pw = canvas.width;   // physical pixels
+    const ph = canvas.height;
+    const cw = pw / dpr;       // logical pixels (for coordinate math)
+    const ch = ph / dpr;
+
+    // Collect player positions
+    let positions = fogPositions.length > 0 ? fogPositions : [];
+    if (positions.length === 0) {
+      for (const m of markers) {
+        if (m.type === 'player' || m.type === 'player-group') {
+          positions.push({ x: m.x, y: m.y });
+        }
+      }
+    }
+
+    const revealPx = mapSize * fogRadius;
+    const time = Date.now() * 0.0006;
+
+    // Deterministic pseudo-random
+    const rng = (a, b) => {
+      let x = Math.sin(a * 127.1 + (b || 0) * 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    // Helper: create an offscreen canvas at physical resolution with DPR scaling
+    function createFogLayer() {
+      const c = document.createElement('canvas');
+      c.width = pw; c.height = ph;
+      const fctx = c.getContext('2d');
+      fctx.scale(dpr, dpr);
+      return { canvas: c, ctx: fctx };
+    }
+
+    // Helper: draw an offscreen fog layer onto the main canvas
+    // We temporarily reset the main ctx transform so the physical-pixel canvas
+    // maps 1:1 onto the main canvas's physical pixels (no double-scaling).
+    function compositeFogLayer(layer) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(layer.canvas, 0, 0);
+      ctx.restore();
+    }
+
+    // ──────────────────────────────────────
+    // Layer 1: Fog base with exploration memory
+    //  - Unexplored: fully opaque
+    //  - Previously explored: semi-transparent (map visible but hazy)
+    //  - Current player position: fully clear
+    // ──────────────────────────────────────
+    const L1 = createFogLayer();
+    const f1 = L1.ctx;
+
+    // Step 1: Fill fully opaque
+    f1.fillStyle = '#0a1610';
+    f1.fillRect(-2, -2, cw + 4, ch + 4);
+
+    // Step 2: Partially carve out explored areas (reduce to semi-transparent)
+    // We use the exploration memory canvas to know which areas have been visited.
+    if (fogMemoryCanvas) {
+      f1.globalCompositeOperation = 'destination-out';
+      // Draw the memory canvas scaled to the map rect, with reduced alpha
+      // so explored areas become semi-transparent rather than fully clear.
+      // We use an intermediate canvas to control the alpha of the memory stamp.
+      const memLayer = document.createElement('canvas');
+      memLayer.width = pw; memLayer.height = ph;
+      const mlCtx = memLayer.getContext('2d');
+      mlCtx.scale(dpr, dpr);
+      // Draw memory at 60% opacity → explored areas lose 60% of the fog
+      mlCtx.globalAlpha = 0.60;
+      mlCtx.drawImage(fogMemoryCanvas, mapX, mapY, mapSize, mapSize);
+      mlCtx.globalAlpha = 1.0;
+      // Reset scale for drawImage
+      f1.save();
+      f1.setTransform(1, 0, 0, 1, 0, 0);
+      f1.drawImage(memLayer, 0, 0);
+      f1.restore();
+    }
+
+    // Step 3: Fully carve out current player positions (completely clear)
+    f1.globalCompositeOperation = 'destination-out';
+    for (const pos of positions) {
+      const cx = mapX + pos.x * mapSize;
+      const cy = mapY + pos.y * mapSize;
+      const grad = f1.createRadialGradient(cx, cy, revealPx * 0.05, cx, cy, revealPx);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.55, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.78, 'rgba(0,0,0,0.7)');
+      grad.addColorStop(0.92, 'rgba(0,0,0,0.2)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      f1.fillStyle = grad;
+      f1.beginPath();
+      f1.arc(cx, cy, revealPx, 0, Math.PI * 2);
+      f1.fill();
+    }
+    compositeFogLayer(L1);
+
+    // ──────────────────────────────────────
+    // Layer 2: Large rolling cloud blobs across the fog
+    // ──────────────────────────────────────
+    const L2 = createFogLayer();
+    const f2 = L2.ctx;
+
+    // Large cloud patches across entire canvas
+    const cloudCount = 30 + Math.floor(cw * ch * 0.00002);
+    for (let i = 0; i < cloudCount; i++) {
+      const bx = rng(i, 1) * cw;
+      const by = rng(i, 2) * ch;
+      // Drift slowly
+      const dx = Math.sin(time * 0.4 + i * 2.3) * 20;
+      const dy = Math.cos(time * 0.3 + i * 1.7) * 15;
+      const cloudR = 40 + rng(i, 3) * 120;
+      const pulse = 0.7 + Math.sin(time * 0.5 + i * 1.1) * 0.3;
+      const alpha = (0.08 + rng(i, 4) * 0.12) * pulse;
+
+      const cg = f2.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, cloudR);
+      cg.addColorStop(0, `rgba(100, 170, 140, ${alpha})`);
+      cg.addColorStop(0.4, `rgba(80, 150, 120, ${alpha * 0.6})`);
+      cg.addColorStop(0.7, `rgba(60, 130, 100, ${alpha * 0.25})`);
+      cg.addColorStop(1, 'rgba(40, 110, 80, 0)');
+      f2.fillStyle = cg;
+      f2.beginPath();
+      f2.arc(bx + dx, by + dy, cloudR, 0, Math.PI * 2);
+      f2.fill();
+    }
+
+    // Mask out the revealed areas AND explored areas
+    f2.globalCompositeOperation = 'destination-out';
+    // Mask explored memory
+    if (fogMemoryCanvas) {
+      const memMask = document.createElement('canvas');
+      memMask.width = pw; memMask.height = ph;
+      const mmCtx = memMask.getContext('2d');
+      mmCtx.scale(dpr, dpr);
+      mmCtx.globalAlpha = 0.7;
+      mmCtx.drawImage(fogMemoryCanvas, mapX, mapY, mapSize, mapSize);
+      f2.save();
+      f2.setTransform(1, 0, 0, 1, 0, 0);
+      f2.drawImage(memMask, 0, 0);
+      f2.restore();
+    }
+    // Mask current positions (fully)
+    for (const pos of positions) {
+      const cx = mapX + pos.x * mapSize;
+      const cy = mapY + pos.y * mapSize;
+      const mg = f2.createRadialGradient(cx, cy, revealPx * 0.1, cx, cy, revealPx * 1.05);
+      mg.addColorStop(0, 'rgba(0,0,0,1)');
+      mg.addColorStop(0.6, 'rgba(0,0,0,0.9)');
+      mg.addColorStop(0.85, 'rgba(0,0,0,0.3)');
+      mg.addColorStop(1, 'rgba(0,0,0,0)');
+      f2.fillStyle = mg;
+      f2.beginPath();
+      f2.arc(cx, cy, revealPx * 1.05, 0, Math.PI * 2);
+      f2.fill();
+    }
+    compositeFogLayer(L2);
+
+    // ──────────────────────────────────────
+    // Layer 3: Bright wispy tendrils at reveal edges
+    // ──────────────────────────────────────
+    const L3 = createFogLayer();
+    const f3 = L3.ctx;
+
+    for (const pos of positions) {
+      const cx = mapX + pos.x * mapSize;
+      const cy = mapY + pos.y * mapSize;
+
+      // Large prominent wisps
+      const wispCount = 28;
+      for (let i = 0; i < wispCount; i++) {
+        const baseAngle = (i / wispCount) * Math.PI * 2;
+        // Swirl the angle over time
+        const angle = baseAngle + Math.sin(time * 0.7 + i * 1.9) * 0.5 + time * 0.15;
+        const distVar = 0.75 + Math.sin(time * 0.8 + i * 2.7) * 0.2;
+        const dist = revealPx * distVar;
+        const wx = cx + Math.cos(angle) * dist;
+        const wy = cy + Math.sin(angle) * dist;
+        const wispR = revealPx * (0.22 + Math.sin(time * 0.6 + i * 1.3) * 0.08);
+        const brightness = 0.3 + Math.sin(time * 0.5 + i * 2.1) * 0.15;
+
+        const wg = f3.createRadialGradient(wx, wy, 0, wx, wy, wispR);
+        wg.addColorStop(0, `rgba(160, 210, 185, ${brightness})`);
+        wg.addColorStop(0.35, `rgba(130, 190, 165, ${brightness * 0.6})`);
+        wg.addColorStop(0.7, `rgba(100, 160, 140, ${brightness * 0.2})`);
+        wg.addColorStop(1, 'rgba(80, 140, 120, 0)');
+        f3.fillStyle = wg;
+        f3.beginPath();
+        f3.arc(wx, wy, wispR, 0, Math.PI * 2);
+        f3.fill();
+      }
+
+      // Extra-large outer wisps reaching further
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 + time * 0.08 + Math.cos(time + i) * 0.4;
+        const dist = revealPx * (0.9 + Math.sin(time * 0.4 + i * 3.1) * 0.15);
+        const wx = cx + Math.cos(angle) * dist;
+        const wy = cy + Math.sin(angle) * dist;
+        const wispR = revealPx * (0.30 + Math.sin(time * 0.35 + i * 2.3) * 0.1);
+        const alpha = 0.15 + Math.sin(time * 0.6 + i * 1.7) * 0.08;
+
+        const wg2 = f3.createRadialGradient(wx, wy, 0, wx, wy, wispR);
+        wg2.addColorStop(0, `rgba(140, 200, 175, ${alpha})`);
+        wg2.addColorStop(0.5, `rgba(110, 170, 150, ${alpha * 0.4})`);
+        wg2.addColorStop(1, 'rgba(80, 140, 120, 0)');
+        f3.fillStyle = wg2;
+        f3.beginPath();
+        f3.arc(wx, wy, wispR, 0, Math.PI * 2);
+        f3.fill();
+      }
+
+      // Glowing ring at the reveal boundary
+      f3.strokeStyle = `rgba(120, 200, 170, ${0.08 + Math.sin(time) * 0.04})`;
+      f3.lineWidth = revealPx * 0.15;
+      f3.beginPath();
+      f3.arc(cx, cy, revealPx * 0.85, 0, Math.PI * 2);
+      f3.stroke();
+    }
+
+    // Mask so wisps don't appear deep inside revealed area
+    f3.globalCompositeOperation = 'destination-out';
+    for (const pos of positions) {
+      const cx = mapX + pos.x * mapSize;
+      const cy = mapY + pos.y * mapSize;
+      const innerMask = f3.createRadialGradient(cx, cy, revealPx * 0.3, cx, cy, revealPx * 0.7);
+      innerMask.addColorStop(0, 'rgba(0,0,0,1)');
+      innerMask.addColorStop(0.7, 'rgba(0,0,0,0.5)');
+      innerMask.addColorStop(1, 'rgba(0,0,0,0)');
+      f3.fillStyle = innerMask;
+      f3.beginPath();
+      f3.arc(cx, cy, revealPx * 0.7, 0, Math.PI * 2);
+      f3.fill();
+    }
+    compositeFogLayer(L3);
+
+    // ──────────────────────────────────────
+    // Layer 4: Fog grain/texture over dark (unexplored) areas only
+    // ──────────────────────────────────────
+    const L4 = createFogLayer();
+    const f4 = L4.ctx;
+
+    // Sample exploration memory once for fast lookups
+    let memData = null;
+    if (fogMemoryCanvas) {
+      memData = fogMemoryCtx.getImageData(0, 0, FOG_MEM_SIZE, FOG_MEM_SIZE).data;
+    }
+    // Check if a logical-pixel point is in an explored area via memory
+    function isExplored(px, py) {
+      if (!memData) return false;
+      // Convert screen coords to map-relative 0-1
+      const mx = (px - mapX) / mapSize;
+      const my = (py - mapY) / mapSize;
+      if (mx < 0 || mx > 1 || my < 0 || my > 1) return false;
+      const ix = Math.floor(mx * (FOG_MEM_SIZE - 1));
+      const iy = Math.floor(my * (FOG_MEM_SIZE - 1));
+      const idx = (iy * FOG_MEM_SIZE + ix) * 4;
+      return memData[idx + 3] > 30; // alpha > ~12% means explored
+    }
+
+    const slowSeed = Math.floor(time * 0.15);
+    const rng2 = (a) => { let x = Math.sin(a * 91.3 + slowSeed * 173.9) * 43758.5453; return x - Math.floor(x); };
+    // Scattered fog speckles
+    const speckCount = Math.floor(cw * ch * 0.0008);
+    for (let i = 0; i < speckCount; i++) {
+      const px = rng2(i * 2) * cw;
+      const py = rng2(i * 2 + 1) * ch;
+      // Skip inside current reveal OR explored areas
+      let skip = false;
+      for (const pos of positions) {
+        const pcx = mapX + pos.x * mapSize;
+        const pcy = mapY + pos.y * mapSize;
+        if (Math.sqrt((px - pcx) ** 2 + (py - pcy) ** 2) < revealPx * 0.75) { skip = true; break; }
+      }
+      if (skip || isExplored(px, py)) continue;
+      const a = 0.04 + rng2(i * 3) * 0.08;
+      const g = 100 + Math.floor(rng2(i * 4) * 80);
+      f4.fillStyle = `rgba(${g}, ${g + 30}, ${g + 15}, ${a})`;
+      const sz = 1 + rng2(i * 5) * 4;
+      f4.fillRect(px, py, sz, sz);
+    }
+
+    // Large soft fog blotches for organic texture
+    for (let i = 0; i < 15; i++) {
+      const bx = rng2(i * 7 + 100) * cw;
+      const by = rng2(i * 7 + 101) * ch;
+      const br = 30 + rng2(i * 7 + 102) * 80;
+      // Skip if inside reveal or explored
+      let skip = false;
+      for (const pos of positions) {
+        const pcx = mapX + pos.x * mapSize;
+        const pcy = mapY + pos.y * mapSize;
+        if (Math.sqrt((bx - pcx) ** 2 + (by - pcy) ** 2) < revealPx * 0.6) { skip = true; break; }
+      }
+      if (skip || isExplored(bx, by)) continue;
+      const ba = 0.05 + rng2(i * 7 + 103) * 0.06;
+      const bg = f4.createRadialGradient(bx, by, 0, bx, by, br);
+      bg.addColorStop(0, `rgba(130, 180, 155, ${ba})`);
+      bg.addColorStop(1, 'rgba(100, 150, 130, 0)');
+      f4.fillStyle = bg;
+      f4.beginPath();
+      f4.arc(bx, by, br, 0, Math.PI * 2);
+      f4.fill();
+    }
+    compositeFogLayer(L4);
+
+    // Redraw player markers on top of fog so they remain visible
+    if (positions.length > 0) {
+      for (const m of markers) {
+        if (m.type === 'player' || m.type === 'player-group') {
+          const mx = mapX + m.x * mapSize;
+          const my = mapY + m.y * mapSize;
+          drawMarker(ctx, m, mx, my, mapSize, selectedMarkers.has(m.id), hoverMarkerId === m.id);
+        }
+      }
+    }
   }
 
   function getMarkerAt(cx, cy) {
@@ -441,6 +844,16 @@ export function createMapCanvas(container, opts = {}) {
     canvas,
     updateMarkers(newMarkers) {
       markers = [...newMarkers];
+      // Auto-update fog positions from player markers when fog is enabled
+      if (fogOfWar) {
+        fogPositions = [];
+        for (const m of markers) {
+          if (m.type === 'player' || m.type === 'player-group') {
+            fogPositions.push({ x: m.x, y: m.y });
+          }
+        }
+        stampExploration(fogPositions);
+      }
       draw();
     },
     getMarkers() { return markers; },
@@ -455,9 +868,19 @@ export function createMapCanvas(container, opts = {}) {
     clearSelection() { selectedMarkers.clear(); draw(); },
     getSelectedIds() { return [...selectedMarkers]; },
     setPlayers(p) { players.length = 0; players.push(...p); draw(); },
+    setGameStarted(started) { gameStarted = started; },
+    updateFog(positions) { fogPositions = [...positions]; stampExploration(fogPositions); draw(); },
+    getExplorationData() { return fogMemoryCanvas ? fogMemoryCanvas.toDataURL('image/png') : null; },
+    loadExplorationData(dataUrl) {
+      if (!fogMemoryCanvas || !dataUrl) return;
+      const img = new Image();
+      img.onload = () => { fogMemoryCtx.drawImage(img, 0, 0, FOG_MEM_SIZE, FOG_MEM_SIZE); draw(); };
+      img.src = dataUrl;
+    },
     draw,
     resize,
     destroy() {
+      clearTimeout(explorationSaveTimer);
       ro.disconnect();
       wrap.remove();
     }
