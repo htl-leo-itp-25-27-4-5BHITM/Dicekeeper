@@ -85,31 +85,48 @@ export default async function GMView({ id }) {
         </div>
       </div>
     </div>
-    <div id="gmAddMarkerModal" class="modal"><div class="modal-content decision-modal">
-      <div class="decision-modal-header"><span id="gmAddMarkerIcon">🏛️</span><h3 id="gmAddMarkerTitle">Neuen Marker hinzufügen</h3></div>
-      <label class="modal-label">Name</label>
-      <input type="text" id="gmMarkerName" placeholder="z.B. Alte Ruine" maxlength="40">
-      <label class="modal-label" style="margin-top:8px;">Icon</label>
-      <div class="marker-icon-grid" id="gmMarkerIconGrid"></div>
-      <div class="decision-modal-actions"><button class="modal-cancel-btn" id="gmMarkerCancel">Abbrechen</button><button class="modal-save-btn" id="gmMarkerSave">✓ Platzieren</button></div>
+    <div id="gmAddMarkerModal" class="dk-modal"><div class="dk-modal-card">
+      <button class="dk-modal-close" data-dismiss="modal">✕</button>
+      <div class="dk-modal-icon-row"><span class="dk-modal-icon" id="gmAddMarkerIcon">🏛️</span></div>
+      <h3 class="dk-modal-title" id="gmAddMarkerTitle">Neuen Marker hinzufügen</h3>
+      <div class="dk-modal-field"><label class="dk-modal-label">Name</label><input class="dk-modal-input" type="text" id="gmMarkerName" placeholder="z.B. Alte Ruine" maxlength="40"></div>
+      <div class="dk-modal-field"><label class="dk-modal-label">Icon</label><div class="marker-icon-grid" id="gmMarkerIconGrid"></div></div>
+      <div class="dk-modal-actions"><button class="dk-btn-ghost" id="gmMarkerCancel">Abbrechen</button><button class="dk-btn-primary" id="gmMarkerSave">✓ Platzieren</button></div>
     </div></div>
-    <div id="gmSplitModal" class="modal"><div class="modal-content decision-modal">
-      <div class="decision-modal-header"><span>✂️</span><h3>Gruppe aufteilen</h3></div>
-      <p style="font-size:13px;opacity:0.8;margin-bottom:12px;">Wähle die Spieler aus, die abgespalten werden sollen:</p>
+    <div id="gmSplitModal" class="dk-modal"><div class="dk-modal-card">
+      <button class="dk-modal-close" data-dismiss="modal">✕</button>
+      <div class="dk-modal-icon-row"><span class="dk-modal-icon">✂️</span></div>
+      <h3 class="dk-modal-title">Gruppe aufteilen</h3>
+      <p class="dk-modal-desc">Wähle die Spieler aus, die abgespalten werden sollen:</p>
       <div id="gmSplitPlayerList" class="split-player-list"></div>
-      <div class="decision-modal-actions"><button class="modal-cancel-btn" id="gmSplitCancel">Abbrechen</button><button class="modal-save-btn" id="gmSplitConfirm">✂️ Abspalten</button></div>
+      <div class="dk-modal-actions"><button class="dk-btn-ghost" id="gmSplitCancel">Abbrechen</button><button class="dk-btn-primary" id="gmSplitConfirm">✂️ Abspalten</button></div>
     </div></div>
-    <div id="gmDecModal" class="modal"><div class="modal-content decision-modal">
-      <div class="decision-modal-header"><span>⚖️</span><h3>Neue Gruppenentscheidung</h3></div>
-      <label class="modal-label">Titel <span id="gmTitleCnt" class="char-counter">0 / 60</span></label>
-      <input type="text" id="gmDecTitle" placeholder="z.B. Welchen Pfad?" maxlength="60">
-      <label class="modal-label">Beschreibung <span id="gmTextCnt" class="char-counter">0 / 200</span></label>
-      <textarea id="gmDecText" rows="4" placeholder="Beschreibe die Entscheidung..." maxlength="200"></textarea>
-      <div class="decision-modal-actions"><button class="modal-cancel-btn" id="gmDecCancel">Abbrechen</button><button class="modal-save-btn" id="gmDecSave">✓ Erstellen</button></div>
+    <div id="gmDecModal" class="dk-modal"><div class="dk-modal-card">
+      <button class="dk-modal-close" data-dismiss="modal">✕</button>
+      <div class="dk-modal-icon-row"><span class="dk-modal-icon">⚖️</span></div>
+      <h3 class="dk-modal-title">Neue Gruppenentscheidung</h3>
+      <p class="dk-modal-desc">Stelle deinen Spielern eine wichtige Entscheidung.</p>
+      <div class="dk-modal-field">
+        <label class="dk-modal-label">Titel <span id="gmTitleCnt" class="dk-char-counter">0 / 60</span></label>
+        <input class="dk-modal-input" type="text" id="gmDecTitle" placeholder="z.B. Welchen Pfad wählt die Gruppe?" maxlength="60">
+      </div>
+      <div class="dk-modal-field">
+        <label class="dk-modal-label">Beschreibung <span id="gmTextCnt" class="dk-char-counter">0 / 200</span></label>
+        <textarea class="dk-modal-textarea" id="gmDecText" rows="4" placeholder="Beschreibe die Situation und die Optionen..." maxlength="200"></textarea>
+      </div>
+      <div class="dk-modal-actions"><button class="dk-btn-ghost" id="gmDecCancel">Abbrechen</button><button class="dk-btn-primary" id="gmDecSave">⚖️ Erstellen</button></div>
     </div></div>
     <div id="gmCharOverlay" class="char-modal-overlay"><div class="char-modal" id="gmCharContent"></div></div>
   `;
   initHeader();
+
+  // Wire up dk-modal close buttons
+  document.querySelectorAll('.dk-modal-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modal = btn.closest('.dk-modal');
+      if (modal) modal.style.display = 'none';
+    });
+  });
 
   // ===== MAP SETUP =====
   let mapCanvas = null;
