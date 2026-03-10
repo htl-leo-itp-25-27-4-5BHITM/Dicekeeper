@@ -31,17 +31,14 @@ export function fmtMod(mod) { return mod >= 0 ? '+' + mod : '' + mod; }
 
 /**
  * Resolve a map image path stored in the DB to a valid URL.
- * The backend stores paths like "/uploads/filename" but files live in
- * /campaign-creation/uploads/filename on the static resource path.
+ * Files are served from /uploads/* by the backend.
  */
 export function resolveMapUrl(mapImagePath) {
   if (!mapImagePath) return '';
-  if (mapImagePath.startsWith('/uploads/')) {
-    return '/campaign-creation' + mapImagePath;
-  }
   if (mapImagePath.startsWith('http')) {
     return mapImagePath;
   }
-  return '/campaign-creation/uploads/' + mapImagePath;
+  // Path is already correct (e.g. /uploads/maps/campaign-1-abc.png)
+  return mapImagePath;
 }
 

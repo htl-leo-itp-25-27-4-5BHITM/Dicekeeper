@@ -20,9 +20,6 @@
           // Check if player has a profile picture
           if (player.profilePicture) {
             var imgUrl = player.profilePicture
-            if (imgUrl.startsWith('/uploads/')) {
-              imgUrl = '..' + imgUrl
-            }
             pic.innerHTML = '<img src="' + imgUrl + '" alt="Profile">'
           } else {
             pic.textContent = initialsFromName(player.name || player.username || player.email)
@@ -170,9 +167,6 @@
         const mapFileName = document.getElementById('mapFileName')
 
         let resolvedUrl = imageUrl
-        if (resolvedUrl && resolvedUrl.startsWith('/uploads/')) {
-          resolvedUrl = '.' + resolvedUrl
-        }
 
         mapImage.src = resolvedUrl
         mapFileName.textContent = 'Karte geladen'

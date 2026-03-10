@@ -549,7 +549,6 @@
         let playerAvatarHtml;
         if (player.profilePicture) {
           let imgUrl = player.profilePicture;
-          if (imgUrl.startsWith('/uploads/')) imgUrl = '..' + imgUrl;
           playerAvatarHtml = `<img src="${imgUrl}" alt="Avatar">`;
         } else {
           playerAvatarHtml = initialsFromName(player.name || player.username || player.email);

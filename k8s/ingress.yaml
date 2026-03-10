@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dicekeeper
+  namespace: student-it200233
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+  labels:
+    app: dicekeeper
+spec:
+  ingressClassName: nginx
+  # If this Ingress doesn't get an address, use Cloudflare Tunnel instead
+  rules:
+    - host: dicekeeper.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dicekeeper
+                port:
+                  number: 80
+  # No cert-manager available — TLS is handled by Cloudflare proxy (free SSL)

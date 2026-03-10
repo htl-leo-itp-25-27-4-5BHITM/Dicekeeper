@@ -15,11 +15,14 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 @Path("/api/campaign")
 @Produces(MediaType.APPLICATION_JSON)
 public class CampaignResource {
 
-    private static final java.nio.file.Path UPLOAD_DIR = Paths.get("src/main/resources/META-INF/resources/campaign-creation/uploads");
+    @ConfigProperty(name = "dicekeeper.upload-dir")
+    String uploadDir;
 
     @GET
     public List<Campaign> list() {
@@ -187,6 +190,7 @@ public class CampaignResource {
                     .entity("Campaign with id " + id + " not found")
                     .build();
         }
+        deleteUploadedFile(existing.mapImagePath);
         existing.delete();
         return Response.noContent().build();
     }
@@ -218,7 +222,11 @@ public class CampaignResource {
         }
 
         try {
-            Files.createDirectories(UPLOAD_DIR);
+            // Delete old map file if exists
+            deleteUploadedFile(campaign.mapImagePath);
+
+            java.nio.file.Path mapsDir = Paths.get(uploadDir, "maps").toAbsolutePath();
+            Files.createDirectories(mapsDir);
 
             String extension = "";
             int dot = originalFileName.lastIndexOf('.');
@@ -227,10 +235,10 @@ public class CampaignResource {
             }
             String newFileName = "campaign-" + id + "-" + UUID.randomUUID() + extension;
 
-            java.nio.file.Path target = UPLOAD_DIR.resolve(newFileName).normalize();
+            java.nio.file.Path target = mapsDir.resolve(newFileName).normalize();
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
 
-            campaign.mapImagePath = "/uploads/" + newFileName;
+            campaign.mapImagePath = "/uploads/maps/" + newFileName;
 
             return Response.ok(campaign).build();
         } catch (IOException e) {
@@ -243,6 +251,22 @@ public class CampaignResource {
     @Path("/player/{playerId}")
     public List<Campaign> getCampaignsByPlayer(@PathParam("playerId") Long playerId) {
         return Campaign.list("playerId", playerId);
+    }
+
+    private void deleteUploadedFile(String filePath) {
+        if (filePath == null || filePath.isBlank()) return;
+        try {
+            // filePath is like "/uploads/maps/campaign-1-uuid.png"
+            // strip leading "/uploads/" to get relative path within uploadDir
+            String relative = filePath.replaceFirst("^/uploads/", "");
+            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
+            if (Files.exists(file) && !Files.isDirectory(file)) {
+                Files.delete(file);
+            }
+        } catch (IOException e) {
+            // Log but don't fail the request
+            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
+        }
     }
 
     private boolean isValidImageType(String filename) {

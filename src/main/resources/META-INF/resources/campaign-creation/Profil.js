@@ -28,9 +28,6 @@
       function updateAvatarDisplay(player) {
         if (player.profilePicture) {
           let imgUrl = player.profilePicture;
-          if (imgUrl.startsWith('/uploads/')) {
-            imgUrl = '..' + imgUrl;
-          }
           avatarImage.src = imgUrl;
           avatarImage.style.display = 'block';
           avatarInitials.style.display = 'none';

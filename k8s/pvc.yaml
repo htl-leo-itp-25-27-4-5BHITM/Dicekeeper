@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dicekeeper-uploads
+  namespace: student-it200233
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # If your school cluster requires a specific storage class, uncomment:
+  # storageClassName: standard

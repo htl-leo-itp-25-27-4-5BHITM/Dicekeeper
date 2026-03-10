@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dicekeeper
+  namespace: student-it200233
+  labels:
+    app: dicekeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dicekeeper
+  template:
+    metadata:
+      labels:
+        app: dicekeeper
+    spec:
+      containers:
+        - name: dicekeeper
+          image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-db-secret
+                  key: password
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: dicekeeper-uploads
+      imagePullSecrets:
+        - name: ghcr-pull-secret

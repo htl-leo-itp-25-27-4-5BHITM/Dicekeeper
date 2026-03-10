@@ -13,11 +13,14 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 @Path("/api/player")
 @Produces(MediaType.APPLICATION_JSON)
 public class PlayerResource {
 
-    private static final java.nio.file.Path UPLOAD_DIR = Paths.get("uploads/profiles");
+    @ConfigProperty(name = "dicekeeper.upload-dir")
+    String uploadDir;
 
     @GET
     @Path("{email}")
@@ -84,7 +87,11 @@ public class PlayerResource {
         }
 
         try {
-            Files.createDirectories(UPLOAD_DIR);
+            // Delete old profile picture if exists
+            deleteUploadedFile(player.profilePicture);
+
+            java.nio.file.Path profilesDir = Paths.get(uploadDir, "profiles").toAbsolutePath();
+            Files.createDirectories(profilesDir);
 
             String extension = "";
             int dot = originalFileName.lastIndexOf('.');
@@ -93,7 +100,7 @@ public class PlayerResource {
             }
             String newFileName = "player-" + id + "-" + UUID.randomUUID() + extension;
 
-            java.nio.file.Path target = UPLOAD_DIR.resolve(newFileName).normalize();
+            java.nio.file.Path target = profilesDir.resolve(newFileName).normalize();
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
 
             player.profilePicture = "/uploads/profiles/" + newFileName;
@@ -131,6 +138,19 @@ public class PlayerResource {
         }
 
         return Response.ok(existing).build();
+    }
+
+    private void deleteUploadedFile(String filePath) {
+        if (filePath == null || filePath.isBlank()) return;
+        try {
+            String relative = filePath.replaceFirst("^/uploads/", "");
+            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
+            if (Files.exists(file) && !Files.isDirectory(file)) {
+                Files.delete(file);
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
+        }
     }
 
     private boolean isValidImageType(String filename) {

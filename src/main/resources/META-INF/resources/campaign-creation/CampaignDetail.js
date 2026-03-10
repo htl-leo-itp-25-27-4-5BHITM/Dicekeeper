@@ -1,4 +1,4 @@
- (function(){
+(function(){
     const params = new URLSearchParams(window.location.search)
     const campaignId = params.get('id')
     let currentPlayer = null
@@ -193,11 +193,6 @@
         mapSection.style.display = 'block'
 
         let mapUrl = campaign.mapImagePath
-        if (mapUrl.startsWith('/uploads/')) {
-          mapUrl = '.' + mapUrl
-        } else if (!mapUrl.startsWith('./') && !mapUrl.startsWith('http')) {
-          mapUrl = './' + mapUrl
-        }
         mapImg.src = mapUrl
         mapImg.onerror = () => { mapSection.style.display = 'none' }
       }
@@ -267,11 +262,6 @@
         mapSection.style.display = 'block'
 
         let mapUrl = campaign.mapImagePath
-        if (mapUrl.startsWith('/uploads/')) {
-          mapUrl = '.' + mapUrl
-        } else if (!mapUrl.startsWith('./') && !mapUrl.startsWith('http')) {
-          mapUrl = './' + mapUrl
-        }
         mapImg.src = mapUrl
         mapImg.onerror = () => { mapSection.style.display = 'none' }
       }
