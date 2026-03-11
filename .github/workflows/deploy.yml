@@ -67,3 +67,15 @@ jobs:
       - name: Wait for rollout
         run: |
           kubectl -n $NAMESPACE rollout status deployment/dicekeeper --timeout=120s
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl --fail-with-body -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{
+              "files": [
+                "https://dicekeeper.net/",
+                "https://dicekeeper.net/index.html"
+              ]
+            }'
