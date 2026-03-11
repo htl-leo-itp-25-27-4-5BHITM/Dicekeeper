@@ -38,7 +38,7 @@ export function resolveMapUrl(mapImagePath) {
   if (mapImagePath.startsWith('http')) {
     return mapImagePath;
   }
-  // Path is already correct (e.g. /uploads/maps/campaign-1-abc.png)
-  return mapImagePath;
+  // Ensure path is absolute (starts with /)
+  return mapImagePath.startsWith('/') ? mapImagePath : '/' + mapImagePath;
 }
 

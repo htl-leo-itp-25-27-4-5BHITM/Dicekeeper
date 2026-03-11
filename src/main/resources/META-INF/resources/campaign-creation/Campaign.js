@@ -166,7 +166,7 @@
         const mapImage = document.getElementById('mapImage')
         const mapFileName = document.getElementById('mapFileName')
 
-        let resolvedUrl = imageUrl
+        let resolvedUrl = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl
 
         mapImage.src = resolvedUrl
         mapFileName.textContent = 'Karte geladen'

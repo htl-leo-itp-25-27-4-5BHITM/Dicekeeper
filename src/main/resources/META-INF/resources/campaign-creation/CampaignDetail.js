@@ -192,7 +192,7 @@
         const mapImg = document.getElementById('mapImagePlayer')
         mapSection.style.display = 'block'
 
-        let mapUrl = campaign.mapImagePath
+        let mapUrl = campaign.mapImagePath.startsWith('/') ? campaign.mapImagePath : '/' + campaign.mapImagePath
         mapImg.src = mapUrl
         mapImg.onerror = () => { mapSection.style.display = 'none' }
       }
@@ -261,7 +261,7 @@
         const mapImg = document.getElementById('mapImageDM')
         mapSection.style.display = 'block'
 
-        let mapUrl = campaign.mapImagePath
+        let mapUrl = campaign.mapImagePath.startsWith('/') ? campaign.mapImagePath : '/' + campaign.mapImagePath
         mapImg.src = mapUrl
         mapImg.onerror = () => { mapSection.style.display = 'none' }
       }
