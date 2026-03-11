@@ -2,6 +2,24 @@
 # Deploy Dicekeeper — pushes to main which triggers the GitHub Actions pipeline
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# ── Load .env ──
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+  set -a
+  source "$PROJECT_DIR/.env"
+  set +a
+else
+  echo "❌ .env file not found!"
+  exit 1
+fi
+
+if [[ -z "${GITHUB_PAT:-}" || "$GITHUB_PAT" == "your_pat_here" ]]; then
+  echo "❌ GITHUB_PAT not set in .env"
+  exit 1
+fi
+
 echo "=============================="
 echo " Dicekeeper Deploy"
 echo "=============================="
@@ -25,10 +43,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git commit -m "${MSG:-deploy}"
 fi
 
-# Push to main → triggers GitHub Actions deploy
+# Push to main using PAT for authentication
 echo ""
 echo "🚀 Pushing to main..."
-git push origin main
+git push "https://${GHCR_USER}:${GITHUB_PAT}@github.com/htl-leo-itp-25-27-4-5BHITM/Dicekeeper.git" main
 
 echo ""
 echo "✅ Pushed! GitHub Actions will now:"
