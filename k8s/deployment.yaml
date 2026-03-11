@@ -22,7 +22,7 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: DB_USER
+            - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: dicekeeper-db-secret
