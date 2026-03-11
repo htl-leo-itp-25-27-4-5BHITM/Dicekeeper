@@ -43,16 +43,24 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git commit -m "${MSG:-deploy}"
 fi
 
-# Push to main using SSH (avoids PAT/org permission issues)
+IMAGE="ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper"
+SHA=$(git rev-parse HEAD)
+
+# ── Build & push Docker image locally ──
 echo ""
-echo "🚀 Pushing to main..."
+echo "[1/2] Building & pushing Docker image..."
+echo "$GITHUB_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+docker buildx build --platform linux/amd64 -t "$IMAGE:latest" -t "$IMAGE:$SHA" --push .
+
+# ── Push to main → triggers K8s deployment via GitHub Actions ──
+echo ""
+echo "[2/2] Pushing to main..."
 git push git@github.com:htl-leo-itp-25-27-4-5BHITM/Dicekeeper.git main
 
 echo ""
-echo "✅ Pushed! GitHub Actions will now:"
-echo "   1. Build the Docker image (linux/amd64)"
-echo "   2. Push it to ghcr.io"
-echo "   3. Deploy to Kubernetes"
+echo "✅ Done!"
+echo "   • Docker image pushed to ghcr.io ✓"
+echo "   • GitHub Actions will now deploy to Kubernetes"
 echo ""
 echo "Watch the pipeline:"
 echo "   https://github.com/htl-leo-itp-25-27-4-5BHITM/Dicekeeper/actions"

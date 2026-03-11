@@ -3,25 +3,23 @@ name: Deploy to Kubernetes
 on:
   push:
     branches: [main]
+  # Allow manual trigger (after local image push)
+  workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper
   NAMESPACE: student-it200233
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
-
     steps:
-      # ── Checkout ──
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Docker / GHCR ──
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -44,7 +42,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ── Deploy to K8s ──
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: ${{ always() && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up kubeconfig
         run: |
           mkdir -p $HOME/.kube
@@ -53,7 +58,6 @@ jobs:
 
       - name: Apply Kubernetes manifests
         run: |
-          # Create DB secret from GitHub Secrets (k8s/secret.yaml is gitignored)
           kubectl -n $NAMESPACE delete secret dicekeeper-db-secret --ignore-not-found
           kubectl -n $NAMESPACE create secret generic dicekeeper-db-secret \
             --from-literal=username=${{ secrets.DB_USER }} \
