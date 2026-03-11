@@ -259,7 +259,10 @@ export default async function CampaignDetailView({ id }) {
           } else {
             fd.append('file', mapFile.files[0]);
           }
-          await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
+          const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
+          if (uploadRes.ok) {
+            campaign = await uploadRes.json();
+          }
         }
         setStatus('Kampagne aktualisiert');
         btn.disabled = false; btn.textContent = 'Aktualisieren';

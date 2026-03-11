@@ -317,13 +317,18 @@
           if (mapFile.files && mapFile.files.length > 0) {
             const formData = new FormData()
             formData.append('file', mapFile.files[0])
-            await fetch('/api/campaign/' + campaignId + '/upload-map', {
+            const uploadRes = await fetch('/api/campaign/' + campaignId + '/upload-map', {
               method: 'POST',
               body: formData
             })
+            if (uploadRes.ok) {
+              campaign = await uploadRes.json()
+            }
           }
 
-          campaign = await res.json()
+          if (!campaign || !campaign.id) {
+            campaign = await res.json()
+          }
           setStatus('Kampagne aktualisiert')
           updateBtn.disabled = false
           updateBtn.textContent = 'Aktualisieren'
