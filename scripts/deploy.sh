@@ -43,10 +43,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git commit -m "${MSG:-deploy}"
 fi
 
-# Push to main using PAT for authentication
+# Push to main using SSH (avoids PAT/org permission issues)
 echo ""
 echo "🚀 Pushing to main..."
-git push "https://${GHCR_USER}:${GITHUB_PAT}@github.com/htl-leo-itp-25-27-4-5BHITM/Dicekeeper.git" main
+git push git@github.com:htl-leo-itp-25-27-4-5BHITM/Dicekeeper.git main
 
 echo ""
 echo "✅ Pushed! GitHub Actions will now:"
