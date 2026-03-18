@@ -382,7 +382,7 @@ export default async function PlayerView({ id }) {
     if (el) {
       const dexMod = calcMod(getScore('Dexterity'));
       const pct = maxHP > 0 ? Math.round((currentHP / maxHP) * 100) : 0;
-      let hpColor = '#69f0ae'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
+      let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
       el.innerHTML = `
         <div class="pv2-core-stat">
           <div class="pv2-core-icon" style="color:${hpColor}">❤️</div>
@@ -494,7 +494,7 @@ export default async function PlayerView({ id }) {
     }
     document.getElementById('pvRollBtn').addEventListener('click', () => {
       const manIn = document.getElementById('pvManualIn');
-      if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', '#ffd740'); return; }
+      if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', 'var(--gold)'); return; }
       const rollBtn = document.getElementById('pvRollBtn'); rollBtn.disabled = true;
       let ticks = 0;
       const iv = setInterval(() => {
@@ -504,9 +504,9 @@ export default async function PlayerView({ id }) {
           const r = document.getElementById('pvDiceVal');
           r.textContent = f; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
           rollBtn.disabled = false;
-          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', '#69f0ae');
-          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', '#ff5252');
-          else showFb('🎲 Gewürfelt: ' + f, '#69f0ae');
+          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+          else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
           diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: f, time: new Date().toLocaleTimeString() });
           if (diceHistory.length > 20) diceHistory.pop(); renderHist();
           const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
@@ -519,10 +519,10 @@ export default async function PlayerView({ id }) {
     manIn.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pvManualSet').click(); });
     document.getElementById('pvManualSet').addEventListener('click', () => {
       const val = parseInt(manIn.value);
-      if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig', '#ff5252'); return; }
+      if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig', 'var(--danger)'); return; }
       const r = document.getElementById('pvDiceVal');
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
-      showFb('✓ Manuell: ' + val, '#69f0ae'); manIn.value = '';
+      showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
       diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() }); renderHist();
       const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
@@ -607,7 +607,7 @@ export default async function PlayerView({ id }) {
     const cn = character.characterClass?.name || '';
     const race = character.race || '';
     const pct = maxHP > 0 ? Math.round((currentHP / maxHP) * 100) : 0;
-    let hpColor = '#69f0ae'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
+    let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
     const dexMod = calcMod(getScore('Dexterity'));
     el.innerHTML = `
       <div class="pv2-mob-hero-left">
@@ -639,7 +639,7 @@ export default async function PlayerView({ id }) {
     const lvl = character.level || 1;
     const bgSkills = character.background?.skills ? character.background.skills.split(',').map(s => s.trim().toLowerCase()) : [];
     const pct = maxHP > 0 ? Math.round((currentHP / maxHP) * 100) : 0;
-    let hpColor = '#69f0ae'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
+    let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
     const dexMod = calcMod(getScore('Dexterity'));
 
     el.innerHTML = `
@@ -803,7 +803,7 @@ export default async function PlayerView({ id }) {
     }
     document.getElementById('pvMobRollBtn').addEventListener('click', () => {
       const manIn = document.getElementById('pvMobManualIn');
-      if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', '#ffd740'); return; }
+      if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', 'var(--gold)'); return; }
       const rollBtn = document.getElementById('pvMobRollBtn'); rollBtn.disabled = true;
       let ticks = 0;
       const iv = setInterval(() => {
@@ -813,9 +813,9 @@ export default async function PlayerView({ id }) {
           const r = document.getElementById('pvMobDiceVal');
           r.textContent = f; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
           rollBtn.disabled = false;
-          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', '#69f0ae');
-          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', '#ff5252');
-          else showFb('🎲 Gewürfelt: ' + f, '#69f0ae');
+          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+          else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
           diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: f, time: new Date().toLocaleTimeString() });
           if (diceHistory.length > 20) diceHistory.pop(); renderHist();
           const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
@@ -828,10 +828,10 @@ export default async function PlayerView({ id }) {
     manIn.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pvMobManualSet').click(); });
     document.getElementById('pvMobManualSet').addEventListener('click', () => {
       const val = parseInt(manIn.value);
-      if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig', '#ff5252'); return; }
+      if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig', 'var(--danger)'); return; }
       const r = document.getElementById('pvMobDiceVal');
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
-      showFb('✓ Manuell: ' + val, '#69f0ae'); manIn.value = '';
+      showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvMobRollBtn').disabled = false;
       diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() }); renderHist();
       const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;

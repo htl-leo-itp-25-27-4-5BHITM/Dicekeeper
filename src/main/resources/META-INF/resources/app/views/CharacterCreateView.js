@@ -146,7 +146,7 @@ export default async function CharacterCreateView() {
     const el = document.getElementById('ccPoints');
     const rem = getRemaining();
     el.textContent = rem;
-    el.style.color = rem < 0 ? '#ef5350' : '#81c784';
+    el.style.color = rem < 0 ? 'var(--danger)' : 'var(--green-accent)';
   }
 
   // Step 1

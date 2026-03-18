@@ -3,6 +3,7 @@
  * Usage:
  *   showMapCropModal(imageFile).then(croppedBlob => { ... })
  */
+import { themeColor } from '../services/theme.js';
 
 export function showMapCropModal(imageFile) {
   return new Promise((resolve, reject) => {
@@ -91,19 +92,20 @@ function openCropUI(img, resolve, reject) {
     }
 
     // Crop border
-    ctx.strokeStyle = '#69f0ae';
+    ctx.strokeStyle = themeColor('--accent-green');
     ctx.lineWidth = 2;
     ctx.strokeRect(cropX, cropY, cropSize, cropSize);
 
     // Corner handles
     const hs = 8;
-    ctx.fillStyle = '#69f0ae';
+    ctx.fillStyle = themeColor('--accent-green');
     [[cropX, cropY], [cropX + cropSize, cropY], [cropX, cropY + cropSize], [cropX + cropSize, cropY + cropSize]].forEach(([cx, cy]) => {
       ctx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
     });
 
     // 1:1 badge
-    ctx.fillStyle = 'rgba(105,240,174,0.9)';
+    const accentRgb = themeColor('--accent-green-rgb') || '105,240,174';
+    ctx.fillStyle = `rgba(${accentRgb},0.9)`;
     ctx.font = 'bold 11px sans-serif';
     ctx.fillText('1:1', cropX + 6, cropY + 16);
   }

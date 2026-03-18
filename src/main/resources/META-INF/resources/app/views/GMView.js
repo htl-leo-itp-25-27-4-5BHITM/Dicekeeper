@@ -22,7 +22,7 @@ export default async function GMView({ id }) {
             <button class="map-tb-btn" id="gmMapZoomIn" title="Zoom in">🔍+</button>
             <button class="map-tb-btn" id="gmMapZoomOut" title="Zoom out">🔍−</button>
             <button class="map-tb-btn" id="gmMapReset" title="Ansicht zurücksetzen">↺</button>
-            <button class="map-tb-btn" id="gmTableView" title="Tischansicht öffnen" style="color:#64b5f6 !important;border-color:rgba(100,181,246,0.3) !important;">📺 Tischansicht</button>
+            <button class="map-tb-btn" id="gmTableView" title="Tischansicht öffnen" style="color:var(--accent-green) !important;border-color:rgba(var(--accent-green-rgb),0.3) !important;">📺 Tischansicht</button>
             <button class="map-tb-btn map-tb-popout" id="gmMapPopout" title="Karte maximieren">⛶</button>
           </div>
           <div class="map-box" id="gmMapBox"></div>
@@ -169,7 +169,7 @@ export default async function GMView({ id }) {
   function initMiniMap() {
     const box = document.getElementById('gmMapBox');
     if (!mapImageUrl) {
-      box.innerHTML = '<div style="color:#9ccc65;text-align:center;">Keine Karte hochgeladen</div>';
+      box.innerHTML = '<div style="color:var(--accent-green);text-align:center;">Keine Karte hochgeladen</div>';
       return;
     }
     mapCanvas = createMapCanvas(box, {
@@ -428,7 +428,7 @@ export default async function GMView({ id }) {
         const chat = document.getElementById('gmChat');
         const div = document.createElement('div');
         div.innerHTML = '🎲 <strong>' + esc(d.playerName) + '</strong> würfelt ' + esc(d.diceType) + ': <strong>' + d.result + '</strong>';
-        div.style.color = '#ba68c8';
+        div.style.color = 'var(--accent-purple)';
         chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
       }
     });
@@ -563,7 +563,7 @@ export default async function GMView({ id }) {
       const div = document.createElement('div');
       div.className = 'player' + (i === currentIndex ? ' active' : '');
       const pct = p.maxHp > 0 ? Math.round((p.hp / p.maxHp) * 100) : 0;
-      let hpColor = '#69f0ae'; if (pct <= 50) hpColor = '#ffc107'; if (pct <= 25) hpColor = '#ff5252';
+      let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
       div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
         <span>${esc(p.name)}</span>
         <button class="purple-btn" style="padding:6px 10px;font-size:12px;">${p.active ? 'Aussetzen' : 'Aktivieren'}</button>
@@ -656,7 +656,7 @@ export default async function GMView({ id }) {
 
   document.getElementById('gmRollBtn').addEventListener('click', () => {
     const manIn = document.getElementById('gmManualInput');
-    if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', '#ffd740'); return; }
+    if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', 'var(--gold)'); return; }
     const resultEl = document.getElementById('gmDiceResult');
     const rollBtn = document.getElementById('gmRollBtn');
     rollBtn.disabled = true;
@@ -667,9 +667,9 @@ export default async function GMView({ id }) {
         clearInterval(iv); const f = Math.floor(Math.random() * selectedDiceSides) + 1;
         resultEl.textContent = f; resultEl.classList.remove('rolling'); void resultEl.offsetWidth; resultEl.classList.add('rolling');
         rollBtn.disabled = false;
-        if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', '#69f0ae');
-        else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', '#ff5252');
-        else showFb('🎲 Gewürfelt: ' + f, '#69f0ae');
+        if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+        else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+        else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
         fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: 'Dungeon Master', diceType: 'd' + selectedDiceSides, result: f }) });
       }
     }, 55);
@@ -678,10 +678,10 @@ export default async function GMView({ id }) {
   document.getElementById('gmManualSet').addEventListener('click', () => {
     const manIn = document.getElementById('gmManualInput');
     const val = parseInt(manIn.value);
-    if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig (1-' + selectedDiceSides + ')', '#ff5252'); return; }
+    if (isNaN(val) || val < 1 || val > selectedDiceSides) { showFb('Ungültig (1-' + selectedDiceSides + ')', 'var(--danger)'); return; }
     const r = document.getElementById('gmDiceResult');
     r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
-    showFb('✓ Manuell: ' + val, '#69f0ae'); manIn.value = '';
+    showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
     document.getElementById('gmRollBtn').disabled = false;
     fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: 'Dungeon Master', diceType: 'd' + selectedDiceSides, result: val }) });
   });
@@ -728,10 +728,10 @@ export default async function GMView({ id }) {
     c.innerHTML = decisions.slice().reverse().map(d => {
       const total = d.yes + d.no; const yP = total > 0 ? Math.round((d.yes / total) * 100) : 0; const nP = total > 0 ? 100 - yP : 0;
       const resolved = d.status === 'RESOLVED';
-      return '<div class="decision-card" style="' + (resolved ? 'opacity:0.7;border-left:3px solid #69f0ae;' : '') + '">' +
+      return '<div class="decision-card" style="' + (resolved ? 'opacity:0.7;border-left:3px solid var(--accent-green);' : '') + '">' +
         '<h4>' + (d.title || '') + '</h4><div class="decision-desc">' + (d.text || '') + '</div>' +
         (total > 0 ? '<div class="vote-bar-container"><div class="vote-bar-labels"><span class="vote-yes">👍 ' + yP + '%</span><span class="vote-no">👎 ' + nP + '%</span></div><div class="vote-bar"><div class="vote-bar-yes" style="width:' + yP + '%"></div><div class="vote-bar-no" style="width:' + nP + '%"></div></div></div>' : '') +
-        (resolved ? '<div style="text-align:center;padding:8px;font-weight:700;color:#69f0ae;">Ergebnis: ' + (d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein')) + '</div>'
+        (resolved ? '<div style="text-align:center;padding:8px;font-weight:700;color:var(--accent-green);">Ergebnis: ' + (d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein')) + '</div>'
           : '<div class="vote-buttons"><button class="vote-btn vote-btn-yes" onclick="window._gmVote(' + d.id + ',\'yes\')">👍 Ja (' + d.yes + ')</button><button class="vote-btn vote-btn-no" onclick="window._gmVote(' + d.id + ',\'no\')">👎 Nein (' + d.no + ')</button></div>') +
         '</div>';
     }).join('');

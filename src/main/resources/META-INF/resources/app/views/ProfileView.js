@@ -5,6 +5,7 @@ import { requirePlayer, setPlayer, clearPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { initials } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
+import { getTheme, toggleTheme } from '../services/theme.js';
 
 export default async function ProfileView() {
   const player = requirePlayer();
@@ -13,24 +14,38 @@ export default async function ProfileView() {
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
 
+  const isAccessible = getTheme() === 'accessible';
+
   app.innerHTML = renderHeader() + `
     <div class="profile-page">
       <div class="card" style="max-width:480px;margin:0 auto;">
-        <a href="#/campaigns" class="back-link">← Zurück zu Kampagnen</a>
+        <a href="#/campaigns" class="back-link">\u2190 Zur\u00fcck zu Kampagnen</a>
         <div class="card-header" style="text-align:center;"><div class="card-title">Profil</div></div>
         <div class="profile-section" style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px;">
-          <div class="profile-avatar" id="pvAvatar" title="Klicke um Profilbild zu ändern" style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#6ee7b7,#34d399);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:42px;color:#064e3b;cursor:pointer;overflow:hidden;margin-bottom:16px;position:relative;">
+          <div class="profile-avatar" id="pvAvatar" title="Klicke um Profilbild zu \u00e4ndern" style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg, var(--avatar-start), var(--avatar-end));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:42px;color:var(--avatar-text);cursor:pointer;overflow:hidden;margin-bottom:16px;position:relative;">
             <span id="pvInitials">${initials(player.name || player.username)}</span>
             <img id="pvImg" src="${player.profilePicture || ''}" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;${player.profilePicture ? '' : 'display:none;'}" />
-            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;border-radius:50%;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span style="color:white;font-size:14px;">Ändern</span></div>
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;border-radius:50%;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span style="color:white;font-size:14px;">\u00c4ndern</span></div>
           </div>
           <input type="file" id="pvFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none;" />
           <div style="font-size:14px;color:rgba(255,255,255,0.7);" id="pvEmail">${player.email || '-'}</div>
         </div>
         <div class="form-group"><label>Benutzername</label><input type="text" id="pvUsername" value="${player.username || ''}" placeholder="Dein Benutzername" maxlength="50" /></div>
         <div class="form-group"><label>Anzeigename</label><input type="text" id="pvName" value="${player.name || ''}" placeholder="Dein Anzeigename" maxlength="100" /></div>
-        <button class="btn btn-primary" id="pvSave" style="width:100%;margin-bottom:12px;">Änderungen speichern</button>
+        <button class="btn btn-primary" id="pvSave" style="width:100%;margin-bottom:12px;">\u00c4nderungen speichern</button>
         <button class="btn btn-secondary" id="pvBack" style="width:100%;margin-bottom:12px;">Abbrechen</button>
+
+        <div class="divider"><span>Darstellung</span></div>
+        <div class="theme-toggle-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:white;">Barrierefreie Farben</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);">Lila/Blau-Palette f\u00fcr bessere Lesbarkeit</div>
+          </div>
+          <button class="theme-toggle-btn ${isAccessible ? 'active' : ''}" id="pvThemeToggle" role="switch" aria-checked="${isAccessible}" aria-label="Barrierefreies Farbschema umschalten">
+            <span class="theme-toggle-knob"></span>
+          </button>
+        </div>
+
         <div class="divider"><span>Session</span></div>
         <button class="btn btn-danger" id="pvLogout" style="width:100%;">Abmelden</button>
         <div id="pvStatus" style="margin-top:16px;font-size:0.9rem;text-align:center;min-height:24px;"></div>
@@ -47,6 +62,12 @@ export default async function ProfileView() {
     if (r.ok) { currentPlayer = await r.json(); setPlayer(currentPlayer); }
   } catch (e) {}
 
+  function setStatus(msg, isError) {
+    const el = document.getElementById('pvStatus');
+    el.textContent = msg;
+    el.style.color = isError ? 'var(--status-error)' : 'var(--green-success)';
+  }
+
   document.getElementById('pvAvatar').addEventListener('click', () => document.getElementById('pvFileInput').click());
   document.getElementById('pvFileInput').addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
@@ -59,11 +80,9 @@ export default async function ProfileView() {
       setPlayer(currentPlayer);
       document.getElementById('pvImg').src = currentPlayer.profilePicture;
       document.getElementById('pvImg').style.display = 'block';
-      document.getElementById('pvStatus').textContent = 'Profilbild aktualisiert!';
-      document.getElementById('pvStatus').style.color = '#81c784';
+      setStatus('Profilbild aktualisiert!', false);
     } catch (err) {
-      document.getElementById('pvStatus').textContent = 'Upload fehlgeschlagen: ' + err.message;
-      document.getElementById('pvStatus').style.color = '#f97373';
+      setStatus('Upload fehlgeschlagen: ' + err.message, true);
     }
   });
 
@@ -80,12 +99,17 @@ export default async function ProfileView() {
       if (!r.ok) throw new Error(await r.text());
       currentPlayer = await r.json();
       setPlayer(currentPlayer);
-      document.getElementById('pvStatus').textContent = 'Profil gespeichert!';
-      document.getElementById('pvStatus').style.color = '#81c784';
+      setStatus('Profil gespeichert!', false);
     } catch (err) {
-      document.getElementById('pvStatus').textContent = 'Fehler: ' + err.message;
-      document.getElementById('pvStatus').style.color = '#f97373';
-    } finally { btn.disabled = false; btn.textContent = 'Änderungen speichern'; }
+      setStatus('Fehler: ' + err.message, true);
+    } finally { btn.disabled = false; btn.textContent = '\u00c4nderungen speichern'; }
+  });
+
+  document.getElementById('pvThemeToggle').addEventListener('click', () => {
+    const newTheme = toggleTheme();
+    const btn = document.getElementById('pvThemeToggle');
+    btn.classList.toggle('active', newTheme === 'accessible');
+    btn.setAttribute('aria-checked', newTheme === 'accessible');
   });
 
   document.getElementById('pvBack').addEventListener('click', () => navigate('/campaigns'));
@@ -93,4 +117,3 @@ export default async function ProfileView() {
 
   return () => { destroyHeader(); };
 }
-

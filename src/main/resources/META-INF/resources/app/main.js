@@ -1,7 +1,9 @@
 /**
  * Dicekeeper SPA – Main Entry Point
  */
+import './services/theme.js';
 import { addRoute, startRouter } from './router.js';
+import LandingView from './views/LandingView.js';
 import LoginView from './views/LoginView.js';
 import CampaignsView from './views/CampaignsView.js';
 import CampaignCreateView from './views/CampaignCreateView.js';
@@ -14,6 +16,9 @@ import GMView from './views/GMView.js';
 import PlayerView from './views/PlayerView.js';
 import CockpitView from './views/CockpitView.js';
 import TableView from './views/TableView.js';
+
+// Landing
+addRoute('/', () => LandingView());
 
 // Auth
 addRoute('/login', () => LoginView());

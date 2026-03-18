@@ -4,6 +4,7 @@
 import { getPlayer } from '../services/auth.js';
 import { esc, timeAgo } from '../services/utils.js';
 import { navigate } from '../router.js';
+import { getTheme, toggleTheme } from '../services/theme.js';
 
 let pollInterval = null;
 
@@ -26,6 +27,9 @@ export function renderHeader() {
         <a href="#/campaigns" class="header-logo">🎲 Dicekeeper</a>
       </div>
       <div class="header-right">
+        <button class="header-a11y-btn${getTheme() === 'accessible' ? ' active' : ''}" id="headerThemeToggle" title="Barrierefreie Farben">
+          <span class="header-a11y-icon">👁</span>
+        </button>
         <button class="notification-btn" id="notificationBtn" title="Notifications">
           🔔
           <span class="notification-badge hidden" id="notificationBadge">0</span>
@@ -88,6 +92,14 @@ export function initHeader() {
 
   if (userProfile) {
     userProfile.addEventListener('click', () => navigate('/profile'));
+  }
+
+  const headerThemeToggle = document.getElementById('headerThemeToggle');
+  if (headerThemeToggle) {
+    headerThemeToggle.addEventListener('click', () => {
+      const next = toggleTheme();
+      headerThemeToggle.classList.toggle('active', next === 'accessible');
+    });
   }
 
   async function loadNotificationCount() {

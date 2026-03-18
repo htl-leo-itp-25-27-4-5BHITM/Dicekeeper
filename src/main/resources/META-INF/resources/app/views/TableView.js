@@ -151,9 +151,9 @@ export default async function TableView({ id }) {
     list.innerHTML = players.map((p, i) => {
       const isActive = p.id === currentTurnPlayerId;
       const pct = p.maxHp > 0 ? Math.round((p.hp / p.maxHp) * 100) : 0;
-      let hpColor = '#69f0ae';
-      if (pct <= 50) hpColor = '#ffc107';
-      if (pct <= 25) hpColor = '#ff5252';
+      let hpColor = 'var(--accent-green)';
+      if (pct <= 50) hpColor = 'var(--gold)';
+      if (pct <= 25) hpColor = 'var(--danger)';
       const inactive = !p.active;
       return `
         <div class="table-player-card ${isActive ? 'active-turn' : ''} ${inactive ? 'inactive' : ''}">

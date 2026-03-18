@@ -10,6 +10,7 @@
  *   mc.updateMarkers(markers);
  *   mc.destroy();
  */
+import { themeColor } from '../services/theme.js';
 
 export function createMapCanvas(container, opts = {}) {
   const {
@@ -219,19 +220,20 @@ export function createMapCanvas(container, opts = {}) {
       const count = pids.length;
 
       // Draw stacked circles
+      const _agRgb = themeColor('--accent-green-rgb') || '105,240,174';
       for (let i = Math.min(count - 1, 2); i >= 0; i--) {
         ctx.beginPath();
         ctx.arc(mx + i * 3, my - i * 3, r, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? 'rgba(105,240,174,0.9)' : 'rgba(105,240,174,0.4)';
+        ctx.fillStyle = i === 0 ? `rgba(${_agRgb},0.9)` : `rgba(${_agRgb},0.4)`;
         ctx.fill();
-        ctx.strokeStyle = isSelected ? '#ffc107' : 'rgba(255,255,255,0.8)';
+        ctx.strokeStyle = isSelected ? (themeColor('--gold') || '#ffc107') : 'rgba(255,255,255,0.8)';
         ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.stroke();
       }
 
       // Count badge
       ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ba68c8';
+      ctx.fillStyle = themeColor('--accent-purple') || '#ba68c8';
       ctx.beginPath();
       ctx.arc(mx + r * 0.7, my - r * 0.7, r * 0.45, 0, Math.PI * 2);
       ctx.fill();
@@ -244,9 +246,10 @@ export function createMapCanvas(container, opts = {}) {
     } else if (marker.type === 'player') {
       ctx.beginPath();
       ctx.arc(mx, my, r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(105,240,174,0.85)';
+      const _agRgbP = themeColor('--accent-green-rgb') || '105,240,174';
+      ctx.fillStyle = `rgba(${_agRgbP},0.85)`;
       ctx.fill();
-      ctx.strokeStyle = isSelected ? '#ffc107' : 'rgba(255,255,255,0.8)';
+      ctx.strokeStyle = isSelected ? (themeColor('--gold') || '#ffc107') : 'rgba(255,255,255,0.8)';
       ctx.lineWidth = isSelected ? 3 : 1.5;
       ctx.stroke();
 
@@ -271,7 +274,7 @@ export function createMapCanvas(container, opts = {}) {
       ctx.arc(mx, my, r, 0, Math.PI * 2);
       ctx.fillStyle = bgColor;
       ctx.fill();
-      ctx.strokeStyle = isSelected ? '#ffc107' : 'rgba(255,255,255,0.7)';
+      ctx.strokeStyle = isSelected ? (themeColor('--gold') || '#ffc107') : 'rgba(255,255,255,0.7)';
       ctx.lineWidth = isSelected ? 3 : 1.5;
       ctx.stroke();
 
@@ -375,7 +378,7 @@ export function createMapCanvas(container, opts = {}) {
     const f1 = L1.ctx;
 
     // Step 1: Fill fully opaque
-    f1.fillStyle = '#0a1610';
+    f1.fillStyle = themeColor('--fog-base') || '#0a1610';
     f1.fillRect(-2, -2, cw + 4, ch + 4);
 
     // Step 2: Partially carve out explored areas (reduce to semi-transparent)
@@ -437,10 +440,12 @@ export function createMapCanvas(container, opts = {}) {
       const alpha = (0.08 + rng(i, 4) * 0.12) * pulse;
 
       const cg = f2.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, cloudR);
-      cg.addColorStop(0, `rgba(100, 170, 140, ${alpha})`);
-      cg.addColorStop(0.4, `rgba(80, 150, 120, ${alpha * 0.6})`);
-      cg.addColorStop(0.7, `rgba(60, 130, 100, ${alpha * 0.25})`);
-      cg.addColorStop(1, 'rgba(40, 110, 80, 0)');
+      const _fogRgb = themeColor('--fog-cloud-rgb') || '100,170,140';
+      const _fogRgb2 = themeColor('--fog-cloud-dark-rgb') || '40,110,80';
+      cg.addColorStop(0, `rgba(${_fogRgb}, ${alpha})`);
+      cg.addColorStop(0.4, `rgba(${_fogRgb}, ${alpha * 0.6})`);
+      cg.addColorStop(0.7, `rgba(${_fogRgb}, ${alpha * 0.25})`);
+      cg.addColorStop(1, `rgba(${_fogRgb2}, 0)`);
       f2.fillStyle = cg;
       f2.beginPath();
       f2.arc(bx + dx, by + dy, cloudR, 0, Math.PI * 2);

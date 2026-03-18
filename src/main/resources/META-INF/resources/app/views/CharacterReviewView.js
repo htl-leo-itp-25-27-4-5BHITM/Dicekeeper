@@ -81,7 +81,7 @@ export default async function CharacterReviewView({ id, cpId }) {
 
     content.innerHTML = `
       <div class="player-info">
-        <div class="player-avatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6ee7b7,#34d399);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#064e3b;overflow:hidden;">${avatarHtml}</div>
+        <div class="player-avatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg, var(--avatar-start), var(--avatar-end));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--avatar-text);overflow:hidden;">${avatarHtml}</div>
         <div style="flex:1;"><div style="font-size:16px;font-weight:600;">${esc(playerData.name || playerData.username)}</div><div style="font-size:13px;opacity:0.7;">${esc(playerData.email || '')}</div></div>
         <span class="character-status status-${cp.characterStatus === 'PENDING' ? 'pending' : cp.characterStatus === 'APPROVED' ? 'approved' : 'rejected'}">${cp.characterStatus}</span>
       </div>
@@ -100,14 +100,14 @@ export default async function CharacterReviewView({ id, cpId }) {
       </div>
       <div class="section" style="margin-top:16px"><div class="section-title">Ability Scores</div><div class="stats-grid">${statsHtml}</div></div>
       ${character.info ? `<div class="section"><div class="section-title">Background Story</div><div style="background:rgba(0,0,0,0.2);padding:16px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;">${esc(character.info)}</div></div>` : ''}
-      ${cp.dmNotes ? `<div style="background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);border-radius:12px;padding:14px;margin-top:16px;"><div style="font-size:12px;text-transform:uppercase;color:#ef5350;margin-bottom:8px;">Previous DM Notes</div><div style="font-size:14px;white-space:pre-wrap;">${esc(cp.dmNotes)}</div></div>` : ''}
+      ${cp.dmNotes ? `<div style="background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);border-radius:12px;padding:14px;margin-top:16px;"><div style="font-size:12px;text-transform:uppercase;color:var(--danger);margin-bottom:8px;">Previous DM Notes</div><div style="font-size:14px;white-space:pre-wrap;">${esc(cp.dmNotes)}</div></div>` : ''}
       ${isPending ? `
         <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.2);">
           <div class="section-title">DM Review</div>
           <textarea id="crNotes" placeholder="Add notes for the player..." style="width:100%;min-height:120px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:12px;padding:14px;color:white;font-size:14px;resize:vertical;outline:none;"></textarea>
           <div class="actions" style="display:flex;gap:12px;margin-top:20px;">
             <button class="btn btn-danger" id="crReject" style="flex:1;padding:14px;border-radius:999px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,#f44336,#c62828);color:white;">Reject & Request Changes</button>
-            <button class="btn btn-success" id="crApprove" style="flex:1;padding:14px;border-radius:999px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,#4caf50,#2e7d32);color:white;">Approve Character</button>
+            <button class="btn btn-success" id="crApprove" style="flex:1;padding:14px;border-radius:999px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg, var(--success), #2e7d32);color:white;">Approve Character</button>
           </div>
         </div>
       ` : `<div style="text-align:center;padding:30px;margin-top:16px;">

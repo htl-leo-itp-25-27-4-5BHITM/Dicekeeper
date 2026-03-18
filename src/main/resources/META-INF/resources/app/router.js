@@ -20,7 +20,7 @@ export function navigate(hash) {
 }
 
 export function getCurrentPath() {
-  return window.location.hash.slice(1) || '/login';
+  return window.location.hash.slice(1) || '/';
 }
 
 async function resolve() {
@@ -58,7 +58,7 @@ async function resolve() {
     <div style="text-align:center;padding:80px 20px;color:white;">
       <h1>404</h1>
       <p>Seite nicht gefunden</p>
-      <a href="#/campaigns" style="color:#81c784;">Zurück zu Kampagnen</a>
+      <a href="#/" style="color:var(--green-accent);">Zurück zur Startseite</a>
     </div>
   `;
 }
