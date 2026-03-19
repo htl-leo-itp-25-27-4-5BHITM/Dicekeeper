@@ -52,6 +52,10 @@ spec:
                 secretKeyRef:
                   name: dicekeeper-secret
                   key: KEYCLOAK_STATE_SECRET
+            - name: QUARKUS_OIDC_AUTHENTICATION_USER_INFO_REQUIRED
+              value: "false"
+            - name: QUARKUS_OIDC_TOKEN_STATE_MANAGER_STRATEGY
+              value: id-token
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
