@@ -47,7 +47,7 @@ export default async function CampaignCreateView({ id }) {
             <span class="image-upload-text-main">Karte hochladen</span><br>
             <span class="image-upload-text-sub">Klicke, um eine Karte auszuwählen</span>
           </span>
-          <input type="file" accept="image/*" style="display:none" id="ccMapFile" />
+          <input type="file" accept="image/jpeg,image/png" style="display:none" id="ccMapFile" />
         </div>
         <div id="ccMapPreview" style="display:none;">
           <img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;" />
@@ -84,6 +84,7 @@ export default async function CampaignCreateView({ id }) {
   const mapInput = document.getElementById('ccMapFile');
   const statusEl = document.getElementById('ccStatus');
   let isPublic = true;
+  let croppedMapBlob = null;
 
   storyInput.addEventListener('input', () => {
     descChars.textContent = 'Zeichen: ' + (storyInput.maxLength - storyInput.value.length);
@@ -98,25 +99,79 @@ export default async function CampaignCreateView({ id }) {
 
   document.getElementById('ccMapUpload').addEventListener('click', () => mapInput.click());
 
-  let croppedMapBlob = null; // Stores the cropped square map blob
-
+  // Upload & Filter
   mapInput.addEventListener('change', async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    try {
-      croppedMapBlob = await showMapCropModal(file);
-      // Show preview of cropped image
-      const url = URL.createObjectURL(croppedMapBlob);
-      document.getElementById('ccMapImage').src = url;
-      document.getElementById('ccMapFileName').textContent = file.name + ' (zugeschnitten, quadratisch)';
-      document.getElementById('ccMapPreview').style.display = 'block';
-    } catch (err) {
-      // User cancelled crop
-      croppedMapBlob = null;
+
+    // 1️⃣ Dateityp prüfen
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      setStatus('Nur JPG/JPEG/PNG Dateien erlaubt', true);
+      mapInput.value = '';
+      return;
     }
+
+    // 2️⃣ Bild laden und Seitenverhältnis prüfen
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = async () => {
+      const ratio = img.width / img.height;
+      const allowedRatios = [1, 16/4, 21/9];
+
+      // Funktion prüft ±15% Toleranz
+      const isRatioOk = allowedRatios.some(r => {
+        const lower = r * 0.4;
+        const upper = r * 1.6;
+        return ratio >= lower && ratio <= upper;
+      });
+
+      if (!isRatioOk) {
+        setStatus('Seitenverhältnis erlaubt: 1:1, 16:4, 21:9 (+/- 15%)', true);
+        mapInput.value = '';
+        return;
+      }
+
+      // 3️⃣ Transparenz prüfen (nur für PNG)
+      if (file.type === 'image/png') {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const pixels = ctx.getImageData(0, 0, img.width, img.height).data;
+        let transparent = false;
+        for (let i = 3; i < pixels.length; i += 4) {
+          if (pixels[i] < 255) {
+            transparent = true;
+            break;
+          }
+        }
+        if (transparent) {
+          setStatus('PNG darf keine Transparenz enthalten', true);
+          mapInput.value = '';
+          return;
+        }
+      }
+
+      // 4️⃣ Crop Modal öffnen
+      try {
+        croppedMapBlob = await showMapCropModal(file);
+        const url = URL.createObjectURL(croppedMapBlob);
+        document.getElementById('ccMapImage').src = url;
+        document.getElementById('ccMapFileName').textContent = file.name + ' (zugeschnitten)';
+        document.getElementById('ccMapPreview').style.display = 'block';
+      } catch {
+        croppedMapBlob = null;
+      }
+    };
+
+    img.onerror = () => {
+      setStatus('Ungültige Bilddatei', true);
+      mapInput.value = '';
+    };
   });
 
-  // Load existing campaign for edit mode
   if (isEdit) {
     try {
       const res = await fetch('/api/campaign/' + encodeURIComponent(id) + '?playerId=' + player.id, { cache: 'no-store' });
@@ -136,7 +191,7 @@ export default async function CampaignCreateView({ id }) {
           document.getElementById('ccMapPreview').style.display = 'block';
         }
       }
-    } catch (err) { /* ignore */ }
+    } catch (err) {}
   }
 
   function setStatus(msg, isError) {
@@ -181,13 +236,9 @@ export default async function CampaignCreateView({ id }) {
       if (!res.ok) throw new Error(await res.text() || 'Fehler');
       const campaign = await res.json();
 
-      if (mapInput.files && mapInput.files.length > 0) {
+      if (croppedMapBlob) {
         const formData = new FormData();
-        if (croppedMapBlob) {
-          formData.append('file', croppedMapBlob, 'map-cropped.png');
-        } else {
-          formData.append('file', mapInput.files[0]);
-        }
+        formData.append('file', croppedMapBlob, 'map-cropped.png');
         await fetch('/api/campaign/' + campaign.id + '/upload-map', { method: 'POST', body: formData });
       }
 
@@ -200,4 +251,3 @@ export default async function CampaignCreateView({ id }) {
 
   return () => { destroyHeader(); };
 }
-
