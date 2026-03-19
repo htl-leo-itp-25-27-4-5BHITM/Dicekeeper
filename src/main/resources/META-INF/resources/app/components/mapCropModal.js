@@ -16,6 +16,23 @@ function openCropUI(img, resolve, reject) {
   overlay.className = 'map-crop-overlay';
 
   overlay.innerHTML = `
+    <style>
+      .ratio-box {
+        display: inline-block;
+        padding: 4px 8px;
+        margin: 2px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s;
+      }
+      .ratio-box.active {
+        background-color: #69f0ae;
+        color: #fff;
+        border-color: #69f0ae;
+      }
+    </style>
+
     <div class="map-crop-modal">
       <div class="map-crop-header">
         <h3>🗺️ Karte zuschneiden</h3>
@@ -29,10 +46,10 @@ function openCropUI(img, resolve, reject) {
       <div class="map-crop-controls">
         <span>Seitenverhältnis:</span>
       
-        <div class="ratio-box" data-ratio="1" style="display:inline-block;padding:4px 8px;margin:2px;border:1px solid #ccc;cursor:pointer;">1:1</div>
-        <div class="ratio-box" data-ratio="16/4" style="display:inline-block;padding:4px 8px;margin:2px;border:1px solid #ccc;cursor:pointer;">16:4</div>
-        <div class="ratio-box" data-ratio="21/9" style="display:inline-block;padding:4px 8px;margin:2px;border:1px solid #ccc;cursor:pointer;">21:9</div>
-        <div class="ratio-box" id="customBtn" style="display:inline-block;padding:4px 8px;margin:2px;border:1px solid #ccc;cursor:pointer;">Custom</div>
+        <div class="ratio-box" data-ratio="1">1:1</div>
+        <div class="ratio-box" data-ratio="16/4">16:4</div>
+        <div class="ratio-box" data-ratio="21/9">21:9</div>
+        <div class="ratio-box" id="customBtn">Custom</div>
       
         <label style="margin-left:12px;">
           Größe:
@@ -96,11 +113,11 @@ function openCropUI(img, resolve, reject) {
 
     if (customMode) {
       const maxSize = Math.min(dispW, dispH);
-      const minSize = Math.floor(maxSize * 0.05); // min 5% der Größe
+      const minSize = Math.floor(maxSize * 0.05);
       cropW = Math.floor(minSize + pct * (maxSize - minSize));
-      cropH = cropW; // quadratisch
+      cropH = cropW;
     } else {
-      const { maxW, maxH } = getMaxCropSize();
+      const { maxW } = getMaxCropSize();
       const minCropW = Math.floor(maxW * 0.05);
       cropW = Math.floor(minCropW + pct * (maxW - minCropW));
       cropH = Math.floor(cropW / cropRatio);
@@ -119,13 +136,12 @@ function openCropUI(img, resolve, reject) {
 
       if (div.id === 'customBtn') {
         customMode = true;
-        updateCropFromSlider(); // Slider kontrolliert Größe
       } else {
         customMode = false;
         cropRatio = parseFloat(eval(div.dataset.ratio));
-        updateCropFromSlider();
       }
 
+      updateCropFromSlider();
       div.classList.add('active');
     });
   });
@@ -133,6 +149,14 @@ function openCropUI(img, resolve, reject) {
   function clamp() {
     cropX = Math.max(0, Math.min(dispW - cropW, cropX));
     cropY = Math.max(0, Math.min(dispH - cropH, cropY));
+  }
+
+  function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      mx: e.clientX - rect.left,
+      my: e.clientY - rect.top
+    };
   }
 
   function getResizeDir(mx, my) {
@@ -154,10 +178,7 @@ function openCropUI(img, resolve, reject) {
   }
 
   canvas.addEventListener('mousedown', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
+    const { mx, my } = getMousePos(e);
     const dir = getResizeDir(mx, my);
 
     if (dir && customMode) {
@@ -172,42 +193,45 @@ function openCropUI(img, resolve, reject) {
     }
   });
 
-  canvas.addEventListener('mousemove', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+  // 🔥 WICHTIG: jetzt auf WINDOW statt canvas
+  window.addEventListener('mousemove', e => {
+    if (!dragging && !resizing) return;
+
+    const { mx, my } = getMousePos(e);
 
     if (resizing) {
-      if (resizeDir.includes('r')) cropW = mx - cropX;
-      if (resizeDir.includes('b')) cropH = my - cropY;
+      const minSize = 10;
+
+      if (resizeDir.includes('r')) {
+        cropW = Math.max(minSize, Math.min(mx - cropX, dispW - cropX));
+      }
+      if (resizeDir.includes('b')) {
+        cropH = Math.max(minSize, Math.min(my - cropY, dispH - cropY));
+      }
       if (resizeDir.includes('l')) {
-        cropW += cropX - mx;
-        cropX = mx;
+        const newX = Math.min(Math.max(0, mx), cropX + cropW - minSize);
+        cropW += cropX - newX;
+        cropX = newX;
       }
       if (resizeDir.includes('t')) {
-        cropH += cropY - my;
-        cropY = my;
+        const newY = Math.min(Math.max(0, my), cropY + cropH - minSize);
+        cropH += cropY - newY;
+        cropY = newY;
       }
 
-      clamp();
       draw();
       return;
     }
 
-    if (!dragging) return;
-
-    cropX = dragStart.cx + (mx - dragStart.mx);
-    cropY = dragStart.cy + (my - dragStart.my);
-    clamp();
-    draw();
+    if (dragging) {
+      cropX = Math.max(0, Math.min(dispW - cropW, dragStart.cx + (mx - dragStart.mx)));
+      cropY = Math.max(0, Math.min(dispH - cropH, dragStart.cy + (my - dragStart.my)));
+      draw();
+    }
   });
 
-  canvas.addEventListener('mouseup', () => {
-    dragging = false;
-    resizing = false;
-  });
-
-  canvas.addEventListener('mouseleave', () => {
+  // 🔥 WICHTIG: Maus loslassen überall erkennen
+  window.addEventListener('mouseup', () => {
     dragging = false;
     resizing = false;
   });
@@ -252,8 +276,8 @@ function openCropUI(img, resolve, reject) {
 
     const s = 8;
     ctx.fillStyle = '#69f0ae';
-    [[cropX, cropY], [cropX + cropW, cropY], [cropX, cropY + cropH], [cropX + cropW, cropY + cropH]]
-        .forEach(([x, y]) => ctx.fillRect(x - s / 2, y - s / 2, s, s));
+    [[cropX, cropY],[cropX + cropW, cropY],[cropX, cropY + cropH],[cropX + cropW, cropY + cropH]]
+        .forEach(([x,y]) => ctx.fillRect(x - s/2, y - s/2, s, s));
   }
 
   updateCropFromSlider();
