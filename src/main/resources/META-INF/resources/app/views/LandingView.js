@@ -86,9 +86,9 @@ export default async function LandingView() {
           <h2 class="lp-heading">So funktioniert\u2019s</h2>
           <div class="lp-steps">
             <div class="lp-step">
-              <div class="lp-step-num">1</div>
-              <strong>Anmelden</strong>
-              <span>Profil mit E-Mail erstellen</span>
+            <div class="lp-step-num">1</div>
+              <strong>Einloggen</strong>
+              <span>Mit Keycloak anmelden</span>
             </div>
             <div class="lp-step-line"></div>
             <div class="lp-step">

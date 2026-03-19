@@ -1,7 +1,7 @@
 /**
  * Profile View
  */
-import { requirePlayer, setPlayer, clearPlayer } from '../services/auth.js';
+import { logout, requirePlayer, setPlayer, clearPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { initials } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
@@ -124,7 +124,7 @@ export default async function ProfileView() {
   document.addEventListener('theme:changed', onThemeChangedProfile);
 
   document.getElementById('pvBack').addEventListener('click', () => navigate('/campaigns'));
-  document.getElementById('pvLogout').addEventListener('click', () => { clearPlayer(); navigate('/login'); });
+  document.getElementById('pvLogout').addEventListener('click', logout);
 
   // Cleanup: remove our theme listener and destroy header when view is torn down
   return () => {

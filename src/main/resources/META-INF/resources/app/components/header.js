@@ -38,9 +38,9 @@ export function renderHeader() {
           <div class="user-avatar" id="userAvatar">
             ${player.profilePicture
               ? `<img src="${esc(player.profilePicture)}" alt="Avatar">`
-              : esc((player.username || player.name || 'U').charAt(0).toUpperCase())}
+              : esc((player.name || player.username || 'U').charAt(0).toUpperCase())}
           </div>
-          <span class="user-name">${esc(player.username || player.name || 'User')}</span>
+          <span class="user-name">${esc(player.name || player.username || 'User')}</span>
         </div>
       </div>
     </header>
@@ -193,7 +193,6 @@ export function initHeader() {
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(loadNotificationCount, 30000);
 }
-
 export function destroyHeader() {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
   // remove theme listener if present

@@ -1,7 +1,7 @@
 /**
  * Campaigns List View
  */
-import { requirePlayer, clearPlayer } from '../services/auth.js';
+import { logout, requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
@@ -146,10 +146,9 @@ export default async function CampaignsView() {
   }
 
   document.getElementById('newBtn').addEventListener('click', () => navigate('/campaign/new'));
-  document.getElementById('backLogin').addEventListener('click', () => { clearPlayer(); navigate('/login'); });
+  document.getElementById('backLogin').addEventListener('click', logout);
 
   load();
 
   return () => { destroyHeader(); };
 }
-

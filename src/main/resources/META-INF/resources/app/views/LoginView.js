@@ -1,12 +1,25 @@
 /**
- * Login View – Dicekeeper branded login screen
+ * Login View – Keycloak sign-in entry point
  */
-import { setPlayer } from '../services/auth.js';
+import { clearPlayer, getPlayer, sanitizeRedirectPath, startLogin, syncAuthenticatedPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 
 export default async function LoginView() {
   const app = document.getElementById('app');
   document.body.classList.remove('has-header');
+
+  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const isKeycloakCallback = params.get('kc') === '1';
+  const loggedOut = params.get('logout') === '1';
+  const keycloakError = params.get('kc_error');
+  const keycloakErrorDescription = params.get('kc_error_description');
+  const keycloakSessionExpired = params.get('kc_expired') === '1';
+  const nextPath = sanitizeRedirectPath(params.get('next'), '/campaigns');
+
+  if (getPlayer() && !isKeycloakCallback && !loggedOut && !keycloakError && !keycloakSessionExpired) {
+    navigate(nextPath);
+    return;
+  }
 
   app.innerHTML = `
     <div class="login-page">
@@ -27,13 +40,16 @@ export default async function LoginView() {
         </div>
 
         <div class="login-form-section">
-          <label for="email" class="login-label">E-Mail Adresse</label>
-          <div class="login-input-wrap">
-            <span class="login-input-icon">✉</span>
-            <input type="email" id="email" name="email" class="login-input" placeholder="name@example.com" autocomplete="email" required />
+          <label class="login-label">Account</label>
+          <div class="login-input-wrap" style="padding:16px 18px;">
+            <span class="login-input-icon">🔐</span>
+            <div>
+              <div style="font-weight:600;color:white;">Anmeldung über Keycloak</div>
+              <div style="font-size:0.92rem;color:rgba(255,255,255,0.65);">Du wirst zu deinem zentralen Login weitergeleitet.</div>
+            </div>
           </div>
           <button type="button" class="login-submit" id="loginBtn">
-            <span class="login-submit-text">Anmelden</span>
+            <span class="login-submit-text">Mit Keycloak anmelden</span>
             <span class="login-submit-arrow">→</span>
           </button>
           <div id="loginStatus" class="login-status"></div>
@@ -43,7 +59,6 @@ export default async function LoginView() {
     </div>
   `;
 
-  const emailInput = document.getElementById('email');
   const btn = document.getElementById('loginBtn');
   const statusEl = document.getElementById('loginStatus');
 
@@ -52,39 +67,58 @@ export default async function LoginView() {
     statusEl.className = 'login-status' + (isError ? ' error' : msg ? ' info' : '');
   }
 
-  async function login() {
-    const email = (emailInput.value || '').trim();
-    if (!email) { setStatus('Bitte gib eine E-Mail-Adresse ein.', true); emailInput.focus(); return; }
+  function renderKeycloakError() {
+    if (keycloakSessionExpired) {
+      setStatus('Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.', true);
+      return;
+    }
+
+    if (!keycloakError && !keycloakErrorDescription) {
+      return;
+    }
+
+    if (keycloakErrorDescription === 'authentication_expired') {
+      setStatus('Die Anmeldung in diesem Tab ist abgelaufen. Wenn die Verifizierung bereits im neuen Fenster geklappt hat, kannst du dieses Fenster schließen oder dich hier erneut anmelden.', true);
+      return;
+    }
+
+    const detail = keycloakErrorDescription || keycloakError || 'Unbekannter Fehler';
+    setStatus('Keycloak-Fehler: ' + detail, true);
+  }
+
+  async function completeKeycloakLogin() {
     btn.disabled = true;
-    btn.querySelector('.login-submit-text').textContent = 'Wird angemeldet…';
+    btn.querySelector('.login-submit-text').textContent = 'Authentifiziere…';
     btn.querySelector('.login-submit-arrow').innerHTML = '<span class="login-spinner"></span>';
-    setStatus('');
+    setStatus('Synchronisiere Benutzerprofil…');
     try {
-      const res = await fetch('/api/player/' + encodeURIComponent(email), { cache: 'no-store' });
-      if (!res.ok) {
-        let txt = null;
-        try { txt = await res.text(); } catch (e) {}
-        setStatus('Anmeldung fehlgeschlagen: ' + (txt || res.statusText || ('HTTP ' + res.status)), true);
-        return;
-      }
-      const player = await res.json();
-      setPlayer(player);
-      setStatus('Willkommen zurück! Weiterleitung…');
-      navigate('/campaigns');
+      await syncAuthenticatedPlayer();
+      setStatus('Anmeldung erfolgreich. Weiterleitung…');
+      navigate(nextPath);
     } catch (err) {
       setStatus('Anmeldung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'), true);
     } finally {
       btn.disabled = false;
-      btn.querySelector('.login-submit-text').textContent = 'Anmelden';
+      btn.querySelector('.login-submit-text').textContent = 'Mit Keycloak anmelden';
       btn.querySelector('.login-submit-arrow').textContent = '→';
     }
   }
 
-  btn.addEventListener('click', login);
-  emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); login(); } });
+  btn.addEventListener('click', () => {
+    setStatus('Weiterleitung zu Keycloak…');
+    startLogin(nextPath);
+  });
 
-  // Auto-focus email field
-  setTimeout(() => emailInput.focus(), 100);
+  if (loggedOut) {
+    clearPlayer();
+    setStatus('Du wurdest abgemeldet.');
+  }
+
+  renderKeycloakError();
+
+  if (isKeycloakCallback) {
+    completeKeycloakLogin();
+  }
 
   return () => {};
 }

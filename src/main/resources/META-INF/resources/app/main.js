@@ -2,6 +2,7 @@
  * Dicekeeper SPA – Main Entry Point
  */
 import './services/theme.js';
+import { installAuthFetchInterceptor } from './services/auth.js';
 import { addRoute, startRouter } from './router.js';
 import LandingView from './views/LandingView.js';
 import LoginView from './views/LoginView.js';
@@ -16,6 +17,8 @@ import GMView from './views/GMView.js';
 import PlayerView from './views/PlayerView.js';
 import CockpitView from './views/CockpitView.js';
 import TableView from './views/TableView.js';
+
+installAuthFetchInterceptor();
 
 // Landing
 addRoute('/', () => LandingView());

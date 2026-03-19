@@ -97,3 +97,67 @@ Dicekeeper **ersetzt nicht den Dungeon Master**, sondern versteht sich als **Ass
 - **KI-Features:** OpenAI API
 
 ---
+
+## Lokale Entwicklung mit Keycloak
+
+Für die lokale Entwicklung kann Dicekeeper die produktive PostgreSQL- und Keycloak-Instanz per `kubectl port-forward` aus dem Schul-Cluster verwenden.
+
+### Voraussetzungen
+
+- Zugriff auf den richtigen Kubernetes-Cluster und Namespace
+- funktionierendes `kubectl`
+- eine lokale `.env` Datei im Projektverzeichnis
+
+### Verwendete lokale Ports
+
+- PostgreSQL: `localhost:5432`
+- Keycloak: `localhost:8000`
+- Dicekeeper lokal: `http://localhost:8080`
+
+### Port-Forward starten
+
+Das Skript [scripts/port-forward-start.sh](/Users/blauregen/School/SEW/Dicekeeper/scripts/port-forward-start.sh) startet jetzt beide Port-Forwards:
+
+- `svc/postgres` auf `5432`
+- `svc/keycloak` auf `8000`
+
+Direkt starten mit:
+
+```bash
+./scripts/port-forward-start.sh
+```
+
+Oder wie bisher über Quarkus Dev Mode:
+
+```bash
+./mvnw quarkus:dev
+```
+
+### Benötigte `.env` Werte
+
+Beispiel:
+
+```env
+KEYCLOAK_AUTH_SERVER_URL=http://localhost:8000/realms/dicekeeper
+KEYCLOAK_CLIENT_ID=dicekeeper-web
+KEYCLOAK_CLIENT_SECRET=...
+KEYCLOAK_STATE_SECRET=...
+```
+
+### Keycloak Client Einstellungen für lokal
+
+Der Keycloak-Client muss Redirects für die lokale App erlauben. Mindestens diese URLs sollten im Client eingetragen sein:
+
+- Valid redirect URIs: `http://localhost:8080/api/auth/callback`
+- Valid post logout redirect URIs: `http://localhost:8080/*`
+- Web origins: `http://localhost:8080`
+
+Dicekeeper verwendet bewusst einen festen OIDC-Callback statt dynamischer Redirect-URIs. Dadurch muss im Keycloak-Client lokal genau `http://localhost:8080/api/auth/callback` erlaubt sein.
+
+### Login Flow lokal testen
+
+1. `kubectl` Verbindung prüfen.
+2. `./scripts/port-forward-start.sh` oder `./mvnw quarkus:dev` starten.
+3. [http://localhost:8080](http://localhost:8080) öffnen.
+4. Auf Login klicken.
+5. Nach erfolgreichem Keycloak-Login wirst du zurück zu Dicekeeper geleitet und der Player wird automatisch synchronisiert.

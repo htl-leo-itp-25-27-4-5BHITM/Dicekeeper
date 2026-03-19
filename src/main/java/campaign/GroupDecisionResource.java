@@ -1,19 +1,30 @@
 package campaign;
 
+import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import security.SecurityIdentityService;
 
 import java.util.List;
 
 @Path("/api/campaign/{campaignId}/decisions")
 @Produces(MediaType.APPLICATION_JSON)
+@Authenticated
 public class GroupDecisionResource {
+
+    @Inject
+    SecurityIdentityService securityIdentityService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
 
     @GET
     public Response getDecisions(@PathParam("campaignId") Long campaignId,
-                                 @QueryParam("playerId") Long playerId) {
+                                 @QueryParam("playerId") Long ignoredPlayerId) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -21,13 +32,7 @@ public class GroupDecisionResource {
                     .build();
         }
 
-        // Only DM can see decisions
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
+        Long playerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
@@ -43,7 +48,7 @@ public class GroupDecisionResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
     public Response createDecision(@PathParam("campaignId") Long campaignId,
-                                   @QueryParam("playerId") Long playerId,
+                                   @QueryParam("playerId") Long ignoredPlayerId,
                                    GroupDecisionDTO dto) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
@@ -52,13 +57,7 @@ public class GroupDecisionResource {
                     .build();
         }
 
-        // Only DM can create decisions
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
+        Long playerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
@@ -88,7 +87,7 @@ public class GroupDecisionResource {
     @Transactional
     public Response updateDecision(@PathParam("campaignId") Long campaignId,
                                    @PathParam("decisionId") Long decisionId,
-                                   @QueryParam("playerId") Long playerId,
+                                   @QueryParam("playerId") Long ignoredPlayerId,
                                    GroupDecisionDTO dto) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
@@ -97,13 +96,7 @@ public class GroupDecisionResource {
                     .build();
         }
 
-        // Only DM can update decisions
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
+        Long playerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
@@ -145,7 +138,7 @@ public class GroupDecisionResource {
     @Transactional
     public Response deleteDecision(@PathParam("campaignId") Long campaignId,
                                    @PathParam("decisionId") Long decisionId,
-                                   @QueryParam("playerId") Long playerId) {
+                                   @QueryParam("playerId") Long ignoredPlayerId) {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -153,13 +146,7 @@ public class GroupDecisionResource {
                     .build();
         }
 
-        // Only DM can delete decisions
-        if (playerId == null) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Player ID required")
-                    .build();
-        }
-
+        Long playerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
@@ -178,4 +165,3 @@ public class GroupDecisionResource {
         return Response.noContent().build();
     }
 }
-
