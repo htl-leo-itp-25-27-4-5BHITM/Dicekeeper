@@ -21,4 +21,14 @@ spec:
                 name: dicekeeper
                 port:
                   number: 80
+    - host: auth.dicekeeper.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080
   # No cert-manager available — TLS is handled by Cloudflare proxy (free SSL)
