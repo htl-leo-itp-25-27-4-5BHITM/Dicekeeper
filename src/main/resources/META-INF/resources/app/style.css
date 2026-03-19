@@ -331,6 +331,60 @@ body.has-header { padding-top: 70px; }
   background: linear-gradient(180deg, transparent 0%, transparent 50%, var(--lp-footer-bg) 100%);
 }
 
+/* ===== LANDING WASH ZONE ===== */
+/* This zone wraps the Features, Steps and CTA sections. A single pseudo-element
+   creates a seamless linear gradient wash spanning the whole zone. It uses
+   theme variables so the look is identical for the green and purple themes. */
+.lp-wash-zone {
+  position: relative;
+  z-index: 1; /* content above the wash */
+  overflow: visible;
+}
+
+.lp-wash-zone::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* place the gradient so it covers from the top of the features section
+     down to the bottom of the CTA. We use top: 0; bottom: 0 to span the
+     entire wrapper and let the wrapper's content define the height. */
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0; /* sit behind the wrapper content */
+
+  /* Seamless linear gradient that flows vertically. The first color stop is
+     slightly offset to avoid a hard cut at the very top, and we keep very
+     subtle blending so contrast is preserved. Uses theme RGB variables. */
+  background: linear-gradient(180deg,
+    rgba(var(--gradient-start-rgb), 0.14) 0%,
+    rgba(var(--primary-rgb), 0.07) 35%,
+    rgba(var(--primary-rgb), 0.06) 65%,
+    rgba(0,0,0,0.0) 100%);
+
+  mix-blend-mode: multiply; /* gentle tinting */
+  transition: background 0.35s ease, opacity 0.25s ease;
+}
+
+/* Ensure feature cards remain above the wash and are readable */
+.lp-feature-card, .lp-steps, .lp-cta-inner, .lp-feature-icon {
+  position: relative; z-index: 1;
+}
+
+/* Fine-tune CTA contrast so the button remains clear on both themes */
+.lp-cta-inner .lp-btn-primary {
+  box-shadow: 0 6px 30px rgba(var(--gradient-start-rgb), 0.22);
+}
+
+/* Respect prefers-reduced-motion for washes that may animate on theme switch */
+@media (prefers-reduced-motion: reduce) {
+  .lp-wash-zone::before { transition: none !important; }
+}
+
+/* Add an explicit no-wash helper (if some section must not show tint) */
+.no-lp-wash { z-index: 3; position: relative; }
+
 /* ---- Navbar ---- */
 .lp-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -380,7 +434,9 @@ body.has-header { padding-top: 70px; }
 }
 .lp-hero-bg {
   position: absolute; inset: 0; z-index: 0;
+  /* Theme-aware linear gradient overlay first, then subtle radials and darken layer */
   background:
+    linear-gradient(135deg, rgba(var(--gradient-start-rgb), 0.08), rgba(var(--gradient-start-rgb), 0.03) 40%, rgba(0,0,0,0) 70%),
     radial-gradient(ellipse 60% 50% at 50% 40%, rgba(var(--primary-rgb),0.08) 0%, transparent 70%),
     radial-gradient(ellipse 40% 60% at 20% 80%, rgba(119,8,199,0.05) 0%, transparent 70%),
     linear-gradient(180deg, transparent 0%, rgba(var(--lp-dark-rgb),0.6) 100%);
@@ -404,6 +460,49 @@ body.has-header { padding-top: 70px; }
 @keyframes lpScrollBounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* Animated hero line for landing page hero section */
+.lp-hero-line {
+  width: 220px; height: 6px; margin: 18px auto 22px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--gradient-start) 0%, var(--gradient-end) 60%, rgba(255,255,255,0.04) 100%);
+  background-size: 200% 100%;
+  background-position: 0 50%;
+  box-shadow: 0 6px 18px rgba(var(--gradient-start-rgb),0.07) inset, 0 6px 18px rgba(var(--gradient-start-rgb),0.06);
+  animation: line-gradient-run 6s linear infinite;
+}
+
+/* Generic helper so other elements can reuse the same animated-gradient behavior */
+.animated-line {
+  background-size: 200% 100%;
+  background-position: 0 50%;
+  animation: line-gradient-run 6s linear infinite;
+}
+
+@keyframes line-gradient-run {
+  /* 0% shows a very short cut (invisible) then quickly becomes visible and moves continuously */
+  0% {
+    background-position: 0 50%;
+    opacity: 0;
+  }
+  2% {
+    background-position: 10% 50%;
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% 50%;
+    opacity: 1;
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animated-line,
+  .lp-hero-line { animation: none !important; }
+}
+
+@media (max-width: 768px) {
+  .lp-hero-line { width: 140px; height: 4px; margin: 12px auto 16px; }
 }
 
 /* ---- Shared ---- */

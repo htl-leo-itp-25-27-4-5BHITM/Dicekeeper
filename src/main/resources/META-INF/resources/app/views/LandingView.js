@@ -39,6 +39,7 @@ export default async function LandingView() {
         <div class="lp-hero-bg"></div>
         <div class="lp-hero-content">
           <h1>Dein digitaler<br>Spieltisch</h1>
+          <div class="lp-hero-line animated-line" aria-hidden="true"></div>
           <p>Pen&nbsp;&&nbsp;Paper Abenteuer online erleben. Kampagnen leiten, Helden erschaffen, gemeinsam w\u00fcrfeln\u00a0\u2013 alles an einem Ort.</p>
           <div class="lp-hero-actions">
             <button class="lp-btn-primary" id="lpHeroCta">Kostenlos starten</button>
@@ -109,7 +110,7 @@ export default async function LandingView() {
             </div>
           </div>
         </div>
-      </section>
+    
 
       <!-- Final CTA -->
       <section class="lp-section lp-cta-section">
@@ -118,7 +119,7 @@ export default async function LandingView() {
           <p>Erstelle deinen Account in Sekunden und starte deine erste Kampagne.</p>
           <button class="lp-btn-primary" id="lpBottomCta">Jetzt loslegen</button>
         </div>
-      </section>
+      </section>  </section>
 
       <!-- Footer -->
       <footer class="lp-footer">
@@ -139,10 +140,21 @@ export default async function LandingView() {
   // Theme toggle
   const themeBtn = document.getElementById('lpThemeToggle');
   if (getTheme() === 'accessible') themeBtn.classList.add('active');
+  themeBtn.setAttribute('aria-pressed', getTheme() === 'accessible');
   themeBtn.addEventListener('click', () => {
     const next = toggleTheme();
     themeBtn.classList.toggle('active', next === 'accessible');
+    themeBtn.setAttribute('aria-pressed', next === 'accessible');
   });
 
-  return () => {};
+  // Listen for global theme changes to stay in sync when toggled elsewhere
+  function onThemeChanged(e) {
+    const theme = e?.detail?.theme || getTheme();
+    themeBtn.classList.toggle('active', theme === 'accessible');
+    themeBtn.setAttribute('aria-pressed', theme === 'accessible');
+  }
+  document.addEventListener('theme:changed', onThemeChanged);
+
+  // Cleanup handler on view destroy if needed
+  return () => { document.removeEventListener('theme:changed', onThemeChanged); };
 }

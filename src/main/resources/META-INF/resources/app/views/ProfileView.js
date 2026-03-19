@@ -112,8 +112,23 @@ export default async function ProfileView() {
     btn.setAttribute('aria-checked', newTheme === 'accessible');
   });
 
+  // Listen for global theme changes and sync UI
+  function onThemeChangedProfile(e) {
+    const theme = e?.detail?.theme || getTheme();
+    const btn = document.getElementById('pvThemeToggle');
+    if (btn) {
+      btn.classList.toggle('active', theme === 'accessible');
+      btn.setAttribute('aria-checked', theme === 'accessible');
+    }
+  }
+  document.addEventListener('theme:changed', onThemeChangedProfile);
+
   document.getElementById('pvBack').addEventListener('click', () => navigate('/campaigns'));
   document.getElementById('pvLogout').addEventListener('click', () => { clearPlayer(); navigate('/login'); });
 
-  return () => { destroyHeader(); };
+  // Cleanup: remove our theme listener and destroy header when view is torn down
+  return () => {
+    document.removeEventListener('theme:changed', onThemeChangedProfile);
+    destroyHeader();
+  };
 }

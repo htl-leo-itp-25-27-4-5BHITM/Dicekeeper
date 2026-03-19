@@ -22,6 +22,16 @@ export function toggleTheme() {
 
 export function applyTheme(theme) {
   document.body.classList.toggle('theme-accessible', theme === 'accessible');
+  // Dispatch an event for other components to sync their UI (toggle buttons etc.)
+  try {
+    const ev = new CustomEvent('theme:changed', { detail: { theme } });
+    document.dispatchEvent(ev);
+  } catch (e) {
+    // older browsers - fallback
+    const ev2 = document.createEvent('CustomEvent');
+    ev2.initCustomEvent('theme:changed', true, true, { theme });
+    document.dispatchEvent(ev2);
+  }
 }
 
 /**

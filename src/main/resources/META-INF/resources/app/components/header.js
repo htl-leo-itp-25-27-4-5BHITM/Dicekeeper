@@ -27,7 +27,7 @@ export function renderHeader() {
         <a href="#/campaigns" class="header-logo">🎲 Dicekeeper</a>
       </div>
       <div class="header-right">
-        <button class="header-a11y-btn${getTheme() === 'accessible' ? ' active' : ''}" id="headerThemeToggle" title="Barrierefreie Farben">
+        <button class="header-a11y-btn${getTheme() === 'accessible' ? ' active' : ''}" id="headerThemeToggle" title="Barrierefreie Farben" aria-pressed="${getTheme() === 'accessible'}">
           <span class="header-a11y-icon">👁</span>
         </button>
         <button class="notification-btn" id="notificationBtn" title="Notifications">
@@ -100,6 +100,16 @@ export function initHeader() {
       const next = toggleTheme();
       headerThemeToggle.classList.toggle('active', next === 'accessible');
     });
+
+    // Sync aria/visual when other toggles change theme
+    function onThemeChangedHeader(e) {
+      const theme = e?.detail?.theme || getTheme();
+      headerThemeToggle.classList.toggle('active', theme === 'accessible');
+      headerThemeToggle.setAttribute('aria-pressed', theme === 'accessible');
+    }
+    document.addEventListener('theme:changed', onThemeChangedHeader);
+    // store for cleanup
+    headerThemeToggle._onThemeChanged = onThemeChangedHeader;
   }
 
   async function loadNotificationCount() {
@@ -186,5 +196,10 @@ export function initHeader() {
 
 export function destroyHeader() {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  // remove theme listener if present
+  const headerToggle = document.getElementById('headerThemeToggle');
+  if (headerToggle && headerToggle._onThemeChanged) {
+    document.removeEventListener('theme:changed', headerToggle._onThemeChanged);
+    delete headerToggle._onThemeChanged;
+  }
 }
-
