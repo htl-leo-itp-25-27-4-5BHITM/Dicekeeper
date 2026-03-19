@@ -45,12 +45,10 @@ function openCropUI(img, resolve, reject) {
 
       <div class="map-crop-controls">
         <span>Seitenverhältnis:</span>
-      
         <div class="ratio-box" data-ratio="1">1:1</div>
         <div class="ratio-box" data-ratio="16/4">16:4</div>
         <div class="ratio-box" data-ratio="21/9">21:9</div>
         <div class="ratio-box" id="customBtn">Custom</div>
-      
         <label style="margin-left:12px;">
           Größe:
           <input type="range" id="mcSizeSlider" min="5" max="100" value="80">
@@ -92,7 +90,6 @@ function openCropUI(img, resolve, reject) {
   let resizing = false;
   let resizeDir = null;
   let dragStart = {};
-
   let userMoved = false;
 
   const slider = document.getElementById('mcSizeSlider');
@@ -105,7 +102,6 @@ function openCropUI(img, resolve, reject) {
   function getMaxCropSize(ratio) {
     let maxW = dispW;
     let maxH = maxW / ratio;
-
     if (maxH > dispH) {
       maxH = dispH;
       maxW = maxH * ratio;
@@ -115,19 +111,16 @@ function openCropUI(img, resolve, reject) {
 
   function updateCropFromSlider() {
     const pct = slider.value / 100;
-
     let newW, newH;
 
     if (customMode) {
       const { maxW } = getMaxCropSize(customRatio);
       const minW = Math.floor(maxW * 0.05);
-
       newW = Math.floor(minW + pct * (maxW - minW));
       newH = Math.floor(newW / customRatio);
     } else {
       const { maxW } = getMaxCropSize(cropRatio);
       const minW = Math.floor(maxW * 0.05);
-
       newW = Math.floor(minW + pct * (maxW - minW));
       newH = Math.floor(newW / cropRatio);
     }
@@ -135,12 +128,16 @@ function openCropUI(img, resolve, reject) {
     cropW = newW;
     cropH = newH;
 
-    if (!userMoved && !customMode) {
-      centerCrop();
-    }
-
+    if (!userMoved && !customMode) centerCrop();
     clamp();
     draw();
+  }
+
+  function updateSliderFromCrop() {
+    const ratio = customMode ? customRatio : cropRatio;
+    const { maxW } = getMaxCropSize(ratio);
+    const minW = Math.floor(maxW * 0.05);
+    slider.value = Math.floor(((cropW - minW) / (maxW - minW)) * 100);
   }
 
   slider.addEventListener('input', updateCropFromSlider);
@@ -151,22 +148,18 @@ function openCropUI(img, resolve, reject) {
 
       if (div.id === 'customBtn') {
         customMode = true;
-
-        // 👉 IMMER reset auf 1:1, 40%, zentriert
-        const size = Math.floor(Math.min(dispW, dispH) * 0.4);
+        customRatio = 1; // Quadrat
+        const size = Math.floor(Math.min(dispW, dispH) * 0.4); // 40% des Bildes
         cropW = size;
         cropH = size;
-
-        centerCrop();
-
-        customRatio = 1;
+        centerCrop(); // zentrieren
         userMoved = false;
 
-        draw();
+        updateSliderFromCrop(); // Slider anpassen nach Boxgröße
+        draw(); // Box rendern
       } else {
         customMode = false;
         cropRatio = parseFloat(eval(div.dataset.ratio));
-
         userMoved = false;
         updateCropFromSlider();
       }
@@ -178,17 +171,13 @@ function openCropUI(img, resolve, reject) {
   function clamp() {
     if (cropX + cropW > dispW) cropX = dispW - cropW;
     if (cropY + cropH > dispH) cropY = dispH - cropH;
-
     cropX = Math.max(0, cropX);
     cropY = Math.max(0, cropY);
   }
 
   function getMousePos(e) {
     const rect = canvas.getBoundingClientRect();
-    return {
-      mx: e.clientX - rect.left,
-      my: e.clientY - rect.top
-    };
+    return { mx: e.clientX - rect.left, my: e.clientY - rect.top };
   }
 
   function getResizeDir(mx, my) {
@@ -227,19 +216,37 @@ function openCropUI(img, resolve, reject) {
   });
 
   window.addEventListener('mousemove', e => {
-    if (!dragging && !resizing) return;
-
     const { mx, my } = getMousePos(e);
+
+    // Cursoranzeige
+    if (mx > cropX && mx < cropX + cropW && my > cropY && my < cropY + cropH) {
+      canvas.style.cursor = 'move';
+    } else {
+      canvas.style.cursor = 'default';
+    }
+
+    if (customMode) {
+      const dir = getResizeDir(mx, my);
+      if (dir) {
+        switch (dir) {
+          case 'tl':
+          case 'br': canvas.style.cursor = 'nwse-resize'; break;
+          case 'tr':
+          case 'bl': canvas.style.cursor = 'nesw-resize'; break;
+          case 'l':
+          case 'r': canvas.style.cursor = 'ew-resize'; break;
+          case 't':
+          case 'b': canvas.style.cursor = 'ns-resize'; break;
+        }
+      }
+    }
+
+    if (!dragging && !resizing) return;
 
     if (resizing) {
       const minSize = 10;
-
-      if (resizeDir.includes('r')) {
-        cropW = Math.max(minSize, Math.min(mx - cropX, dispW - cropX));
-      }
-      if (resizeDir.includes('b')) {
-        cropH = Math.max(minSize, Math.min(my - cropY, dispH - cropY));
-      }
+      if (resizeDir.includes('r')) cropW = Math.max(minSize, Math.min(mx - cropX, dispW - cropX));
+      if (resizeDir.includes('b')) cropH = Math.max(minSize, Math.min(my - cropY, dispH - cropY));
       if (resizeDir.includes('l')) {
         const newX = Math.min(Math.max(0, mx), cropX + cropW - minSize);
         cropW += cropX - newX;
@@ -253,6 +260,7 @@ function openCropUI(img, resolve, reject) {
 
       if (customMode && cropH !== 0) {
         customRatio = cropW / cropH;
+        updateSliderFromCrop();
       }
 
       draw();
@@ -266,16 +274,9 @@ function openCropUI(img, resolve, reject) {
     }
   });
 
-  window.addEventListener('mouseup', () => {
-    dragging = false;
-    resizing = false;
-  });
+  window.addEventListener('mouseup', () => { dragging = false; resizing = false; });
 
-  document.getElementById('mcCancel').onclick = () => {
-    overlay.remove();
-    reject(new Error('Cancelled'));
-  };
-
+  document.getElementById('mcCancel').onclick = () => { overlay.remove(); reject(new Error('Cancelled')); };
   document.getElementById('mcConfirm').onclick = () => {
     const srcX = Math.floor(cropX / scale);
     const srcY = Math.floor(cropY / scale);
@@ -289,10 +290,7 @@ function openCropUI(img, resolve, reject) {
     const outCtx = outCanvas.getContext('2d');
     outCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
-    outCanvas.toBlob(blob => {
-      overlay.remove();
-      resolve(blob);
-    }, 'image/png', 0.92);
+    outCanvas.toBlob(blob => { overlay.remove(); resolve(blob); }, 'image/png', 0.92);
   };
 
   function draw() {
