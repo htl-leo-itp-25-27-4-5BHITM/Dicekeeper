@@ -80,6 +80,8 @@ function openCropUI(img, resolve, reject) {
   canvas.height = dispH;
 
   let cropRatio = 1;
+  let customRatio = 1;
+
   let cropW = dispW * 0.8;
   let cropH = dispH * 0.8;
   let cropX = 0;
@@ -91,6 +93,8 @@ function openCropUI(img, resolve, reject) {
   let resizeDir = null;
   let dragStart = {};
 
+  let userMoved = false;
+
   const slider = document.getElementById('mcSizeSlider');
 
   function centerCrop() {
@@ -98,12 +102,13 @@ function openCropUI(img, resolve, reject) {
     cropY = Math.floor((dispH - cropH) / 2);
   }
 
-  function getMaxCropSize() {
+  function getMaxCropSize(ratio) {
     let maxW = dispW;
-    let maxH = maxW / cropRatio;
+    let maxH = maxW / ratio;
+
     if (maxH > dispH) {
       maxH = dispH;
-      maxW = maxH * cropRatio;
+      maxW = maxH * ratio;
     }
     return { maxW, maxH };
   }
@@ -111,19 +116,29 @@ function openCropUI(img, resolve, reject) {
   function updateCropFromSlider() {
     const pct = slider.value / 100;
 
+    let newW, newH;
+
     if (customMode) {
-      const maxSize = Math.min(dispW, dispH);
-      const minSize = Math.floor(maxSize * 0.05);
-      cropW = Math.floor(minSize + pct * (maxSize - minSize));
-      cropH = cropW;
+      const { maxW } = getMaxCropSize(customRatio);
+      const minW = Math.floor(maxW * 0.05);
+
+      newW = Math.floor(minW + pct * (maxW - minW));
+      newH = Math.floor(newW / customRatio);
     } else {
-      const { maxW } = getMaxCropSize();
-      const minCropW = Math.floor(maxW * 0.05);
-      cropW = Math.floor(minCropW + pct * (maxW - minCropW));
-      cropH = Math.floor(cropW / cropRatio);
+      const { maxW } = getMaxCropSize(cropRatio);
+      const minW = Math.floor(maxW * 0.05);
+
+      newW = Math.floor(minW + pct * (maxW - minW));
+      newH = Math.floor(newW / cropRatio);
     }
 
-    centerCrop();
+    cropW = newW;
+    cropH = newH;
+
+    if (!userMoved && !customMode) {
+      centerCrop();
+    }
+
     clamp();
     draw();
   }
@@ -136,19 +151,36 @@ function openCropUI(img, resolve, reject) {
 
       if (div.id === 'customBtn') {
         customMode = true;
+
+        // 👉 IMMER reset auf 1:1, 40%, zentriert
+        const size = Math.floor(Math.min(dispW, dispH) * 0.4);
+        cropW = size;
+        cropH = size;
+
+        centerCrop();
+
+        customRatio = 1;
+        userMoved = false;
+
+        draw();
       } else {
         customMode = false;
         cropRatio = parseFloat(eval(div.dataset.ratio));
+
+        userMoved = false;
+        updateCropFromSlider();
       }
 
-      updateCropFromSlider();
       div.classList.add('active');
     });
   });
 
   function clamp() {
-    cropX = Math.max(0, Math.min(dispW - cropW, cropX));
-    cropY = Math.max(0, Math.min(dispH - cropH, cropY));
+    if (cropX + cropW > dispW) cropX = dispW - cropW;
+    if (cropY + cropH > dispH) cropY = dispH - cropH;
+
+    cropX = Math.max(0, cropX);
+    cropY = Math.max(0, cropY);
   }
 
   function getMousePos(e) {
@@ -189,11 +221,11 @@ function openCropUI(img, resolve, reject) {
 
     if (mx > cropX && mx < cropX + cropW && my > cropY && my < cropY + cropH) {
       dragging = true;
+      userMoved = true;
       dragStart = { mx, my, cx: cropX, cy: cropY };
     }
   });
 
-  // 🔥 WICHTIG: jetzt auf WINDOW statt canvas
   window.addEventListener('mousemove', e => {
     if (!dragging && !resizing) return;
 
@@ -219,6 +251,10 @@ function openCropUI(img, resolve, reject) {
         cropY = newY;
       }
 
+      if (customMode && cropH !== 0) {
+        customRatio = cropW / cropH;
+      }
+
       draw();
       return;
     }
@@ -230,7 +266,6 @@ function openCropUI(img, resolve, reject) {
     }
   });
 
-  // 🔥 WICHTIG: Maus loslassen überall erkennen
   window.addEventListener('mouseup', () => {
     dragging = false;
     resizing = false;
