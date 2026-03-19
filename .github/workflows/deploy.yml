@@ -60,6 +60,8 @@ jobs:
             --from-literal=KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }} \
             --from-literal=KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }} \
             --from-literal=KEYCLOAK_STATE_SECRET=${{ secrets.KEYCLOAK_STATE_SECRET }}
+          kubectl -n $NAMESPACE apply -f k8s/keycloak-service.yaml
+          kubectl -n $NAMESPACE apply -f k8s/keycloak-deployment.yaml
           kubectl -n $NAMESPACE apply -f k8s/pvc.yaml
           kubectl -n $NAMESPACE apply -f k8s/service.yaml
           kubectl -n $NAMESPACE apply -f k8s/deployment.yaml
@@ -72,6 +74,7 @@ jobs:
 
       - name: Wait for rollout
         run: |
+          kubectl -n $NAMESPACE rollout status deployment/keycloak --timeout=180s
           kubectl -n $NAMESPACE rollout status deployment/dicekeeper --timeout=120s
 
       - name: Purge Cloudflare cache

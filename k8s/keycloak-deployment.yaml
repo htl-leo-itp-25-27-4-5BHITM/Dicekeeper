@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: student-it200233
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.5.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - start
+          env:
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HOSTNAME
+              value: https://auth.dicekeeper.net
+          envFrom:
+            - secretRef:
+                name: keycloak-secret
+          ports:
+            - containerPort: 8080
