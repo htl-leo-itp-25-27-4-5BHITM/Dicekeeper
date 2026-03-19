@@ -64,13 +64,8 @@ jobs:
           kubectl -n $NAMESPACE apply -f k8s/keycloak-deployment.yaml
           kubectl -n $NAMESPACE apply -f k8s/pvc.yaml
           kubectl -n $NAMESPACE apply -f k8s/service.yaml
-          kubectl -n $NAMESPACE apply -f k8s/deployment.yaml
+          sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:latest|image: $IMAGE:${{ github.sha }}|" k8s/deployment.yaml | kubectl -n $NAMESPACE apply -f -
           kubectl -n $NAMESPACE apply -f k8s/ingress.yaml
-
-      - name: Update deployment image
-        run: |
-          kubectl -n $NAMESPACE set image deployment/dicekeeper \
-            dicekeeper=${{ env.IMAGE }}:${{ github.sha }}
 
       - name: Wait for rollout
         run: |
