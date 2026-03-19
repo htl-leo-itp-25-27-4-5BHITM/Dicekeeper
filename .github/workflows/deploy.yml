@@ -54,6 +54,12 @@ jobs:
           kubectl -n $NAMESPACE create secret generic dicekeeper-db-secret \
             --from-literal=username=${{ secrets.DB_USERNAME }} \
             --from-literal=password=${{ secrets.DB_PASSWORD }}
+          kubectl -n $NAMESPACE delete secret dicekeeper-secret --ignore-not-found
+          kubectl -n $NAMESPACE create secret generic dicekeeper-secret \
+            --from-literal=KEYCLOAK_AUTH_SERVER_URL=${{ secrets.KEYCLOAK_AUTH_SERVER_URL }} \
+            --from-literal=KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }} \
+            --from-literal=KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }} \
+            --from-literal=KEYCLOAK_STATE_SECRET=${{ secrets.KEYCLOAK_STATE_SECRET }}
           kubectl -n $NAMESPACE apply -f k8s/pvc.yaml
           kubectl -n $NAMESPACE apply -f k8s/service.yaml
           kubectl -n $NAMESPACE apply -f k8s/deployment.yaml
