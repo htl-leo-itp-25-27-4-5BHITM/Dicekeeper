@@ -100,7 +100,7 @@ Dicekeeper **ersetzt nicht den Dungeon Master**, sondern versteht sich als **Ass
 
 ## Lokale Entwicklung mit Keycloak
 
-Für die lokale Entwicklung kann Dicekeeper die produktive PostgreSQL- und Keycloak-Instanz per `kubectl port-forward` aus dem Schul-Cluster verwenden.
+Für die lokale Entwicklung läuft der Browser-Login standardmäßig über `http://localhost:8000`. Dieses lokale Endpoint ist ein kleiner Reverse-Proxy auf das gemeinsame Keycloak unter `https://auth.dicekeeper.net`, damit lokale Authentifizierung konsequent auf `localhost` bleibt. PostgreSQL kann weiterhin per `kubectl port-forward` aus dem Schul-Cluster verwendet werden.
 
 ### Voraussetzungen
 
@@ -111,20 +111,26 @@ Für die lokale Entwicklung kann Dicekeeper die produktive PostgreSQL- und Keycl
 ### Verwendete lokale Ports
 
 - PostgreSQL: `localhost:5432`
-- Keycloak: `localhost:8000`
+- Keycloak (optional): `localhost:8000`
 - Dicekeeper lokal: `http://localhost:8080`
 
 ### Port-Forward starten
 
-Das Skript [scripts/port-forward-start.sh](/Users/blauregen/School/SEW/Dicekeeper/scripts/port-forward-start.sh) startet jetzt beide Port-Forwards:
+Das Skript [scripts/port-forward-start.sh](/Users/blauregen/School/SEW/Dicekeeper/scripts/port-forward-start.sh) startet standardmäßig:
 
 - `svc/postgres` auf `5432`
-- `svc/keycloak` auf `8000`
+- einen lokalen Keycloak-Proxy auf `localhost:8000`
 
 Direkt starten mit:
 
 ```bash
 ./scripts/port-forward-start.sh
+```
+
+Falls du statt des lokalen Proxys einen rohen Keycloak-Port-Forward auf `localhost:8000` willst, aktiviere ihn explizit:
+
+```bash
+PORT_FORWARD_KEYCLOAK=1 ./scripts/port-forward-start.sh
 ```
 
 Oder wie bisher über Quarkus Dev Mode:
@@ -138,11 +144,13 @@ Oder wie bisher über Quarkus Dev Mode:
 Beispiel:
 
 ```env
-KEYCLOAK_AUTH_SERVER_URL=http://localhost:8000/realms/dicekeeper
+DEV_KEYCLOAK_AUTH_SERVER_URL=http://localhost:8000/realms/dicekeeper
 KEYCLOAK_CLIENT_ID=dicekeeper-web
 KEYCLOAK_CLIENT_SECRET=...
 KEYCLOAK_STATE_SECRET=...
 ```
+
+Wenn du stattdessen gegen eine andere lokale Keycloak-Instanz oder einen anderen Port entwickeln willst, passe `DEV_KEYCLOAK_AUTH_SERVER_URL` entsprechend an, zum Beispiel auf `http://localhost:8180/realms/dicekeeper`.
 
 ### Keycloak Client Einstellungen für lokal
 
