@@ -3,6 +3,7 @@
 target
 .portforward.pid
 .portforward-keycloak.pid
+.keycloak-local-proxy.pid
 mvnw
 mvnw.cmd
 .env
