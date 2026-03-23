@@ -27,9 +27,7 @@ function openCropUI(img, resolve, reject) {
         transition: all 0.2s;
       }
       .ratio-box.active {
-        background-color: #69f0ae;
         color: #fff;
-        border-color: #69f0ae;
       }
     </style>
 
@@ -66,6 +64,7 @@ function openCropUI(img, resolve, reject) {
 
   const canvas = document.getElementById('mcCanvas');
   const ctx = canvas.getContext('2d');
+  const ratioBoxes = overlay.querySelectorAll('.ratio-box');
 
   const maxW = Math.min(600, window.innerWidth - 80);
   const maxH = Math.min(500, window.innerHeight - 250);
@@ -142,29 +141,66 @@ function openCropUI(img, resolve, reject) {
 
   slider.addEventListener('input', updateCropFromSlider);
 
-  overlay.querySelectorAll('.ratio-box').forEach(div => {
+  // Theme-Farben
+  function getThemeColor() {
+    const theme = localStorage.getItem('dicekeeper-theme') || 'default';
+    if (theme === 'accessible') return '#7708c7b8';
+    return '#69f0ae';
+  }
+
+  function getLightThemeColor() {
+    const theme = localStorage.getItem('dicekeeper-theme') || 'default';
+    if (theme === 'accessible') return '#caa1f3';
+    return '#b2f5d4';
+  }
+
+  // Initiale hellen Farben setzen
+  ratioBoxes.forEach(div => {
+    div.style.backgroundColor = getLightThemeColor();
+    div.style.borderColor = getLightThemeColor();
+    div.style.color = '#000';
+  });
+
+  let activeBox = ratioBoxes[0]; // start active
+  setActiveBox(activeBox);
+
+  function setActiveBox(div) {
+    // alte Box zurücksetzen
+    if (activeBox && activeBox !== div) {
+      activeBox.style.backgroundColor = getLightThemeColor();
+      activeBox.style.borderColor = getLightThemeColor();
+      activeBox.style.color = '#000';
+      activeBox.classList.remove('active');
+    }
+
+    activeBox = div;
+    const accent = getThemeColor();
+    div.classList.add('active');
+    div.style.backgroundColor = accent;
+    div.style.borderColor = accent;
+    div.style.color = '#fff';
+  }
+
+  ratioBoxes.forEach(div => {
     div.addEventListener('click', () => {
-      overlay.querySelectorAll('.ratio-box').forEach(d => d.classList.remove('active'));
+      setActiveBox(div);
 
       if (div.id === 'customBtn') {
         customMode = true;
-        customRatio = 1; // Quadrat
-        const size = Math.floor(Math.min(dispW, dispH) * 0.4); // 40% des Bildes
+        customRatio = 1;
+        const size = Math.floor(Math.min(dispW, dispH) * 0.4);
         cropW = size;
         cropH = size;
-        centerCrop(); // zentrieren
+        centerCrop();
         userMoved = false;
-
-        updateSliderFromCrop(); // Slider anpassen nach Boxgröße
-        draw(); // Box rendern
+        updateSliderFromCrop();
+        draw();
       } else {
         customMode = false;
         cropRatio = parseFloat(eval(div.dataset.ratio));
         userMoved = false;
         updateCropFromSlider();
       }
-
-      div.classList.add('active');
     });
   });
 
@@ -218,7 +254,6 @@ function openCropUI(img, resolve, reject) {
   window.addEventListener('mousemove', e => {
     const { mx, my } = getMousePos(e);
 
-    // Cursoranzeige
     if (mx > cropX && mx < cropX + cropW && my > cropY && my < cropY + cropH) {
       canvas.style.cursor = 'move';
     } else {
@@ -303,14 +338,15 @@ function openCropUI(img, resolve, reject) {
     ctx.fillRect(0, cropY, cropX, cropH);
     ctx.fillRect(cropX + cropW, cropY, dispW - cropX - cropW, cropH);
 
-    ctx.strokeStyle = '#69f0ae';
+    const accent = getThemeColor();
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(cropX, cropY, cropW, cropH);
 
     const s = 8;
-    ctx.fillStyle = '#69f0ae';
-    [[cropX, cropY],[cropX + cropW, cropY],[cropX, cropY + cropH],[cropX + cropW, cropY + cropH]]
-        .forEach(([x,y]) => ctx.fillRect(x - s/2, y - s/2, s, s));
+    ctx.fillStyle = accent;
+    [[cropX, cropY],[cropX+cropW,cropY],[cropX,cropY+cropH],[cropX+cropW,cropY+cropH]]
+        .forEach(([x,y]) => ctx.fillRect(x-s/2, y-s/2, s, s));
   }
 
   updateCropFromSlider();
