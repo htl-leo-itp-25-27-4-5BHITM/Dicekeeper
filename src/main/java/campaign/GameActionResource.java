@@ -392,6 +392,7 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        state.pushUndo();
 
         if (markerId != null && state.mapMarkers.containsKey(markerId)) {
             // Move existing marker
@@ -423,6 +424,7 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        state.pushUndo();
         GameState.MapMarker removed = state.mapMarkers.remove(markerId);
         if (removed == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Marker not found").build();
@@ -454,6 +456,7 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        state.pushUndo();
 
         if ("group".equals(action)) {
             // Validate: only player/player-group markers can be grouped
@@ -647,6 +650,34 @@ public class GameActionResource {
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         state.fogExploration = data;
         return Response.ok(Map.of("saved", true)).build();
+    }
+
+    // ===== UNDO LAST MAP CHANGE =====
+
+    @POST
+    @Path("undo")
+    public Response undoLastMapChange(@PathParam("campaignId") Long campaignId) {
+        Response authorizationError = requireDm(campaignId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
+        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        GameState.MapUndoSnapshot snap = state.popUndo();
+        if (snap == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Nothing to undo").build();
+        }
+
+        List<Map<String, Object>> allMarkers = state.mapMarkers.values().stream()
+                .map(GameState.MapMarker::toMap)
+                .collect(Collectors.toList());
+
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("allMarkers", allMarkers);
+        payload.put("fogExploration", snap.fogExploration != null ? snap.fogExploration : "");
+
+        broadcaster.broadcast(campaignId, "undo", payload);
+        return Response.ok(payload).build();
     }
 
     // ===== RESET GAME STATE =====

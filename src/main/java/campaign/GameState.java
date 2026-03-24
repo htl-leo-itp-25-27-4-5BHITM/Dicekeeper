@@ -17,6 +17,16 @@ public class GameState {
         return states.computeIfAbsent(campaignId, id -> new CampaignGameState());
     }
 
+    public static class MapUndoSnapshot {
+        public final Map<String, MapMarker> markers;
+        public final String fogExploration;
+
+        public MapUndoSnapshot(Map<String, MapMarker> markers, String fogExploration) {
+            this.markers = markers;
+            this.fogExploration = fogExploration;
+        }
+    }
+
     public static class CampaignGameState {
         public volatile Long currentTurnPlayerId;
         public final ConcurrentHashMap<Long, Integer> playerHp = new ConcurrentHashMap<>();
@@ -31,6 +41,36 @@ public class GameState {
         // Map markers: markerId -> MapMarker
         public final ConcurrentHashMap<String, MapMarker> mapMarkers = new ConcurrentHashMap<>();
         private final AtomicLong markerSeq = new AtomicLong(1);
+
+        private static final int MAX_UNDO = 20;
+        private final java.util.Deque<MapUndoSnapshot> undoStack = new java.util.ArrayDeque<>();
+
+        /** Save a snapshot of current markers + fog before a map mutation. */
+        public void pushUndo() {
+            Map<String, MapMarker> snap = new HashMap<>();
+            for (Map.Entry<String, MapMarker> e : mapMarkers.entrySet()) {
+                MapMarker m = e.getValue();
+                snap.put(e.getKey(), new MapMarker(m.id, m.type, m.label, m.x, m.y, m.groupId, m.playerIds, m.icon));
+            }
+            undoStack.push(new MapUndoSnapshot(snap, fogExploration));
+            while (undoStack.size() > MAX_UNDO) {
+                undoStack.removeLast();
+            }
+        }
+
+        /** Pop and restore the last snapshot. Returns null if nothing to undo. */
+        public MapUndoSnapshot popUndo() {
+            MapUndoSnapshot snap = undoStack.poll();
+            if (snap == null) return null;
+            mapMarkers.clear();
+            mapMarkers.putAll(snap.markers);
+            fogExploration = snap.fogExploration;
+            return snap;
+        }
+
+        public boolean hasUndo() {
+            return !undoStack.isEmpty();
+        }
 
         public String nextMarkerId() {
             return "m" + markerSeq.getAndIncrement();

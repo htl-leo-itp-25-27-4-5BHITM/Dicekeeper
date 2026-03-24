@@ -22,6 +22,7 @@ export default async function GMView({ id }) {
             <button class="map-tb-btn" id="gmMapZoomIn" title="Zoom in">🔍+</button>
             <button class="map-tb-btn" id="gmMapZoomOut" title="Zoom out">🔍−</button>
             <button class="map-tb-btn" id="gmMapReset" title="Ansicht zurücksetzen">↺</button>
+            <button class="map-tb-btn" id="gmUndoMini" title="Rückgängig">↩</button>
             <button class="map-tb-btn" id="gmTableView" title="Tischansicht öffnen" style="color:var(--accent-green) !important;border-color:rgba(var(--accent-green-rgb),0.3) !important;">📺 Tischansicht</button>
             <button class="map-tb-btn map-tb-popout" id="gmMapPopout" title="Karte maximieren">⛶</button>
           </div>
@@ -72,6 +73,8 @@ export default async function GMView({ id }) {
           <button class="map-tb-btn map-tb-group" id="gmGroupMarkers" title="Ausgewählte gruppieren">👥 Gruppieren</button>
           <button class="map-tb-btn map-tb-split" id="gmSplitGroup" title="Gruppe aufteilen">✂️ Aufteilen</button>
           <button class="map-tb-btn map-tb-delete" id="gmDeleteMarker" title="Marker löschen">🗑️</button>
+          <div class="map-tb-separator"></div>
+          <button class="map-tb-btn map-tb-undo" id="gmUndoMax" title="Letzte Änderung rückgängig">↩ Rückgängig</button>
         </div>
         <button class="map-tb-btn map-close-btn" id="gmMapClose">✕</button>
       </div>
@@ -234,6 +237,20 @@ export default async function GMView({ id }) {
   document.getElementById('gmMapZoomOut').addEventListener('click', () => { if (mapCanvas) mapCanvas.setZoom(Math.max(0.5, mapCanvas.getZoom() - 0.3)); });
   document.getElementById('gmMapReset').addEventListener('click', () => { if (mapCanvas) mapCanvas.resetView(); });
 
+  // Undo function shared by mini + maximized toolbar
+  async function doUndo() {
+    console.log('[Undo] triggered');
+    try {
+      const res = await fetch('/api/campaign/' + campaignId + '/game/undo', { method: 'POST' });
+      console.log('[Undo] status:', res.status);
+      if (!res.ok) { alert('Nichts zum Rückgängig machen.'); return; }
+      const d = await res.json();
+      console.log('[Undo] markers:', d.allMarkers?.length);
+      if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
+    } catch (e) { console.error('[Undo] error:', e); }
+  }
+  document.getElementById('gmUndoMini').addEventListener('click', doUndo);
+
   document.getElementById('gmMaxZoomIn').addEventListener('click', () => { if (mapCanvasMax) mapCanvasMax.setZoom(Math.min(5, mapCanvasMax.getZoom() + 0.3)); });
   document.getElementById('gmMaxZoomOut').addEventListener('click', () => { if (mapCanvasMax) mapCanvasMax.setZoom(Math.max(0.5, mapCanvasMax.getZoom() - 0.3)); });
   document.getElementById('gmMaxReset').addEventListener('click', () => { if (mapCanvasMax) mapCanvasMax.resetView(); });
@@ -358,6 +375,9 @@ export default async function GMView({ id }) {
     };
   }
 
+  // Undo (maximized toolbar)
+  document.getElementById('gmUndoMax').addEventListener('click', doUndo);
+
   function renderMaxSidebar() {
     const markerList = document.getElementById('gmMaxMarkerList');
     const groupPanel = document.getElementById('gmMaxGroupPanel');
@@ -471,6 +491,10 @@ export default async function GMView({ id }) {
       const d = JSON.parse(e.data);
       const p = players.find(x => x.id === d.playerId);
       if (p) { p.active = d.active; renderPlayers(); }
+    });
+    eventSource.addEventListener('undo', e => {
+      const d = JSON.parse(e.data);
+      if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
     });
     eventSource.onerror = () => console.warn('SSE lost, reconnecting...');
   }

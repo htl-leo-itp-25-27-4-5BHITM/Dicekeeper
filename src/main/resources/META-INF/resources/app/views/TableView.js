@@ -311,6 +311,17 @@ export default async function TableView({ id }) {
       }
     });
 
+    eventSource.addEventListener('undo', e => {
+      const d = JSON.parse(e.data);
+      if (d.allMarkers) {
+        mapMarkers = d.allMarkers;
+        syncMap();
+      }
+      if (mapCanvas && d.fogExploration) {
+        mapCanvas.loadExplorationData(d.fogExploration);
+      }
+    });
+
     eventSource.onerror = () => console.warn('Table SSE lost, reconnecting...');
   }
 
