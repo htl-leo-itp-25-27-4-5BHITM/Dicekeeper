@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:26.5.0
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/keycloak-dicekeeper:latest
+          imagePullPolicy: Always
           args:
             - start
           env:
@@ -33,3 +33,5 @@ spec:
                 name: keycloak-secret
           ports:
             - containerPort: 8080
+      imagePullSecrets:
+        - name: ghcr-pull-secret

@@ -38,4 +38,4 @@ while IFS= read -r -d '' file; do
 done < <(find "$THEME_DIR" -type f -print0)
 
 echo "Theme uploaded to $TARGET_DIR"
-echo "Now restart the Keycloak pod and select Email Theme = ${THEME_NAME}"
+echo "Now select the Email Theme = ${THEME_NAME}"
