@@ -53,7 +53,7 @@ jobs:
             CHANGED_FILES="$(git diff-tree --no-commit-id --name-only -m -r "$CURRENT_SHA")"
           fi
 
-          if printf '%s\n' "$CHANGED_FILES" | grep -qE '^keycloak/'; then
+          if printf '%s\n' "$CHANGED_FILES" | grep -qE '^(keycloak/|k8s/keycloak-deployment\.yaml$)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

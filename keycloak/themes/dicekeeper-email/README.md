@@ -47,11 +47,14 @@ Use the Dockerfile at:
 
 - `keycloak/Dockerfile`
 
-Build it from the repository root:
+Build it from the repository root.
+If you build locally on Apple Silicon, publish an `amd64` image explicitly:
 
 ```bash
-docker build -f keycloak/Dockerfile -t ghcr.io/<your-org>/keycloak-dicekeeper:latest .
-docker push ghcr.io/<your-org>/keycloak-dicekeeper:latest
+docker buildx build --platform linux/amd64 \
+  -f keycloak/Dockerfile \
+  -t ghcr.io/<your-org>/keycloak-dicekeeper:latest \
+  --push .
 ```
 
 Then point the deployment at that image:
