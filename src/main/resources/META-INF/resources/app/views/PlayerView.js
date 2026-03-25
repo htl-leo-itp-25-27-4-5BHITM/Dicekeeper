@@ -207,6 +207,14 @@ export default async function PlayerView({ id }) {
       const d = JSON.parse(e.data);
       if (d.allMarkers) { playerMapMarkers = d.allMarkers; syncPlayerMap(); }
     });
+    eventSource.addEventListener('undo', e => {
+      const d = JSON.parse(e.data);
+      if (d.allMarkers) { playerMapMarkers = d.allMarkers; syncPlayerMap(); }
+      if (d.fogExploration) {
+        if (playerMapCanvas) playerMapCanvas.loadExplorationData(d.fogExploration);
+        if (mobileMapCanvas) mobileMapCanvas.loadExplorationData(d.fogExploration);
+      }
+    });
     eventSource.addEventListener('player_active', e => {
       renderParty();
     });

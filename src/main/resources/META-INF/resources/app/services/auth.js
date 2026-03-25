@@ -88,9 +88,12 @@ export function installAuthFetchInterceptor() {
     }
 
     const response = await originalFetch(input, nextInit);
-    if (isApiRequest && response.status === 499 && !window.location.hash.includes('kc=1')) {
-      clearPlayer();
-      startLogin(getCurrentHashPath());
+    if (isApiRequest && !window.location.hash.includes('kc=1')) {
+      if (response.status === 499
+          || (response.redirected && response.url && !new URL(response.url, window.location.origin).pathname.startsWith('/api/'))) {
+        clearPlayer();
+        startLogin(getCurrentHashPath());
+      }
     }
 
     return response;

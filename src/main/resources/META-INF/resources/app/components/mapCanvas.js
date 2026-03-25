@@ -877,7 +877,9 @@ export function createMapCanvas(container, opts = {}) {
     updateFog(positions) { fogPositions = [...positions]; stampExploration(fogPositions); draw(); },
     getExplorationData() { return fogMemoryCanvas ? fogMemoryCanvas.toDataURL('image/png') : null; },
     loadExplorationData(dataUrl) {
-      if (!fogMemoryCanvas || !dataUrl) return;
+      if (!fogMemoryCanvas) return;
+      fogMemoryCtx.clearRect(0, 0, FOG_MEM_SIZE, FOG_MEM_SIZE);
+      if (!dataUrl) { draw(); return; }
       const img = new Image();
       img.onload = () => { fogMemoryCtx.drawImage(img, 0, 0, FOG_MEM_SIZE, FOG_MEM_SIZE); draw(); };
       img.src = dataUrl;
