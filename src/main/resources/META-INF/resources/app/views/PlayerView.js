@@ -445,34 +445,82 @@ export default async function PlayerView({ id }) {
     document.getElementById('pvMapReset').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.resetView(); });
   }
 
-  // ===== DECISIONS =====
+// ===== DECISIONS =====
   function renderDecisions() {
-    const container = document.getElementById('pvDecisions'); if (!container) return;
-    if (decisions.length === 0) { container.innerHTML = '<div class="pv2-empty">Keine Abstimmungen</div>'; return; }
+    const container = document.getElementById('pvDecisions');
+    if (!container) return;
+
+    if (decisions.length === 0) {
+      container.innerHTML = '<div class="pv2-empty">Keine Abstimmungen</div>';
+      return;
+    }
+
     container.innerHTML = decisions.slice().reverse().map(d => {
       const total = (d.yes || 0) + (d.no || 0);
       const yP = total > 0 ? Math.round((d.yes / total) * 100) : 0;
       const nP = total > 0 ? 100 - yP : 0;
       const voted = votedDecisions[d.id];
       const resolved = d.status === 'RESOLVED';
+
+      let result = d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein');
+      let color = 'gray';
+      if (d.yes > d.no) color = 'var(--accent-green)';
+      else if (d.no > d.yes) color = '#ff8a80';
+
       let html = `<div class="pv2-decision ${resolved ? 'resolved' : ''}">
-        <div class="pv2-decision-title">${esc(d.title || '')}${resolved ? ' ✅' : ''}</div>
-        <div class="pv2-decision-desc">${esc(d.text || '')}</div>`;
-      if (resolved) html += `<div class="pv2-decision-result">Ergebnis: ${esc(d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein'))}</div>`;
-      else if (!voted) html += `<div class="pv2-vote-row"><button class="pv2-vote-btn yes" data-did="${d.id}" data-v="yes">👍 Ja</button><button class="pv2-vote-btn no" data-did="${d.id}" data-v="no">👎 Nein</button></div>`;
-      else html += `<div class="pv2-vote-row"><button class="pv2-vote-btn yes voted" disabled>👍 ${d.yes}</button><button class="pv2-vote-btn no voted" disabled>👎 ${d.no}</button></div>`;
-      if (total > 0) html += `<div class="pv2-vote-bar"><div class="pv2-vote-yes" style="width:${yP}%"></div></div><div class="pv2-vote-labels"><span class="yes">${yP}%</span><span class="no">${nP}%</span></div>`;
+      <div class="pv2-decision-title">${esc(d.title || '')}${resolved ? ' ✅' : ''}</div>
+      <div class="pv2-decision-desc">${esc(d.text || '')}</div>`;
+
+      if (resolved) {
+        html += `<div class="pv2-decision-result" style="color:${color}">Ergebnis: ${esc(result)}</div>`;
+      } else if (!voted) {
+        html += `<div class="pv2-vote-row">
+        <button class="pv2-vote-btn yes" data-did="${d.id}" data-v="yes">👍 Ja</button>
+        <button class="pv2-vote-btn no" data-did="${d.id}" data-v="no">👎 Nein</button>
+      </div>`;
+      } else {
+        html += `<div class="pv2-vote-row">
+        <button class="pv2-vote-btn yes voted" disabled>👍 ${d.yes}</button>
+        <button class="pv2-vote-btn no voted" disabled>👎 ${d.no}</button>
+      </div>`;
+      }
+
+      if (total > 0) {
+        html += `<div class="pv2-vote-bar">
+        <div class="pv2-vote-yes" style="width:${yP}%"></div>
+      </div>
+      <div class="pv2-vote-labels">
+        <span class="yes">${yP}%</span>
+        <span class="no">${nP}%</span>
+      </div>`;
+      }
+
       html += '</div>';
       return html;
     }).join('');
+
     container.querySelectorAll('.pv2-vote-btn[data-did]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const did = parseInt(btn.dataset.did); const vt = btn.dataset.v;
+        const did = parseInt(btn.dataset.did);
+        const vt = btn.dataset.v;
+
         if (votedDecisions[did]) return;
-        votedDecisions[did] = vt; renderDecisions();
+
+        votedDecisions[did] = vt;
+        renderDecisions();
+
         const name = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Unknown';
-        fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decisionId: did, vote: vt, playerName: name, playerId: currentPlayer.id }) });
+
+        fetch('/api/campaign/' + campaignId + '/game/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decisionId: did,
+            vote: vt,
+            playerName: name,
+            playerId: currentPlayer.id
+          })
+        });
       });
     });
   }
