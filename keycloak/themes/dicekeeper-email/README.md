@@ -1,6 +1,6 @@
-# Dicekeeper Keycloak Email Theme
+# Dicekeeper Keycloak Email + Login Theme
 
-This theme styles Keycloak verification and execute-actions emails to match the Dicekeeper landing page:
+This theme styles the Keycloak email flow and login screens to match the Dicekeeper landing page:
 
 - dark emerald background
 - bright green CTA
@@ -9,6 +9,20 @@ This theme styles Keycloak verification and execute-actions emails to match the 
 
 ## Files
 
+- `login/theme.properties`
+- `login/template.ftl`
+- `login/login.ftl`
+- `login/register.ftl`
+- `login/register-user-profile.ftl`
+- `login/login-reset-password.ftl`
+- `login/login-update-password.ftl`
+- `login/login-verify-email.ftl`
+- `login/info.ftl`
+- `login/error.ftl`
+- `login/resources/css/dicekeeper-login.css`
+- `login/messages/messages.properties`
+- `login/messages/messages_en.properties`
+- `login/messages/messages_de.properties`
 - `email/theme.properties`
 - `email/html/email-verification.ftl`
 - `email/html/executeActions.ftl`
@@ -28,6 +42,7 @@ Copy the `dicekeeper-email` folder into Keycloak's themes directory:
 Then select it in Keycloak:
 
 - `Realm Settings` -> `Themes`
+- `Login Theme` -> `dicekeeper-email`
 - `Email Theme` -> `dicekeeper-email`
 
 ## Kubernetes
@@ -68,6 +83,7 @@ kubectl -n student-it200233 rollout status deployment/keycloak
 
 Once the new pod is up, select:
 
+- `Realm Settings` -> `Themes` -> `Login Theme` -> `dicekeeper-email`
 - `Realm Settings` -> `Themes` -> `Email Theme` -> `dicekeeper-email`
 
 This survives pod restarts because the theme is part of the image, not copied into a running container.
