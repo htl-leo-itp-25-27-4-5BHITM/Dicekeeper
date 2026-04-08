@@ -24,7 +24,7 @@ export default async function ProfileView() {
         <div class="profile-section" style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px;">
           <div class="profile-avatar" id="pvAvatar" title="Klicke um Profilbild zu \u00e4ndern" style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg, var(--avatar-start), var(--avatar-end));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:42px;color:var(--avatar-text);cursor:pointer;overflow:hidden;margin-bottom:16px;position:relative;">
             <span id="pvInitials">${initials(player.name || player.username)}</span>
-            <img id="pvImg" src="${resolveAvatarUrl(player.profilePicture)}" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;${player.profilePicture ? '' : 'display:none;'}" />
+            <img id="pvImg" src="${resolveAvatarUrl(player.profilePicture, { cssSize: 120 })}" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;${player.profilePicture ? '' : 'display:none;'}" />
             <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;border-radius:50%;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span style="color:white;font-size:14px;">\u00c4ndern</span></div>
           </div>
           <input type="file" id="pvFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none;" />
@@ -78,7 +78,7 @@ export default async function ProfileView() {
       if (!r.ok) throw new Error(await r.text());
       currentPlayer = await r.json();
       setPlayer(currentPlayer);
-      document.getElementById('pvImg').src = resolveAvatarUrl(currentPlayer.profilePicture);
+      document.getElementById('pvImg').src = resolveAvatarUrl(currentPlayer.profilePicture, { cssSize: 120 });
       document.getElementById('pvImg').style.display = 'block';
       setStatus('Profilbild aktualisiert!', false);
     } catch (err) {

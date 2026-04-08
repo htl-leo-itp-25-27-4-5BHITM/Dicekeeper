@@ -147,7 +147,7 @@ export default async function GMView({ id }) {
     if (cr.ok) {
       campaign = await cr.json();
       if (campaign.mapImagePath) {
-        mapImageUrl = resolveMapUrl(campaign.mapImagePath, { width: 2048, height: 2048 });
+        mapImageUrl = resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' });
       }
     }
   } catch (e) {}

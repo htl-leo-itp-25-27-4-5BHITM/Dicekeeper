@@ -108,7 +108,7 @@ export default async function CampaignDetailView({ id }) {
         <div class="preview-divider"></div>
         <div class="players-title">Beigetretene Spieler</div>
         <div class="players-horizontal">${renderPlayersCompact()}</div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div><img src="${esc(resolveMapUrl(campaign.mapImagePath, { width: 1200, height: 900 }))}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : ''}
+        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div><img src="${esc(resolveMapUrl(campaign.mapImagePath, { variant: 'preview' }))}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : ''}
       </div>
       <div class="footer">
         <button class="btn btn-secondary" id="cdBack">Abbrechen</button>
@@ -145,7 +145,7 @@ export default async function CampaignDetailView({ id }) {
       </div>
       <div class="form-group"><label>Karte</label>
         <div class="map-upload" id="cdMapUploadArea"><span class="map-upload-icon">+</span><span class="map-upload-text">Karte hochladen</span><input type="file" id="cdMapFile" accept=".jpg,.png,.svg" style="display:none;" /></div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:12px"><img id="cdMapImg" src="${esc(resolveMapUrl(campaign.mapImagePath, { width: 1200, height: 900 }))}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : '<div class="map-section" style="display:none;margin-top:12px"><img id="cdMapImg" src="" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>'}
+        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:12px"><img id="cdMapImg" src="${esc(resolveMapUrl(campaign.mapImagePath, { variant: 'preview' }))}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : '<div class="map-section" style="display:none;margin-top:12px"><img id="cdMapImg" src="" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>'}
       </div>
       <div class="players-section"><div class="players-title">Beigetretene Spieler</div><div class="players" id="cdPlayersList"></div></div>
       <div class="footer">

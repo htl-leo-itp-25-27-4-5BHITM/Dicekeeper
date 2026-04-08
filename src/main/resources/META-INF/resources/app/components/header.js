@@ -37,7 +37,7 @@ export function renderHeader() {
         <div class="user-profile" id="userProfile">
           <div class="user-avatar" id="userAvatar">
             ${player.profilePicture
-              ? `<img src="${esc(resolveAvatarUrl(player.profilePicture))}" alt="Avatar">`
+              ? `<img src="${esc(resolveAvatarUrl(player.profilePicture, { cssSize: 40 }))}" alt="Avatar">`
               : esc((player.name || player.username || 'U').charAt(0).toUpperCase())}
           </div>
           <span class="user-name">${esc(player.name || player.username || 'User')}</span>

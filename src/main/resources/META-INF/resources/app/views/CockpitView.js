@@ -268,7 +268,7 @@ export default async function CockpitView({ id }) {
       }
 
       ckMapCanvas = createMapCanvas(box, {
-        mapImageUrl: resolveMapUrl(campaign.mapImagePath, { width: 2048, height: 2048 }),
+        mapImageUrl: resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' }),
         markers: ckMapMarkers,
         readOnly: false,
         isMaximized: false,

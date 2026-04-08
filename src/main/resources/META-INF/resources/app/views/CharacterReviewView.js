@@ -77,7 +77,7 @@ export default async function CharacterReviewView({ id, cpId }) {
     }).join('');
 
     let avatarHtml = initials(playerData.name || playerData.username);
-    if (playerData.profilePicture) avatarHtml = `<img src="${esc(resolveAvatarUrl(playerData.profilePicture))}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
+    if (playerData.profilePicture) avatarHtml = `<img src="${esc(resolveAvatarUrl(playerData.profilePicture, { cssSize: 48 }))}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
 
     content.innerHTML = `
       <div class="player-info">

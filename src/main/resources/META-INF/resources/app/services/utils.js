@@ -31,6 +31,34 @@ export function fmtMod(mod) { return mod >= 0 ? '+' + mod : '' + mod; }
 
 const IMAGOR_BASE_PATH = '/imagor';
 const LOCAL_IMAGE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const DEFAULT_VIEWPORT = { width: 1280, height: 720, dpr: 1 };
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getViewportMetrics() {
+  try {
+    const docEl = document.documentElement;
+    const width = Math.max(window.innerWidth || 0, docEl?.clientWidth || 0, DEFAULT_VIEWPORT.width);
+    const height = Math.max(window.innerHeight || 0, docEl?.clientHeight || 0, DEFAULT_VIEWPORT.height);
+    const dpr = clamp(window.devicePixelRatio || 1, 1, 2.5);
+    return { width, height, dpr };
+  } catch (e) {
+    return DEFAULT_VIEWPORT;
+  }
+}
+
+function getResponsiveDimensions(preset, options = {}) {
+  const viewport = getViewportMetrics();
+  const width = options.width ?? Math.round(viewport.width * preset.widthRatio * viewport.dpr);
+  const height = options.height ?? Math.round(viewport.height * preset.heightRatio * viewport.dpr);
+
+  return {
+    width: clamp(width, preset.minWidth, preset.maxWidth),
+    height: clamp(height, preset.minHeight, preset.maxHeight)
+  };
+}
 
 function normalizeImagePath(imagePath) {
   if (!imagePath) return '';
@@ -101,9 +129,17 @@ export function resolveProcessedImageUrl(imagePath, options = {}) {
 }
 
 export function resolveAvatarUrl(profilePicture, options = {}) {
+  const avatarSize = Number.isFinite(Number(options.cssSize)) ? Number(options.cssSize) : 80;
+  const viewport = getViewportMetrics();
+  const dimension = clamp(
+    Math.round(avatarSize * viewport.dpr * 1.5),
+    96,
+    384
+  );
+
   return resolveProcessedImageUrl(profilePicture, {
-    width: 256,
-    height: 256,
+    width: dimension,
+    height: dimension,
     quality: 85,
     format: 'webp',
     smart: true,
@@ -118,9 +154,14 @@ export function resolveAvatarUrl(profilePicture, options = {}) {
  * through imagor in production for resizing/format conversion.
  */
 export function resolveMapUrl(mapImagePath, options = {}) {
+  const preset = options.variant === 'preview'
+    ? { widthRatio: 0.92, heightRatio: 0.55, minWidth: 480, maxWidth: 1600, minHeight: 320, maxHeight: 1200 }
+    : { widthRatio: 1.1, heightRatio: 1.1, minWidth: 960, maxWidth: 3200, minHeight: 960, maxHeight: 3200 };
+  const dimensions = getResponsiveDimensions(preset, options);
+
   return resolveProcessedImageUrl(mapImagePath, {
-    width: 1600,
-    height: 1600,
+    width: dimensions.width,
+    height: dimensions.height,
     quality: 85,
     format: 'webp',
     fitIn: true,
