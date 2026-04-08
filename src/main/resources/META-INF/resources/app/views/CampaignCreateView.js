@@ -186,7 +186,7 @@ export default async function CampaignCreateView({ id }) {
         switchEl.classList.toggle('private', !isPublic);
         visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
         if (c.mapImagePath) {
-          document.getElementById('ccMapImage').src = resolveMapUrl(c.mapImagePath);
+          document.getElementById('ccMapImage').src = resolveMapUrl(c.mapImagePath, { width: 1200, height: 900 });
           document.getElementById('ccMapFileName').textContent = 'Karte geladen';
           document.getElementById('ccMapPreview').style.display = 'block';
         }

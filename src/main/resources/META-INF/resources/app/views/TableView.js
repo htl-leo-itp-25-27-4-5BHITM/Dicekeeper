@@ -62,7 +62,7 @@ export default async function TableView({ id }) {
       campaign = await cr.json();
       document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
       if (campaign.mapImagePath) {
-        mapImageUrl = resolveMapUrl(campaign.mapImagePath);
+        mapImageUrl = resolveMapUrl(campaign.mapImagePath, { width: 2048, height: 2048 });
       }
     }
   } catch (e) {}
@@ -337,5 +337,4 @@ export default async function TableView({ id }) {
     if (mapCanvas) { mapCanvas.destroy(); mapCanvas = null; }
   };
 }
-
 

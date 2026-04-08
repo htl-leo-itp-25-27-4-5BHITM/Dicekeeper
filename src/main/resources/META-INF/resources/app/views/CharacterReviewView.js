@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, resolveAvatarUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 
@@ -77,7 +77,7 @@ export default async function CharacterReviewView({ id, cpId }) {
     }).join('');
 
     let avatarHtml = initials(playerData.name || playerData.username);
-    if (playerData.profilePicture) avatarHtml = `<img src="${esc(playerData.profilePicture)}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
+    if (playerData.profilePicture) avatarHtml = `<img src="${esc(resolveAvatarUrl(playerData.profilePicture))}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
 
     content.innerHTML = `
       <div class="player-info">
@@ -147,4 +147,3 @@ export default async function CharacterReviewView({ id, cpId }) {
 
   return () => { destroyHeader(); };
 }
-

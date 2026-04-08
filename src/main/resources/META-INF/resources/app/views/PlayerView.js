@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod, resolveMapUrl } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, resolveAvatarUrl, resolveMapUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
@@ -344,7 +344,7 @@ export default async function PlayerView({ id }) {
 
     let html = `
       <div class="pv2-identity">
-        <div class="pv2-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(currentPlayer.profilePicture) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
+        <div class="pv2-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(resolveAvatarUrl(currentPlayer.profilePicture)) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
         <div class="pv2-char-name">${esc(character.name)}</div>
         <div class="pv2-char-meta">${esc(race)} · ${esc(cn)}</div>
         <div class="pv2-level-badge">⭐ Stufe ${lvl}</div>
@@ -422,7 +422,7 @@ export default async function PlayerView({ id }) {
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     playerMapCanvas = createMapCanvas(box, {
-      mapImageUrl: resolveMapUrl(campaign.mapImagePath),
+      mapImageUrl: resolveMapUrl(campaign.mapImagePath, { width: 2048, height: 2048 }),
       markers: playerMapMarkers,
       readOnly: true,
       isMaximized: false,
@@ -619,7 +619,7 @@ export default async function PlayerView({ id }) {
     const dexMod = calcMod(getScore('Dexterity'));
     el.innerHTML = `
       <div class="pv2-mob-hero-left">
-        <div class="pv2-mob-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(currentPlayer.profilePicture) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
+        <div class="pv2-mob-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(resolveAvatarUrl(currentPlayer.profilePicture)) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
         <div class="pv2-mob-hero-info">
           <div class="pv2-mob-hero-name">${esc(character.name)}</div>
           <div class="pv2-mob-hero-meta">${esc(race)}${race && cn ? ' · ' : ''}${esc(cn)} · Stufe ${character.level || 1}</div>
@@ -652,7 +652,7 @@ export default async function PlayerView({ id }) {
 
     el.innerHTML = `
       <div class="pv2-mob-char-identity">
-        <div class="pv2-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(currentPlayer.profilePicture) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
+        <div class="pv2-avatar">${currentPlayer.profilePicture ? '<img src="' + esc(resolveAvatarUrl(currentPlayer.profilePicture)) + '" alt="">' : initials(character.name || currentPlayer.name)}</div>
         <div class="pv2-char-name">${esc(character.name)}</div>
         <div class="pv2-char-meta">${esc(race)} · ${esc(cn)}</div>
         <div class="pv2-level-badge">⭐ Stufe ${lvl}</div>
@@ -719,7 +719,7 @@ export default async function PlayerView({ id }) {
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     mobileMapCanvas = createMapCanvas(box, {
-      mapImageUrl: resolveMapUrl(campaign.mapImagePath),
+      mapImageUrl: resolveMapUrl(campaign.mapImagePath, { width: 2048, height: 2048 }),
       markers: playerMapMarkers,
       readOnly: true,
       isMaximized: false,
@@ -887,4 +887,3 @@ export default async function PlayerView({ id }) {
     if (mobileMapCanvas) { mobileMapCanvas.destroy(); mobileMapCanvas = null; }
   };
 }
-

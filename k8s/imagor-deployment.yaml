@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagor
+  namespace: student-it200233
+  labels:
+    app: imagor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imagor
+  template:
+    metadata:
+      labels:
+        app: imagor
+    spec:
+      containers:
+        - name: imagor
+          image: shumc/imagor:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            - name: SERVER_PATH_PREFIX
+              value: /imagor
+            - name: IMAGOR_UNSAFE
+              value: "1"
+            - name: HTTP_LOADER_DISABLE
+              value: "1"
+            - name: FILE_LOADER_BASE_DIR
+              value: /mnt/uploads
+            - name: FILE_RESULT_STORAGE_BASE_DIR
+              value: /mnt/result
+            - name: IMAGOR_PROCESS_CONCURRENCY
+              value: "2"
+            - name: IMAGOR_PROCESS_QUEUE_SIZE
+              value: "16"
+          volumeMounts:
+            - name: uploads
+              mountPath: /mnt/uploads
+              readOnly: true
+            - name: result-cache
+              mountPath: /mnt/result
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: dicekeeper-uploads
+        - name: result-cache
+          emptyDir: {}

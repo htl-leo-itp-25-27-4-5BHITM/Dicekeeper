@@ -2,7 +2,7 @@
  * SPA Header component – notification bell, user avatar
  */
 import { getPlayer } from '../services/auth.js';
-import { esc, timeAgo } from '../services/utils.js';
+import { esc, resolveAvatarUrl, timeAgo } from '../services/utils.js';
 import { navigate } from '../router.js';
 import { getTheme, toggleTheme } from '../services/theme.js';
 
@@ -37,7 +37,7 @@ export function renderHeader() {
         <div class="user-profile" id="userProfile">
           <div class="user-avatar" id="userAvatar">
             ${player.profilePicture
-              ? `<img src="${esc(player.profilePicture)}" alt="Avatar">`
+              ? `<img src="${esc(resolveAvatarUrl(player.profilePicture))}" alt="Avatar">`
               : esc((player.name || player.username || 'U').charAt(0).toUpperCase())}
           </div>
           <span class="user-name">${esc(player.name || player.username || 'User')}</span>

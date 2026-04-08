@@ -169,3 +169,33 @@ Dicekeeper verwendet bewusst einen festen OIDC-Callback statt dynamischer Redire
 3. [http://localhost:8080](http://localhost:8080) öffnen.
 4. Auf Login klicken.
 5. Nach erfolgreichem Keycloak-Login wirst du zurück zu Dicekeeper geleitet und der Player wird automatisch synchronisiert.
+
+## Imagor auf Kubernetes
+
+Für Bild-Resizing und WebP-Ausgabe läuft `imagor` im Cluster als eigener Service statt im Dicekeeper-Container.
+
+- Manifest-Dateien: [k8s/imagor-deployment.yaml](/Users/blauregen/School/SEW/Dicekeeper/k8s/imagor-deployment.yaml) und [k8s/imagor-service.yaml](/Users/blauregen/School/SEW/Dicekeeper/k8s/imagor-service.yaml)
+- Ingress-Pfad: `https://dicekeeper.net/imagor/...`
+- Originale Uploads kommen weiterhin aus dem gemeinsamen PVC `dicekeeper-uploads`
+- Verarbeitete Varianten werden im `imagor`-Pod in einem `emptyDir` zwischengespeichert
+
+Die Docker-Doku aus dem `imagor`-Projekt wurde dabei direkt auf Kubernetes übersetzt:
+
+- `docker run -p 8000:8000 ...` wird in Kubernetes zu `containerPort: 8000` plus eigenem `Service`
+- Docker-Umgebungsvariablen wie `FILE_LOADER_BASE_DIR` oder `IMAGOR_UNSAFE` bleiben in Kubernetes einfach `env:` Einträge im Pod
+- Docker-Volumes werden zu `volumeMounts` und `volumes`
+
+Wichtige gesetzte Variablen:
+
+- `SERVER_PATH_PREFIX=/imagor`, damit der Service sauber unter dem Ingress-Pfad läuft
+- `FILE_LOADER_BASE_DIR=/mnt/uploads`, damit `imagor` eure hochgeladenen Karten und Profilbilder lesen kann
+- `HTTP_LOADER_DISABLE=1`, damit keine beliebigen externen Bild-URLs geladen werden
+- `IMAGOR_UNSAFE=1`, weil Dicekeeper aktuell noch keine signierten `imagor`-URLs erzeugt
+
+Beispiel für eine Karten-URL im Cluster:
+
+```text
+/imagor/unsafe/fit-in/1200x900/filters:format(webp):quality(85)/maps/campaign-123.png
+```
+
+Lokal auf `localhost` verwendet das Frontend weiter direkt `/uploads/...`, damit die Entwicklung auch ohne laufenden `imagor`-Container funktioniert.
