@@ -748,16 +748,52 @@ export default async function GMView({ id }) {
 
   function renderDecisions() {
     const c = document.getElementById('gmDecisionList');
-    if (decisions.length === 0) { c.innerHTML = '<div class="decisions-empty"><div class="decisions-empty-icon">⚖️</div><div class="decisions-empty-text">Noch keine Entscheidungen.<br>Klicke <strong>+</strong>.</div></div>'; return; }
+    if (decisions.length === 0) {
+      c.innerHTML = '<div class="decisions-empty"><div class="decisions-empty-icon">⚖️</div><div class="decisions-empty-text">Noch keine Entscheidungen.<br>Klicke <strong>+</strong>.</div></div>';
+      return;
+    }
+
     c.innerHTML = decisions.slice().reverse().map(d => {
-      const total = d.yes + d.no; const yP = total > 0 ? Math.round((d.yes / total) * 100) : 0; const nP = total > 0 ? 100 - yP : 0;
+      const total = (d.yes || 0) + (d.no || 0);
+      const yP = total > 0 ? Math.round((d.yes / total) * 100) : 0;
+      const nP = total > 0 ? 100 - yP : 0;
       const resolved = d.status === 'RESOLVED';
-      return '<div class="decision-card" style="' + (resolved ? 'opacity:0.7;border-left:3px solid var(--accent-green);' : '') + '">' +
-        '<h4>' + (d.title || '') + '</h4><div class="decision-desc">' + (d.text || '') + '</div>' +
-        (total > 0 ? '<div class="vote-bar-container"><div class="vote-bar-labels"><span class="vote-yes">👍 ' + yP + '%</span><span class="vote-no">👎 ' + nP + '%</span></div><div class="vote-bar"><div class="vote-bar-yes" style="width:' + yP + '%"></div><div class="vote-bar-no" style="width:' + nP + '%"></div></div></div>' : '') +
-        (resolved ? '<div style="text-align:center;padding:8px;font-weight:700;color:var(--accent-green);">Ergebnis: ' + (d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein')) + '</div>'
-          : '<div class="vote-buttons"><button class="vote-btn vote-btn-yes" onclick="window._gmVote(' + d.id + ',\'yes\')">👍 Ja (' + d.yes + ')</button><button class="vote-btn vote-btn-no" onclick="window._gmVote(' + d.id + ',\'no\')">👎 Nein (' + d.no + ')</button></div>') +
-        '</div>';
+
+      const result = d.decisionMade || (d.yes >= d.no ? 'Ja' : 'Nein');
+      let color = 'gray';
+      if (d.yes > d.no) color = 'var(--accent-green)';
+      else if (d.no > d.yes) color = '#ff8a80';
+
+      return '<div class="decision-card" style="' +
+          (resolved ? 'opacity:0.7;border-left:3px solid ' + color + ';' : '') +
+          '">' +
+          '<h4>' + (d.title || '') + '</h4>' +
+          '<div class="decision-desc">' + (d.text || '') + '</div>' +
+
+          (total > 0
+                  ? '<div class="vote-bar-container">' +
+                  '<div class="vote-bar-labels">' +
+                  '<span class="vote-yes">👍 ' + yP + '% (' + d.yes + ')</span>' +
+                  '<span class="vote-no">👎 ' + nP + '% (' + d.no + ')</span>' +
+                  '</div>' +
+                  '<div class="vote-bar">' +
+                  '<div class="vote-bar-yes" style="width:' + yP + '%"></div>' +
+                  '<div class="vote-bar-no" style="width:' + nP + '%"></div>' +
+                  '</div>' +
+                  '</div>'
+                  : '<div class="vote-bar-container">' +
+                  '<div class="vote-bar-labels">' +
+                  '<span class="vote-yes">👍 0% (0)</span>' +
+                  '<span class="vote-no">👎 0% (0)</span>' +
+                  '</div>' +
+                  '</div>'
+          ) +
+
+          (resolved
+                  ? '<div style="text-align:center;padding:8px;font-weight:700;color:' + color + ';">Ergebnis: ' + result + '</div>'
+                  : '<div style="text-align:center;padding:8px;font-weight:600;opacity:0.7;"></div>'
+          ) +
+          '</div>';
     }).join('');
   }
 
