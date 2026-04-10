@@ -4,7 +4,7 @@ set -euo pipefail
 
 NAMESPACE="${1:-student-it200233}"
 POD="${2:-}"
-THEME_DIR="${3:-/Users/blauregen/School/SEW/Dicekeeper/keycloak/themes/dicekeeper-email}"
+THEME_DIR="${3:-/Users/blauregen/School/SEW/Dicekeeper/keycloak/themes}"
 TARGET_ROOT="${4:-/opt/keycloak/themes}"
 
 if [[ -z "$POD" ]]; then

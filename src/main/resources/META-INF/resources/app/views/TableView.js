@@ -4,7 +4,7 @@
  * Syncs in real-time with DM changes via SSE.
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, resolveMapUrl } from '../services/utils.js';
+import { esc, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function TableView({ id }) {
@@ -52,6 +52,7 @@ export default async function TableView({ id }) {
   let currentTurnPlayerId = null;
   let mapCanvas = null;
   let mapImageUrl = '';
+  let mapFallbackImageUrl = '';
   let mapMarkers = [];
   let eventSource = null;
 
@@ -63,6 +64,7 @@ export default async function TableView({ id }) {
       document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
       if (campaign.mapImagePath) {
         mapImageUrl = resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' });
+        mapFallbackImageUrl = resolveOriginalImageUrl(campaign.mapImagePath);
       }
     }
   } catch (e) {}
@@ -193,6 +195,7 @@ export default async function TableView({ id }) {
     }
     mapCanvas = createMapCanvas(box, {
       mapImageUrl,
+      mapFallbackImageUrl,
       markers: mapMarkers,
       readOnly: true,
       isMaximized: false,

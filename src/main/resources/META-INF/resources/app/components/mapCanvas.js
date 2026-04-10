@@ -11,10 +11,12 @@
  *   mc.destroy();
  */
 import { themeColor } from '../services/theme.js';
+import { resolveOriginalImageUrl } from '../services/utils.js';
 
 export function createMapCanvas(container, opts = {}) {
   const {
     mapImageUrl = '',
+    mapFallbackImageUrl = '',
     markers: initialMarkers = [],
     onMarkerMove = null,
     onMarkerAdd = null,
@@ -133,7 +135,15 @@ export function createMapCanvas(container, opts = {}) {
     mapImg = new Image();
     mapImg.crossOrigin = 'anonymous';
     mapImg.onload = () => { mapLoaded = true; resize(); draw(); };
-    mapImg.onerror = () => { mapLoaded = false; draw(); };
+    mapImg.onerror = () => {
+      const fallbackUrl = resolveOriginalImageUrl(mapFallbackImageUrl || mapImageUrl);
+      if (fallbackUrl && mapImg.src !== fallbackUrl) {
+        mapImg.src = fallbackUrl;
+        return;
+      }
+      mapLoaded = false;
+      draw();
+    };
     mapImg.src = mapImageUrl;
   }
 
@@ -893,4 +903,3 @@ export function createMapCanvas(container, opts = {}) {
     }
   };
 }
-

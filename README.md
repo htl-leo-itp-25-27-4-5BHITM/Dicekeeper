@@ -189,13 +189,14 @@ Wichtige gesetzte Variablen:
 
 - `SERVER_PATH_PREFIX=/imagor`, damit der Service sauber unter dem Ingress-Pfad läuft
 - `FILE_LOADER_BASE_DIR=/mnt/uploads`, damit `imagor` eure hochgeladenen Karten und Profilbilder lesen kann
+- `FILE_LOADER_PATH_PREFIX=uploads`, damit URLs wie `/imagor/.../uploads/maps/datei.png` korrekt auf den Upload-Ordner gemappt werden
 - `HTTP_LOADER_DISABLE=1`, damit keine beliebigen externen Bild-URLs geladen werden
 - `IMAGOR_UNSAFE=1`, weil Dicekeeper aktuell noch keine signierten `imagor`-URLs erzeugt
 
 Beispiel für eine Karten-URL im Cluster:
 
 ```text
-/imagor/unsafe/fit-in/1200x900/filters:format(webp):quality(85)/maps/campaign-123.png
+/imagor/unsafe/fit-in/1200x900/filters:format(webp):quality(85)/uploads/maps/campaign-123.png
 ```
 
 Lokal auf `localhost` verwendet das Frontend weiter direkt `/uploads/...`, damit die Entwicklung auch ohne laufenden `imagor`-Container funktioniert.

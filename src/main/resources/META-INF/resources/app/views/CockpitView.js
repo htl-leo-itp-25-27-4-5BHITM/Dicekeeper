@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, resolveMapUrl } from '../services/utils.js';
+import { esc, initials, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
@@ -269,6 +269,7 @@ export default async function CockpitView({ id }) {
 
       ckMapCanvas = createMapCanvas(box, {
         mapImageUrl: resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' }),
+        mapFallbackImageUrl: resolveOriginalImageUrl(campaign.mapImagePath),
         markers: ckMapMarkers,
         readOnly: false,
         isMaximized: false,

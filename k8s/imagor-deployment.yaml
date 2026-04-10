@@ -32,6 +32,8 @@ spec:
               value: "1"
             - name: FILE_LOADER_BASE_DIR
               value: /mnt/uploads
+            - name: FILE_LOADER_PATH_PREFIX
+              value: uploads
             - name: FILE_RESULT_STORAGE_BASE_DIR
               value: /mnt/result
             - name: IMAGOR_PROCESS_CONCURRENCY

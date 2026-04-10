@@ -2,7 +2,7 @@
  * GM Game View – Dungeon Master UI (SPA version)
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, calcMod, fmtMod, resolveMapUrl } from '../services/utils.js';
+import { esc, calcMod, fmtMod, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
@@ -135,6 +135,7 @@ export default async function GMView({ id }) {
   let mapCanvas = null;
   let mapCanvasMax = null;
   let mapImageUrl = '';
+  let mapFallbackImageUrl = '';
   let mapMarkers = [];
   let isMaximized = false;
   let pendingMarkerType = null;
@@ -148,6 +149,7 @@ export default async function GMView({ id }) {
       campaign = await cr.json();
       if (campaign.mapImagePath) {
         mapImageUrl = resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' });
+        mapFallbackImageUrl = resolveOriginalImageUrl(campaign.mapImagePath);
       }
     }
   } catch (e) {}
@@ -177,6 +179,7 @@ export default async function GMView({ id }) {
     }
     mapCanvas = createMapCanvas(box, {
       mapImageUrl,
+      mapFallbackImageUrl,
       markers: mapMarkers,
       readOnly: false,
       isMaximized: false,
@@ -194,6 +197,7 @@ export default async function GMView({ id }) {
     const box = document.getElementById('gmMaxMapBox');
     mapCanvasMax = createMapCanvas(box, {
       mapImageUrl,
+      mapFallbackImageUrl,
       markers: mapMarkers,
       readOnly: false,
       isMaximized: true,

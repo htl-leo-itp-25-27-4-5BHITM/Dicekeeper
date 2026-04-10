@@ -68,6 +68,10 @@ function normalizeImagePath(imagePath) {
   return imagePath.startsWith('/') ? imagePath : '/' + imagePath;
 }
 
+export function resolveOriginalImageUrl(imagePath) {
+  return normalizeImagePath(imagePath);
+}
+
 function shouldUseImagor(normalizedPath) {
   if (!normalizedPath || !normalizedPath.startsWith('/uploads/')) return false;
   if (normalizedPath.toLowerCase().endsWith('.svg')) return false;
@@ -87,14 +91,14 @@ function encodeImagorSourcePath(sourcePath) {
 }
 
 export function resolveProcessedImageUrl(imagePath, options = {}) {
-  const normalizedPath = normalizeImagePath(imagePath);
+  const normalizedPath = resolveOriginalImageUrl(imagePath);
   if (!normalizedPath) return '';
   if (!shouldUseImagor(normalizedPath)) return normalizedPath;
 
   const width = Number.isFinite(Number(options.width)) ? Math.max(0, Math.floor(Number(options.width))) : 0;
   const height = Number.isFinite(Number(options.height)) ? Math.max(0, Math.floor(Number(options.height))) : 0;
   const quality = Number.isFinite(Number(options.quality)) ? Math.max(1, Math.min(100, Math.floor(Number(options.quality)))) : null;
-  const sourcePath = encodeImagorSourcePath(normalizedPath.replace(/^\/uploads\//, ''));
+  const sourcePath = encodeImagorSourcePath(normalizedPath);
   const filters = [];
 
   if (options.format) {
