@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import tool.UploadPermissionUtil;
 
 @Path("/api/campaign")
 @Produces(MediaType.APPLICATION_JSON)
@@ -257,6 +258,7 @@ public class CampaignResource {
 
             java.nio.file.Path target = mapsDir.resolve(newFileName).normalize();
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
+            UploadPermissionUtil.ensureSharedReadAccess(target);
 
             campaign.mapImagePath = "/uploads/maps/" + newFileName;
 

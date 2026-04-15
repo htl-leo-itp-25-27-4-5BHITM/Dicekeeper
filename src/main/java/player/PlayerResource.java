@@ -18,6 +18,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import tool.UploadPermissionUtil;
 
 @Path("/api/player")
 @Produces(MediaType.APPLICATION_JSON)
@@ -111,6 +112,7 @@ public class PlayerResource {
 
             java.nio.file.Path target = profilesDir.resolve(newFileName).normalize();
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
+            UploadPermissionUtil.ensureSharedReadAccess(target);
 
             player.profilePicture = "/uploads/profiles/" + newFileName;
 
