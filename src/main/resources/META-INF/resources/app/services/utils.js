@@ -87,15 +87,44 @@ function htmlAttr(name, value) {
   return ` ${name}="${esc(value)}"`;
 }
 
-function renderResponsivePicture({ sources, imgSrc, fallbackSrc, alt = '', imgId, imgClass, imgStyle, pictureClass, pictureStyle, loading = 'lazy' }) {
+function toPositiveInt(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return Math.round(num);
+}
+
+function uniqueWidths(widths) {
+  return Array.from(new Set((widths || []).map(toPositiveInt).filter(Boolean))).sort((a, b) => a - b);
+}
+
+function buildWidthSrcSet(imagePath, widths, options = {}) {
+  return uniqueWidths(widths)
+    .map(width => `${resolveProcessedImageUrl(imagePath, { ...options, width })} ${width}w`)
+    .join(', ');
+}
+
+function renderResponsivePicture({
+  sources,
+  imgSrc,
+  imgSrcSet,
+  imgSizes,
+  fallbackSrc,
+  alt = '',
+  imgId,
+  imgClass,
+  imgStyle,
+  pictureClass,
+  pictureStyle,
+  loading = 'lazy'
+}) {
   if (!imgSrc) return '';
 
   const sourceHtml = sources
-    .filter(source => source?.src)
-    .map(source => `<source${htmlAttr('media', source.media)} srcset="${esc(source.src)}" />`)
+    .filter(source => source?.src || source?.srcset)
+    .map(source => `<source${htmlAttr('media', source.media)}${htmlAttr('type', source.type)}${htmlAttr('sizes', source.sizes)} srcset="${esc(source.srcset || source.src)}" />`)
     .join('');
 
-  return `<picture${htmlAttr('class', pictureClass)}${htmlAttr('style', pictureStyle)}>${sourceHtml}<img${htmlAttr('id', imgId)}${htmlAttr('class', imgClass)} src="${esc(imgSrc)}" data-fallback-src="${esc(fallbackSrc || imgSrc)}" data-fallback-applied="0" onerror="${IMAGE_FALLBACK_ONERROR}" alt="${esc(alt)}"${htmlAttr('style', imgStyle)}${htmlAttr('loading', loading)} decoding="async" /></picture>`;
+  return `<picture${htmlAttr('class', pictureClass)}${htmlAttr('style', pictureStyle)}>${sourceHtml}<img${htmlAttr('id', imgId)}${htmlAttr('class', imgClass)} src="${esc(imgSrc)}"${htmlAttr('srcset', imgSrcSet)}${htmlAttr('sizes', imgSizes)} data-fallback-src="${esc(fallbackSrc || imgSrc)}" data-fallback-applied="0" onerror="${IMAGE_FALLBACK_ONERROR}" alt="${esc(alt)}"${htmlAttr('style', imgStyle)}${htmlAttr('loading', loading)} decoding="async" /></picture>`;
 }
 
 export function resolveProcessedImageUrl(imagePath, options = {}) {
@@ -154,34 +183,29 @@ export function renderAvatarPicture(profilePicture, options = {}) {
   if (!normalizedPath) return '';
 
   const avatarSize = Number.isFinite(Number(options.cssSize)) ? Number(options.cssSize) : 80;
-  const variants = [
-    { media: '(max-width: 480px)', size: clamp(Math.round(avatarSize * 2), 96, 160) },
-    { media: '(max-width: 1024px)', size: clamp(Math.round(avatarSize * 3), 128, 256) },
-    { size: clamp(Math.round(avatarSize * 4), 160, 384) }
-  ];
+  const widths = uniqueWidths([
+    avatarSize,
+    avatarSize * 1.5,
+    avatarSize * 2,
+    avatarSize * 3,
+    avatarSize * 4
+  ]);
+  const defaultWidth = widths[Math.min(2, widths.length - 1)] || toPositiveInt(avatarSize) || 80;
+  const sizes = options.sizes || `${toPositiveInt(avatarSize) || 80}px`;
   const transform = {
     quality: 85,
-    format: 'webp',
-    smart: true,
-    fitIn: false
+    format: 'webp'
   };
-  const sources = variants.map(variant => ({
-    media: variant.media,
-    src: resolveProcessedImageUrl(normalizedPath, {
-      ...transform,
-      width: variant.size,
-      height: variant.size
-    })
-  }));
-  const defaultSize = variants[variants.length - 1].size;
+  const srcSet = buildWidthSrcSet(normalizedPath, widths, transform);
 
   return renderResponsivePicture({
-    sources,
+    sources: [{ srcset: srcSet, sizes }],
     imgSrc: resolveProcessedImageUrl(normalizedPath, {
       ...transform,
-      width: defaultSize,
-      height: defaultSize
+      width: defaultWidth
     }),
+    imgSrcSet: srcSet,
+    imgSizes: sizes,
     fallbackSrc: normalizedPath,
     alt: options.alt || 'Avatar',
     imgId: options.imgId,
@@ -219,34 +243,28 @@ export function renderMapPicture(mapImagePath, options = {}) {
   if (!normalizedPath) return '';
 
   const variant = options.variant || 'preview';
-  const breakpoints = variant === 'preview'
-    ? [
-        { media: '(max-width: 600px)', width: 640, height: 420 },
-        { media: '(max-width: 1024px)', width: 1024, height: 720 },
-        { width: 1600, height: 1200 }
-      ]
+  const widths = variant === 'preview'
+    ? uniqueWidths([360, 480, 640, 768, 960, 1280, 1600])
     : [
-        { media: '(max-width: 600px)', width: 1024, height: 768 },
-        { media: '(max-width: 1024px)', width: 1600, height: 1200 },
-        { width: 2400, height: 1800 }
+        768, 1024, 1280, 1600, 1920, 2400, 3200
       ];
-  const sources = breakpoints.map(breakpoint => ({
-    media: breakpoint.media,
-    src: resolveMapUrl(normalizedPath, {
-      variant,
-      width: breakpoint.width,
-      height: breakpoint.height
-    })
-  }));
-  const fallback = breakpoints[breakpoints.length - 1];
+  const defaultWidth = variant === 'preview' ? 960 : 1600;
+  const sizes = options.sizes || (variant === 'preview' ? '(max-width: 768px) 92vw, 960px' : '100vw');
+  const srcSet = buildWidthSrcSet(normalizedPath, widths, {
+    variant,
+    quality: 85,
+    format: 'webp',
+    fitIn: true
+  });
 
   return renderResponsivePicture({
-    sources,
+    sources: [{ srcset: srcSet, sizes }],
     imgSrc: resolveMapUrl(normalizedPath, {
       variant,
-      width: fallback.width,
-      height: fallback.height
+      width: defaultWidth
     }),
+    imgSrcSet: srcSet,
+    imgSizes: sizes,
     fallbackSrc: normalizedPath,
     alt: options.alt || 'Kampagnenkarte',
     imgId: options.imgId,
