@@ -26,8 +26,15 @@ spec:
               value: "8000"
             - name: SERVER_PATH_PREFIX
               value: /imagor
-            - name: IMAGOR_UNSAFE
-              value: "1"
+            - name: IMAGOR_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-secret
+                  key: IMAGOR_SECRET
+            - name: IMAGOR_SIGNER_TYPE
+              value: sha256
+            - name: IMAGOR_SIGNER_TRUNCATE
+              value: "40"
             - name: HTTP_LOADER_DISABLE
               value: "1"
             - name: FILE_LOADER_BASE_DIR

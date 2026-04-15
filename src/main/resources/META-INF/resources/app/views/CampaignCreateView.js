@@ -6,7 +6,17 @@ import { navigate } from '../router.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
-import { resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { renderMapPicture } from '../services/utils.js';
+
+function renderPreviewMap(mapImagePath) {
+  return renderMapPicture(mapImagePath, {
+    variant: 'preview',
+    alt: 'Kampagnenkarte',
+    imgId: 'ccMapImage',
+    pictureStyle: 'display:block;width:100%;',
+    imgStyle: 'max-width:100%;max-height:200px;border-radius:8px;display:block;'
+  });
+}
 
 export default async function CampaignCreateView({ id }) {
   const player = requirePlayer();
@@ -50,7 +60,9 @@ export default async function CampaignCreateView({ id }) {
           <input type="file" accept="image/jpeg,image/png" style="display:none" id="ccMapFile" />
         </div>
         <div id="ccMapPreview" style="display:none;">
-          <img id="ccMapImage" alt="Kampagnenkarte" src="" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src=this.dataset.fallbackSrc;}" style="max-width:100%;max-height:200px;border-radius:8px;" />
+          <div id="ccMapMedia">
+            <img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block;" />
+          </div>
           <p id="ccMapFileName" style="margin-top:8px;font-size:0.85rem;color:#9ca3af;"></p>
         </div>
         <div class="footer">
@@ -82,7 +94,6 @@ export default async function CampaignCreateView({ id }) {
   const switchEl = document.getElementById('ccVisibilitySwitch');
   const visibilityText = document.getElementById('ccVisibilityText');
   const mapInput = document.getElementById('ccMapFile');
-  const statusEl = document.getElementById('ccStatus');
   let isPublic = true;
   let croppedMapBlob = null;
 
@@ -158,6 +169,8 @@ export default async function CampaignCreateView({ id }) {
       try {
         croppedMapBlob = await showMapCropModal(file);
         const url = URL.createObjectURL(croppedMapBlob);
+        const mapMedia = document.getElementById('ccMapMedia');
+        mapMedia.innerHTML = '<img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block;" />';
         document.getElementById('ccMapImage').src = url;
         document.getElementById('ccMapFileName').textContent = file.name + ' (zugeschnitten)';
         document.getElementById('ccMapPreview').style.display = 'block';
@@ -186,10 +199,7 @@ export default async function CampaignCreateView({ id }) {
         switchEl.classList.toggle('private', !isPublic);
         visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
         if (c.mapImagePath) {
-          const mapImg = document.getElementById('ccMapImage');
-          mapImg.dataset.fallbackApplied = '0';
-          mapImg.dataset.fallbackSrc = resolveOriginalImageUrl(c.mapImagePath);
-          mapImg.src = resolveMapUrl(c.mapImagePath, { variant: 'preview' });
+          document.getElementById('ccMapMedia').innerHTML = renderPreviewMap(c.mapImagePath);
           document.getElementById('ccMapFileName').textContent = 'Karte geladen';
           document.getElementById('ccMapPreview').style.display = 'block';
         }

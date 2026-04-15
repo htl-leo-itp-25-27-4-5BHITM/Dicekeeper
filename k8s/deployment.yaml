@@ -52,6 +52,15 @@ spec:
                 secretKeyRef:
                   name: dicekeeper-secret
                   key: KEYCLOAK_STATE_SECRET
+            - name: IMAGOR_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-secret
+                  key: IMAGOR_SECRET
+            - name: IMAGOR_SIGNER_TYPE
+              value: sha256
+            - name: IMAGOR_SIGNER_TRUNCATE
+              value: "40"
             - name: QUARKUS_OIDC_AUTHENTICATION_USER_INFO_REQUIRED
               value: "false"
             - name: QUARKUS_OIDC_TOKEN_STATE_MANAGER_STRATEGY

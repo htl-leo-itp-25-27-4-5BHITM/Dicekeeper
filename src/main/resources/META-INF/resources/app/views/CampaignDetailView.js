@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, initials, renderMapPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
@@ -38,6 +38,16 @@ export default async function CampaignDetailView({ id }) {
   function getDMName() {
     const dm = campaignPlayers.find(cp => cp.role === 'DM');
     return dm ? (playerNameMap[dm.playerId] || `Player ${dm.playerId}`) : 'Unbekannt';
+  }
+
+  function renderPreviewMap(mapImagePath, imgId = '') {
+    return renderMapPicture(mapImagePath, {
+      variant: 'preview',
+      alt: 'Kampagnenkarte',
+      imgId,
+      pictureStyle: 'display:block;width:100%;',
+      imgStyle: 'width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;'
+    });
   }
 
   function renderPlayersCompact() {
@@ -108,7 +118,7 @@ export default async function CampaignDetailView({ id }) {
         <div class="preview-divider"></div>
         <div class="players-title">Beigetretene Spieler</div>
         <div class="players-horizontal">${renderPlayersCompact()}</div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div><img src="${esc(resolveMapUrl(campaign.mapImagePath, { variant: 'preview' }))}" data-fallback-src="${esc(resolveOriginalImageUrl(campaign.mapImagePath))}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src=this.dataset.fallbackSrc;}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : ''}
+        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div>${renderPreviewMap(campaign.mapImagePath)}</div>` : ''}
       </div>
       <div class="footer">
         <button class="btn btn-secondary" id="cdBack">Abbrechen</button>
@@ -145,7 +155,7 @@ export default async function CampaignDetailView({ id }) {
       </div>
       <div class="form-group"><label>Karte</label>
         <div class="map-upload" id="cdMapUploadArea"><span class="map-upload-icon">+</span><span class="map-upload-text">Karte hochladen</span><input type="file" id="cdMapFile" accept=".jpg,.png,.svg" style="display:none;" /></div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:12px"><img id="cdMapImg" src="${esc(resolveMapUrl(campaign.mapImagePath, { variant: 'preview' }))}" data-fallback-src="${esc(resolveOriginalImageUrl(campaign.mapImagePath))}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src=this.dataset.fallbackSrc;}" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>` : '<div class="map-section" style="display:none;margin-top:12px"><img id="cdMapImg" src="" alt="Karten" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;" /></div>'}
+        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:12px"><div id="cdMapMedia">${renderPreviewMap(campaign.mapImagePath, 'cdMapImg')}</div></div>` : '<div class="map-section" style="display:none;margin-top:12px"><div id="cdMapMedia"><img id="cdMapImg" src="" alt="Kampagnenkarte" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;" /></div></div>'}
       </div>
       <div class="players-section"><div class="players-title">Beigetretene Spieler</div><div class="players" id="cdPlayersList"></div></div>
       <div class="footer">
@@ -172,9 +182,11 @@ export default async function CampaignDetailView({ id }) {
       try {
         cdCroppedBlob = await showMapCropModal(file);
         const url = URL.createObjectURL(cdCroppedBlob);
+        const mapMedia = document.getElementById('cdMapMedia');
+        mapMedia.innerHTML = '<img id="cdMapImg" src="" alt="Kampagnenkarte" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;" />';
         const img = document.getElementById('cdMapImg');
         img.src = url;
-        img.parentElement.style.display = 'block';
+        mapMedia.parentElement.style.display = 'block';
       } catch (err) {
         cdCroppedBlob = null;
       }

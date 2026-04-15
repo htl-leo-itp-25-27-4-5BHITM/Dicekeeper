@@ -102,7 +102,8 @@ jobs:
             --from-literal=KEYCLOAK_AUTH_SERVER_URL=${{ secrets.KEYCLOAK_AUTH_SERVER_URL }} \
             --from-literal=KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }} \
             --from-literal=KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }} \
-            --from-literal=KEYCLOAK_STATE_SECRET=${{ secrets.KEYCLOAK_STATE_SECRET }}
+            --from-literal=KEYCLOAK_STATE_SECRET=${{ secrets.KEYCLOAK_STATE_SECRET }} \
+            --from-literal=IMAGOR_SECRET=${{ secrets.IMAGOR_SECRET }}
           kubectl -n $NAMESPACE apply -f k8s/keycloak-service.yaml
           kubectl -n $NAMESPACE apply -f k8s/keycloak-deployment.yaml
           if [ "${{ steps.keycloak-changes.outputs.changed }}" = "true" ]; then

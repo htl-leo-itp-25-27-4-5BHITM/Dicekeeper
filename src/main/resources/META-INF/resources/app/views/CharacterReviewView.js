@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod, resolveAvatarUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, renderAvatarPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 
@@ -77,7 +77,12 @@ export default async function CharacterReviewView({ id, cpId }) {
     }).join('');
 
     let avatarHtml = initials(playerData.name || playerData.username);
-    if (playerData.profilePicture) avatarHtml = `<img src="${esc(resolveAvatarUrl(playerData.profilePicture, { cssSize: 48 }))}" data-fallback-src="${esc(resolveOriginalImageUrl(playerData.profilePicture))}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src=this.dataset.fallbackSrc;}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
+    if (playerData.profilePicture) avatarHtml = renderAvatarPicture(playerData.profilePicture, {
+      cssSize: 48,
+      alt: 'Avatar',
+      pictureStyle: 'display:block;width:100%;height:100%;',
+      imgStyle: 'width:100%;height:100%;object-fit:cover;display:block;'
+    });
 
     content.innerHTML = `
       <div class="player-info">

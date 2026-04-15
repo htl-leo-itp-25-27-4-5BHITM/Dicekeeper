@@ -1,11 +1,21 @@
 /**
  * Profile View
  */
-import { logout, requirePlayer, setPlayer, clearPlayer } from '../services/auth.js';
+import { logout, requirePlayer, setPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { initials, resolveAvatarUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { initials, renderAvatarPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { getTheme, toggleTheme } from '../services/theme.js';
+
+function renderProfileAvatarMedia(profilePicture) {
+  return renderAvatarPicture(profilePicture, {
+    cssSize: 120,
+    alt: 'Profilbild',
+    imgId: 'pvImg',
+    pictureStyle: 'position:absolute;inset:0;display:block;width:100%;height:100%;',
+    imgStyle: 'width:100%;height:100%;object-fit:cover;display:block;'
+  });
+}
 
 export default async function ProfileView() {
   const player = requirePlayer();
@@ -23,8 +33,8 @@ export default async function ProfileView() {
         <div class="card-header" style="text-align:center;"><div class="card-title">Profil</div></div>
         <div class="profile-section" style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px;">
           <div class="profile-avatar" id="pvAvatar" title="Klicke um Profilbild zu \u00e4ndern" style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg, var(--avatar-start), var(--avatar-end));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:42px;color:var(--avatar-text);cursor:pointer;overflow:hidden;margin-bottom:16px;position:relative;">
-            <span id="pvInitials">${initials(player.name || player.username)}</span>
-            <img id="pvImg" src="${resolveAvatarUrl(player.profilePicture, { cssSize: 120 })}" data-fallback-src="${resolveOriginalImageUrl(player.profilePicture)}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src=this.dataset.fallbackSrc;}" alt="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;${player.profilePicture ? '' : 'display:none;'}" />
+            <span id="pvInitials" style="${player.profilePicture ? 'display:none;' : ''}">${initials(player.name || player.username)}</span>
+            <div id="pvImageSlot" style="position:absolute;inset:0;${player.profilePicture ? '' : 'display:none;'}">${renderProfileAvatarMedia(player.profilePicture)}</div>
             <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;border-radius:50%;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span style="color:white;font-size:14px;">\u00c4ndern</span></div>
           </div>
           <input type="file" id="pvFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none;" />
@@ -78,11 +88,11 @@ export default async function ProfileView() {
       if (!r.ok) throw new Error(await r.text());
       currentPlayer = await r.json();
       setPlayer(currentPlayer);
-      const profileImg = document.getElementById('pvImg');
-      profileImg.dataset.fallbackApplied = '0';
-      profileImg.dataset.fallbackSrc = resolveOriginalImageUrl(currentPlayer.profilePicture);
-      profileImg.src = resolveAvatarUrl(currentPlayer.profilePicture, { cssSize: 120 });
-      profileImg.style.display = 'block';
+      const imageSlot = document.getElementById('pvImageSlot');
+      const initialsEl = document.getElementById('pvInitials');
+      initialsEl.style.display = currentPlayer.profilePicture ? 'none' : '';
+      imageSlot.style.display = currentPlayer.profilePicture ? 'block' : 'none';
+      imageSlot.innerHTML = renderProfileAvatarMedia(currentPlayer.profilePicture);
       setStatus('Profilbild aktualisiert!', false);
     } catch (err) {
       setStatus('Upload fehlgeschlagen: ' + err.message, true);
