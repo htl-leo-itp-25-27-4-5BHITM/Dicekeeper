@@ -1,7 +1,7 @@
 /**
  * SPA Header component – notification bell, user avatar
  */
-import { getPlayer } from '../services/auth.js';
+import { getPlayer, suppressAuthRedirect } from '../services/auth.js';
 import { esc, renderAvatarPicture, timeAgo } from '../services/utils.js';
 import { navigate } from '../router.js';
 import { getTheme, toggleTheme } from '../services/theme.js';
@@ -114,7 +114,10 @@ export function initHeader() {
 
   async function loadNotificationCount() {
     try {
-      const res = await fetch(`/api/notification/player/${player.id}/unread/count`, { cache: 'no-store' });
+      const res = await fetch(
+        `/api/notification/player/${player.id}/unread/count`,
+        suppressAuthRedirect({ cache: 'no-store' })
+      );
       if (res.ok) {
         const count = await res.json();
         if (count > 0) {

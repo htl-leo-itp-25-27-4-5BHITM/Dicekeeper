@@ -1,0 +1,102 @@
+@startuml
+title Dicekeeper - Use-Case-Diagramm aktueller Stand
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actorStyle awesome
+
+actor "Gast" as Guest
+actor "Spieler" as Player
+actor "Dungeon Master" as DM
+actor "Tischbildschirm" as TableScreen
+actor "Keycloak" as Keycloak <<extern>>
+
+rectangle "Dicekeeper Web-App\naktueller Stand" {
+  usecase "Einloggen /\nregistrieren" as UCLogin
+  usecase "Profil und Avatar\nverwalten" as UCProfile
+  usecase "Benachrichtigungen\nlesen" as UCNotifications
+
+  usecase "Charakter erstellen\noder bearbeiten" as UCCharacter
+  usecase "Ability Scores,\nKlasse und Background\nfestlegen" as UCCharacterDetails
+
+  usecase "Kampagnen ansehen" as UCBrowseCampaigns
+  usecase "Kampagne beitreten" as UCJoinCampaign
+  usecase "Charakter fuer\nKampagne einreichen" as UCSubmitCharacter
+  usecase "Kampagne verlassen" as UCLeaveCampaign
+
+  usecase "Spieleransicht\nverwenden" as UCPlayerView
+  usecase "Karte ansehen" as UCViewMap
+  usecase "Charakterwerte und HP\nanzeigen" as UCViewCharacter
+  usecase "Wuerfeln" as UCRollDice
+  usecase "Bei Gruppen-\nentscheidungen abstimmen" as UCVote
+  usecase "Notizen pflegen" as UCNotes
+
+  usecase "Kampagne erstellen" as UCCreateCampaign
+  usecase "Kampagne bearbeiten\noder loeschen" as UCEditCampaign
+  usecase "Story, Sichtbarkeit\nund Spielerlimit pflegen" as UCManageCampaignData
+  usecase "Karte hochladen\nund zuschneiden" as UCUploadMap
+  usecase "Spieler verwalten" as UCManagePlayers
+  usecase "Charaktere pruefen,\ngenehmigen oder ablehnen" as UCReviewCharacters
+  usecase "Kampagne starten" as UCStartCampaign
+
+  usecase "DM-Cockpit nutzen" as UCCockpit
+  usecase "Spielsitzung leiten" as UCGMView
+  usecase "Spielzug / Initiative\nsetzen" as UCTurn
+  usecase "HP verwalten" as UCHP
+  usecase "Kartenmarker und\nGruppen verwalten" as UCMarkers
+  usecase "Fog of War\nverwalten" as UCFog
+  usecase "Gruppenentscheidungen\nerstellen und abschliessen" as UCDecisions
+  usecase "Wuerfelergebnis\nanzeigen oder setzen" as UCDMDice
+  usecase "Tischansicht oeffnen" as UCOpenTable
+
+  usecase "Tischansicht anzeigen" as UCTableView
+  usecase "Spielstand in Echtzeit\nsynchronisieren" as UCRealtime
+}
+
+Guest --> UCLogin
+Keycloak --> UCLogin
+
+Player --> UCProfile
+Player --> UCNotifications
+Player --> UCCharacter
+Player --> UCBrowseCampaigns
+Player --> UCJoinCampaign
+Player --> UCSubmitCharacter
+Player --> UCLeaveCampaign
+Player --> UCPlayerView
+
+UCCharacter ..> UCCharacterDetails : <<include>>
+UCPlayerView ..> UCViewMap : <<include>>
+UCPlayerView ..> UCViewCharacter : <<include>>
+UCPlayerView ..> UCRollDice : <<include>>
+UCPlayerView ..> UCVote : <<include>>
+UCPlayerView ..> UCNotes : <<include>>
+UCPlayerView ..> UCRealtime : <<include>>
+
+DM --> UCCreateCampaign
+DM --> UCEditCampaign
+DM --> UCManagePlayers
+DM --> UCReviewCharacters
+DM --> UCStartCampaign
+DM --> UCCockpit
+DM --> UCGMView
+DM --> UCOpenTable
+
+UCEditCampaign ..> UCManageCampaignData : <<include>>
+UCEditCampaign ..> UCUploadMap : <<include>>
+UCCockpit ..> UCReviewCharacters : <<include>>
+UCCockpit ..> UCMarkers : <<include>>
+UCGMView ..> UCTurn : <<include>>
+UCGMView ..> UCHP : <<include>>
+UCGMView ..> UCMarkers : <<include>>
+UCGMView ..> UCFog : <<include>>
+UCGMView ..> UCDecisions : <<include>>
+UCGMView ..> UCDMDice : <<include>>
+UCGMView ..> UCRealtime : <<include>>
+
+TableScreen --> UCTableView
+UCOpenTable ..> UCTableView : <<include>>
+UCTableView ..> UCRealtime : <<include>>
+UCTableView ..> UCFog : <<include>>
+
+@enduml

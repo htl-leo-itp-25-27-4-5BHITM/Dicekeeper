@@ -1,0 +1,127 @@
+digraph DicekeeperCurrentUsecases {
+  graph [
+    rankdir=LR,
+    compound=true,
+    splines=polyline,
+    nodesep=0.38,
+    ranksep=0.8,
+    bgcolor="white",
+    fontname="Arial"
+  ];
+
+  node [
+    fontname="Arial",
+    fontsize=11,
+    color="#29434e",
+    penwidth=1.2
+  ];
+
+  edge [
+    fontname="Arial",
+    fontsize=9,
+    color="#546e7a",
+    arrowsize=0.7
+  ];
+
+  Guest [shape=box, style="rounded,filled", fillcolor="#eef7ff", label="Gast"];
+  Player [shape=box, style="rounded,filled", fillcolor="#eef7ff", label="Spieler"];
+  DM [shape=box, style="rounded,filled", fillcolor="#e8f5e9", label="Dungeon Master"];
+  TableScreen [shape=box, style="rounded,filled", fillcolor="#fff8e1", label="Tischbildschirm"];
+  Keycloak [shape=box, style="rounded,dashed,filled", fillcolor="#f5f5f5", label="Keycloak\n(extern)"];
+
+  subgraph cluster_system {
+    label="Dicekeeper Web-App - aktueller Stand";
+    labelloc=t;
+    fontsize=16;
+    fontname="Arial Bold";
+    color="#90a4ae";
+    penwidth=1.5;
+    style="rounded";
+
+    UCLogin [shape=ellipse, label="Einloggen /\nregistrieren"];
+    UCProfile [shape=ellipse, label="Profil und Avatar\nverwalten"];
+    UCNotifications [shape=ellipse, label="Benachrichtigungen\nlesen"];
+
+    UCCharacter [shape=ellipse, label="Charakter erstellen\noder bearbeiten"];
+    UCCharacterDetails [shape=ellipse, label="Ability Scores,\nKlasse und Background\nfestlegen"];
+
+    UCBrowseCampaigns [shape=ellipse, label="Kampagnen\nansehen"];
+    UCJoinCampaign [shape=ellipse, label="Kampagne\nbeitreten"];
+    UCSubmitCharacter [shape=ellipse, label="Charakter fuer\nKampagne einreichen"];
+    UCLeaveCampaign [shape=ellipse, label="Kampagne\nverlassen"];
+
+    UCPlayerView [shape=ellipse, label="Spieleransicht\nverwenden"];
+    UCViewMap [shape=ellipse, label="Karte\nansehen"];
+    UCViewCharacter [shape=ellipse, label="Charakterwerte\nund HP anzeigen"];
+    UCRollDice [shape=ellipse, label="Wuerfeln"];
+    UCVote [shape=ellipse, label="Bei Gruppen-\nentscheidungen abstimmen"];
+    UCNotes [shape=ellipse, label="Notizen\npflegen"];
+
+    UCCreateCampaign [shape=ellipse, label="Kampagne\nerstellen"];
+    UCEditCampaign [shape=ellipse, label="Kampagne bearbeiten\noder loeschen"];
+    UCManageCampaignData [shape=ellipse, label="Story, Sichtbarkeit\nund Spielerlimit pflegen"];
+    UCUploadMap [shape=ellipse, label="Karte hochladen\nund zuschneiden"];
+    UCManagePlayers [shape=ellipse, label="Spieler\nverwalten"];
+    UCReviewCharacters [shape=ellipse, label="Charaktere pruefen,\ngenehmigen oder ablehnen"];
+    UCStartCampaign [shape=ellipse, label="Kampagne\nstarten"];
+
+    UCCockpit [shape=ellipse, label="DM-Cockpit\nnutzen"];
+    UCGMView [shape=ellipse, label="Spielsitzung\nleiten"];
+    UCTurn [shape=ellipse, label="Spielzug /\nInitiative setzen"];
+    UCHP [shape=ellipse, label="HP verwalten"];
+    UCMarkers [shape=ellipse, label="Kartenmarker und\nGruppen verwalten"];
+    UCFog [shape=ellipse, label="Fog of War\nverwalten"];
+    UCDecisions [shape=ellipse, label="Gruppenentscheidungen\nerstellen und abschliessen"];
+    UCDMDice [shape=ellipse, label="Wuerfelergebnis\nanzeigen oder setzen"];
+    UCOpenTable [shape=ellipse, label="Tischansicht\noeffnen"];
+
+    UCTableView [shape=ellipse, label="Tischansicht\nanzeigen"];
+    UCRealtime [shape=ellipse, label="Spielstand in Echtzeit\nsynchronisieren"];
+  }
+
+  Guest -> UCLogin [dir=none];
+  Keycloak -> UCLogin [dir=none, style=dashed];
+
+  Player -> UCProfile [dir=none];
+  Player -> UCNotifications [dir=none];
+  Player -> UCCharacter [dir=none];
+  Player -> UCBrowseCampaigns [dir=none];
+  Player -> UCJoinCampaign [dir=none];
+  Player -> UCSubmitCharacter [dir=none];
+  Player -> UCLeaveCampaign [dir=none];
+  Player -> UCPlayerView [dir=none];
+
+  UCCharacter -> UCCharacterDetails [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCViewMap [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCViewCharacter [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCRollDice [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCVote [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCNotes [style=dashed, label="<<include>>"];
+  UCPlayerView -> UCRealtime [style=dashed, label="<<include>>"];
+
+  DM -> UCCreateCampaign [dir=none];
+  DM -> UCEditCampaign [dir=none];
+  DM -> UCManagePlayers [dir=none];
+  DM -> UCReviewCharacters [dir=none];
+  DM -> UCStartCampaign [dir=none];
+  DM -> UCCockpit [dir=none];
+  DM -> UCGMView [dir=none];
+  DM -> UCOpenTable [dir=none];
+
+  UCEditCampaign -> UCManageCampaignData [style=dashed, label="<<include>>"];
+  UCEditCampaign -> UCUploadMap [style=dashed, label="<<include>>"];
+  UCCockpit -> UCReviewCharacters [style=dashed, label="<<include>>"];
+  UCCockpit -> UCMarkers [style=dashed, label="<<include>>"];
+  UCGMView -> UCTurn [style=dashed, label="<<include>>"];
+  UCGMView -> UCHP [style=dashed, label="<<include>>"];
+  UCGMView -> UCMarkers [style=dashed, label="<<include>>"];
+  UCGMView -> UCFog [style=dashed, label="<<include>>"];
+  UCGMView -> UCDecisions [style=dashed, label="<<include>>"];
+  UCGMView -> UCDMDice [style=dashed, label="<<include>>"];
+  UCGMView -> UCRealtime [style=dashed, label="<<include>>"];
+
+  TableScreen -> UCTableView [dir=none];
+  UCOpenTable -> UCTableView [style=dashed, label="<<include>>"];
+  UCTableView -> UCRealtime [style=dashed, label="<<include>>"];
+  UCTableView -> UCFog [style=dashed, label="<<include>>"];
+}

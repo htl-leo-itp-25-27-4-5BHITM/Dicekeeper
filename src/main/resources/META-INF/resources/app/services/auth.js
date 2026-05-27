@@ -1,5 +1,6 @@
 const PLAYER_KEY = 'player';
 const FETCH_INTERCEPTOR_FLAG = '__dicekeeperAuthFetchInstalled';
+const SUPPRESS_AUTH_REDIRECT_KEY = 'suppressAuthRedirect';
 
 export function getPlayer() {
   try {
@@ -65,6 +66,10 @@ export function logout() {
   window.location.assign('/api/auth/logout');
 }
 
+export function suppressAuthRedirect(options = {}) {
+  return { ...options, [SUPPRESS_AUTH_REDIRECT_KEY]: true };
+}
+
 export function installAuthFetchInterceptor() {
   if (window[FETCH_INTERCEPTOR_FLAG]) {
     return;
@@ -72,23 +77,30 @@ export function installAuthFetchInterceptor() {
 
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
+    const shouldSuppressAuthRedirect = Boolean(init[SUPPRESS_AUTH_REDIRECT_KEY]);
+    let fetchInit = init;
+    if (shouldSuppressAuthRedirect) {
+      const { [SUPPRESS_AUTH_REDIRECT_KEY]: _unused, ...rest } = init;
+      fetchInit = rest;
+    }
+
     const requestUrl = typeof input === 'string' ? input : input?.url;
     const url = requestUrl ? new URL(requestUrl, window.location.origin) : null;
     const isApiRequest = url
       && url.origin === window.location.origin
       && url.pathname.startsWith('/api/');
 
-    let nextInit = init;
+    let nextInit = fetchInit;
     if (isApiRequest) {
       const headers = new Headers(typeof input === 'object' && input instanceof Request ? input.headers : undefined);
-      const initHeaders = new Headers(init.headers || undefined);
+      const initHeaders = new Headers(fetchInit.headers || undefined);
       initHeaders.forEach((value, key) => headers.set(key, value));
       headers.set('X-Requested-With', 'JavaScript');
-      nextInit = { ...init, headers };
+      nextInit = { ...fetchInit, headers };
     }
 
     const response = await originalFetch(input, nextInit);
-    if (isApiRequest && !window.location.hash.includes('kc=1')) {
+    if (isApiRequest && !shouldSuppressAuthRedirect && !window.location.hash.includes('kc=1')) {
       if (response.status === 499
           || (response.redirected && response.url && !new URL(response.url, window.location.origin).pathname.startsWith('/api/'))) {
         clearPlayer();

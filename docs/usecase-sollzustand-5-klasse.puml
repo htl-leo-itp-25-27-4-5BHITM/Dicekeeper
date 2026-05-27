@@ -1,0 +1,94 @@
+@startuml
+title Dicekeeper - Use-Case-Diagramm Sollzustand 5. Klasse
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actorStyle awesome
+
+actor "Spieler" as Player
+actor "Dungeon Master" as DM
+actor "Tischbildschirm /\nOnline-Gruppe" as SharedView
+actor "OpenAI API" as OpenAI <<extern>>
+actor "Speech-to-Text\nService" as SpeechService <<extern>>
+actor "Discord Server /\nDiscord Bot" as Discord <<extern>>
+actor "Regelwerk-\nDatenbank" as Rules <<extern>>
+
+rectangle "Dicekeeper Web-App\nSollzustand in der 5. Klasse" {
+  usecase "Kampagne planen\nund vorbereiten" as UCPrepare
+  usecase "Story, Questideen\nund Twists generieren" as UCStoryAI
+  usecase "NPCs und Orte\nKI-gestuetzt erstellen" as UCNpcAI
+  usecase "Begegnungen und\nBosskaempfe balancen" as UCBalanceAI
+  usecase "Kampfszene\nverwalten" as UCCombat
+  usecase "Initiative, HP,\nZustaende und Effekte\nautomatisieren" as UCCombatAutomation
+
+  usecase "Regelfrage stellen" as UCRuleQuestion
+  usecase "Regelstelle suchen\nund Antwort erklaeren" as UCRuleAnswer
+
+  usecase "Sprachbefehle geben" as UCVoiceCommand
+  usecase "Audio in Text\numwandeln" as UCTranscribe
+  usecase "Befehl interpretieren\nund Aktion ausfuehren" as UCInterpretCommand
+
+  usecase "Session online\nueber Discord spielen" as UCDiscordSession
+  usecase "Discord-Kanal mit\nDicekeeper synchronisieren" as UCSyncDiscord
+  usecase "Wuerfe und Spielstatus\nin Discord anzeigen" as UCDiscordStatus
+
+  usecase "Spieleransicht mobil\noder am Tablet nutzen" as UCMobilePlayer
+  usecase "Per Sprache wuerfeln\noder Aktion ansagen" as UCPlayerVoice
+  usecase "Gruppenentscheidungen\ntreffen" as UCPlayerDecision
+  usecase "Charakterbogen und\nKarte in Echtzeit nutzen" as UCPlayerRealtime
+
+  usecase "Tisch- oder\nOnline-Uebersicht anzeigen" as UCSharedView
+  usecase "Karte, Fog of War,\nInitiative und HP anzeigen" as UCSharedState
+
+  usecase "Sitzung automatisch\nprotokollieren" as UCSessionLog
+  usecase "Zusammenfassung und\nnaechste Schritte generieren" as UCSummaryAI
+}
+
+DM --> UCPrepare
+DM --> UCCombat
+DM --> UCRuleQuestion
+DM --> UCVoiceCommand
+DM --> UCDiscordSession
+DM --> UCSessionLog
+
+UCPrepare ..> UCStoryAI : <<include>>
+UCPrepare ..> UCNpcAI : <<include>>
+UCPrepare ..> UCBalanceAI : <<include>>
+UCCombat ..> UCCombatAutomation : <<include>>
+UCCombat ..> UCSharedView : <<include>>
+
+UCRuleQuestion ..> UCRuleAnswer : <<include>>
+UCVoiceCommand ..> UCTranscribe : <<include>>
+UCVoiceCommand ..> UCInterpretCommand : <<include>>
+UCInterpretCommand ..> UCCombat : <<extend>>
+UCInterpretCommand ..> UCRuleQuestion : <<extend>>
+
+UCDiscordSession ..> UCSyncDiscord : <<include>>
+UCDiscordSession ..> UCDiscordStatus : <<include>>
+
+UCSessionLog ..> UCTranscribe : <<include>>
+UCSessionLog ..> UCSummaryAI : <<include>>
+
+Player --> UCMobilePlayer
+Player --> UCPlayerVoice
+Player --> UCPlayerDecision
+Player --> UCRuleQuestion
+
+UCMobilePlayer ..> UCPlayerRealtime : <<include>>
+UCPlayerVoice ..> UCTranscribe : <<include>>
+UCPlayerVoice ..> UCInterpretCommand : <<include>>
+
+SharedView --> UCSharedView
+UCSharedView ..> UCSharedState : <<include>>
+
+OpenAI --> UCStoryAI
+OpenAI --> UCNpcAI
+OpenAI --> UCBalanceAI
+OpenAI --> UCRuleAnswer
+OpenAI --> UCSummaryAI
+SpeechService --> UCTranscribe
+Discord --> UCSyncDiscord
+Discord --> UCDiscordStatus
+Rules --> UCRuleAnswer
+
+@enduml

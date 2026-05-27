@@ -29,6 +29,8 @@
         </#list>
     </#if>
     <title>${msg("loginTitle", realmName)}</title>
+    <link rel="icon" type="image/svg+xml" href="${url.resourcesPath}/img/favicon.svg">
+    <link rel="shortcut icon" href="${url.resourcesPath}/img/favicon.svg">
     <#if properties.styles?has_content>
         <#list properties.styles?split(' ') as style>
             <link href="${url.resourcesPath}/${style}" rel="stylesheet">

@@ -1,0 +1,119 @@
+digraph DicekeeperTargetUsecases {
+  graph [
+    rankdir=LR,
+    compound=true,
+    splines=polyline,
+    nodesep=0.4,
+    ranksep=0.85,
+    bgcolor="white",
+    fontname="Arial"
+  ];
+
+  node [
+    fontname="Arial",
+    fontsize=11,
+    color="#29434e",
+    penwidth=1.2
+  ];
+
+  edge [
+    fontname="Arial",
+    fontsize=9,
+    color="#546e7a",
+    arrowsize=0.7
+  ];
+
+  Player [shape=box, style="rounded,filled", fillcolor="#eef7ff", label="Spieler"];
+  DM [shape=box, style="rounded,filled", fillcolor="#e8f5e9", label="Dungeon Master"];
+  SharedView [shape=box, style="rounded,filled", fillcolor="#fff8e1", label="Tischbildschirm /\nOnline-Gruppe"];
+  OpenAI [shape=box, style="rounded,dashed,filled", fillcolor="#f5f5f5", label="OpenAI API\n(extern)"];
+  SpeechService [shape=box, style="rounded,dashed,filled", fillcolor="#f5f5f5", label="Speech-to-Text\nService"];
+  Discord [shape=box, style="rounded,dashed,filled", fillcolor="#f5f5f5", label="Discord Server /\nDiscord Bot"];
+  Rules [shape=box, style="rounded,dashed,filled", fillcolor="#f5f5f5", label="Regelwerk-\nDatenbank"];
+
+  subgraph cluster_system {
+    label="Dicekeeper Web-App - Sollzustand in der 5. Klasse";
+    labelloc=t;
+    fontsize=16;
+    fontname="Arial Bold";
+    color="#90a4ae";
+    penwidth=1.5;
+    style="rounded";
+
+    UCPrepare [shape=ellipse, label="Kampagne planen\nund vorbereiten"];
+    UCStoryAI [shape=ellipse, label="Story, Questideen\nund Twists generieren"];
+    UCNpcAI [shape=ellipse, label="NPCs und Orte\nKI-gestuetzt erstellen"];
+    UCBalanceAI [shape=ellipse, label="Begegnungen und\nBosskaempfe balancen"];
+
+    UCCombat [shape=ellipse, label="Kampfszene\nverwalten"];
+    UCCombatAutomation [shape=ellipse, label="Initiative, HP,\nZustaende und Effekte\nautomatisieren"];
+
+    UCRuleQuestion [shape=ellipse, label="Regelfrage\nstellen"];
+    UCRuleAnswer [shape=ellipse, label="Regelstelle suchen\nund Antwort erklaeren"];
+
+    UCVoiceCommand [shape=ellipse, label="Sprachbefehle\ngeben"];
+    UCTranscribe [shape=ellipse, label="Audio in Text\numwandeln"];
+    UCInterpretCommand [shape=ellipse, label="Befehl interpretieren\nund Aktion ausfuehren"];
+
+    UCDiscordSession [shape=ellipse, label="Session online\nueber Discord spielen"];
+    UCSyncDiscord [shape=ellipse, label="Discord-Kanal mit\nDicekeeper synchronisieren"];
+    UCDiscordStatus [shape=ellipse, label="Wuerfe und Spielstatus\nin Discord anzeigen"];
+
+    UCMobilePlayer [shape=ellipse, label="Spieleransicht mobil\noder am Tablet nutzen"];
+    UCPlayerVoice [shape=ellipse, label="Per Sprache wuerfeln\noder Aktion ansagen"];
+    UCPlayerDecision [shape=ellipse, label="Gruppenentscheidungen\ntreffen"];
+    UCPlayerRealtime [shape=ellipse, label="Charakterbogen und\nKarte in Echtzeit nutzen"];
+
+    UCSharedView [shape=ellipse, label="Tisch- oder\nOnline-Uebersicht anzeigen"];
+    UCSharedState [shape=ellipse, label="Karte, Fog of War,\nInitiative und HP anzeigen"];
+
+    UCSessionLog [shape=ellipse, label="Sitzung automatisch\nprotokollieren"];
+    UCSummaryAI [shape=ellipse, label="Zusammenfassung und\nnaechste Schritte generieren"];
+  }
+
+  DM -> UCPrepare [dir=none];
+  DM -> UCCombat [dir=none];
+  DM -> UCRuleQuestion [dir=none];
+  DM -> UCVoiceCommand [dir=none];
+  DM -> UCDiscordSession [dir=none];
+  DM -> UCSessionLog [dir=none];
+
+  UCPrepare -> UCStoryAI [style=dashed, label="<<include>>"];
+  UCPrepare -> UCNpcAI [style=dashed, label="<<include>>"];
+  UCPrepare -> UCBalanceAI [style=dashed, label="<<include>>"];
+  UCCombat -> UCCombatAutomation [style=dashed, label="<<include>>"];
+  UCCombat -> UCSharedView [style=dashed, label="<<include>>"];
+
+  UCRuleQuestion -> UCRuleAnswer [style=dashed, label="<<include>>"];
+  UCVoiceCommand -> UCTranscribe [style=dashed, label="<<include>>"];
+  UCVoiceCommand -> UCInterpretCommand [style=dashed, label="<<include>>"];
+  UCInterpretCommand -> UCCombat [style=dotted, label="<<extend>>"];
+  UCInterpretCommand -> UCRuleQuestion [style=dotted, label="<<extend>>"];
+
+  UCDiscordSession -> UCSyncDiscord [style=dashed, label="<<include>>"];
+  UCDiscordSession -> UCDiscordStatus [style=dashed, label="<<include>>"];
+  UCSessionLog -> UCTranscribe [style=dashed, label="<<include>>"];
+  UCSessionLog -> UCSummaryAI [style=dashed, label="<<include>>"];
+
+  Player -> UCMobilePlayer [dir=none];
+  Player -> UCPlayerVoice [dir=none];
+  Player -> UCPlayerDecision [dir=none];
+  Player -> UCRuleQuestion [dir=none];
+
+  UCMobilePlayer -> UCPlayerRealtime [style=dashed, label="<<include>>"];
+  UCPlayerVoice -> UCTranscribe [style=dashed, label="<<include>>"];
+  UCPlayerVoice -> UCInterpretCommand [style=dashed, label="<<include>>"];
+
+  SharedView -> UCSharedView [dir=none];
+  UCSharedView -> UCSharedState [style=dashed, label="<<include>>"];
+
+  OpenAI -> UCStoryAI [dir=none, style=dashed];
+  OpenAI -> UCNpcAI [dir=none, style=dashed];
+  OpenAI -> UCBalanceAI [dir=none, style=dashed];
+  OpenAI -> UCRuleAnswer [dir=none, style=dashed];
+  OpenAI -> UCSummaryAI [dir=none, style=dashed];
+  SpeechService -> UCTranscribe [dir=none, style=dashed];
+  Discord -> UCSyncDiscord [dir=none, style=dashed];
+  Discord -> UCDiscordStatus [dir=none, style=dashed];
+  Rules -> UCRuleAnswer [dir=none, style=dashed];
+}
