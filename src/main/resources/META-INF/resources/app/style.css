@@ -831,7 +831,7 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 .switch-option { flex: 1; text-align: center; font-size: 11px; z-index: 2; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.06em; }
 .switch-thumb { position: absolute; top: 3px; bottom: 3px; width: 50%; border-radius: 999px; background: var(--accent-primary); transition: transform 0.2s; z-index: 1; }
 .switch.public .switch-thumb { transform: translateX(0%); }
-.switch.private .switch-thumb { transform: translateX(100%); }
+.switch.private .switch-thumb { transform: translateX(93%); }
 .button-row { display: flex; gap: 10px; }
 .btn { border-radius: 999px; padding: 8px 18px; font-size: 13px; border: 1px solid transparent; background: transparent; color: var(--text-primary); cursor: pointer; transition: all var(--transition-smooth); }
 .btn-secondary { border-color: var(--border-input); }
