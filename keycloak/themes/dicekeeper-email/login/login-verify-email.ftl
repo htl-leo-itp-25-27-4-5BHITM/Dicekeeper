@@ -1,4 +1,10 @@
 <#import "template.ftl" as layout>
+<#assign appReturnUrl = properties.dicekeeperAppUrl!'https://dicekeeper.net/'>
+<#if pageRedirectUri?? && pageRedirectUri?has_content>
+    <#assign appReturnUrl = pageRedirectUri>
+<#elseif client?? && client.baseUrl?? && client.baseUrl?has_content>
+    <#assign appReturnUrl = client.baseUrl>
+</#if>
 <@layout.registrationLayout displayInfo=!isAppInitiatedAction??; section>
     <#if section = "header">
         ${msg("dicekeeperVerifyEmailTitle")}
@@ -22,8 +28,13 @@
                         <button class="dk-auth-button dk-auth-button-primary dk-auth-button-block" type="submit">${msg("emailVerifySend")}</button>
                     </#if>
                     <button class="dk-auth-button dk-auth-button-secondary dk-auth-button-block" type="submit" name="cancel-aia" value="true" formnovalidate>${msg("doCancel")}</button>
+                    <a class="dk-auth-button dk-auth-button-secondary dk-auth-button-block" href="${appReturnUrl}">${msg("backToApplication")}</a>
                 </div>
             </form>
+        <#else>
+            <div class="dk-auth-actions">
+                <a class="dk-auth-button dk-auth-button-secondary dk-auth-button-block" href="${appReturnUrl}">${msg("backToApplication")}</a>
+            </div>
         </#if>
     <#elseif section = "info">
         <p class="dk-auth-info-copy">${msg("emailVerifyInstruction2")}</p>

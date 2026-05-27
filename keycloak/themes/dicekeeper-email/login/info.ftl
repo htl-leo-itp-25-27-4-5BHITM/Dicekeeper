@@ -1,4 +1,16 @@
 <#import "template.ftl" as layout>
+<#assign appReturnUrl = properties.dicekeeperAppUrl!'https://dicekeeper.net/'>
+<#if client?? && client.baseUrl?? && client.baseUrl?has_content>
+    <#assign appReturnUrl = client.baseUrl>
+</#if>
+<#assign primaryActionUrl = appReturnUrl>
+<#assign primaryActionLabel = msg("backToApplication")>
+<#if !skipLink?? && pageRedirectUri?? && pageRedirectUri?has_content>
+    <#assign primaryActionUrl = pageRedirectUri>
+<#elseif !skipLink?? && actionUri?? && actionUri?has_content>
+    <#assign primaryActionUrl = actionUri>
+    <#assign primaryActionLabel = msg("proceedWithAction")>
+</#if>
 <@layout.registrationLayout displayMessage=false; section>
     <#if section = "header">
         <#if messageHeader??>
@@ -18,16 +30,11 @@
             </#if>
         </div>
 
-        <#if !skipLink??>
-            <div class="dk-auth-actions">
-                <#if pageRedirectUri?has_content>
-                    <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${pageRedirectUri}">${msg("backToApplication")}</a>
-                <#elseif actionUri?has_content>
-                    <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${actionUri}">${msg("proceedWithAction")}</a>
-                <#elseif client?? && client.baseUrl?has_content>
-                    <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${client.baseUrl}">${msg("backToApplication")}</a>
-                </#if>
-            </div>
-        </#if>
+        <div class="dk-auth-actions">
+            <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${primaryActionUrl}">${primaryActionLabel}</a>
+            <#if primaryActionUrl != appReturnUrl>
+                <a class="dk-auth-button dk-auth-button-secondary dk-auth-button-block" href="${appReturnUrl}">${msg("backToApplication")}</a>
+            </#if>
+        </div>
     </#if>
 </@layout.registrationLayout>

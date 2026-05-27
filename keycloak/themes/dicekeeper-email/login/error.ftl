@@ -1,4 +1,8 @@
 <#import "template.ftl" as layout>
+<#assign appReturnUrl = properties.dicekeeperAppUrl!'https://dicekeeper.net/'>
+<#if client?? && client.baseUrl?? && client.baseUrl?has_content>
+    <#assign appReturnUrl = client.baseUrl>
+</#if>
 <@layout.registrationLayout displayMessage=false; section>
     <#if section = "header">
         ${msg("dicekeeperErrorTitle")}
@@ -7,10 +11,8 @@
             ${kcSanitize(message.summary)?no_esc}
         </div>
 
-        <#if !skipLink?? && client?? && client.baseUrl?has_content>
-            <div class="dk-auth-actions">
-                <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${client.baseUrl}">${msg("backToApplication")}</a>
-            </div>
-        </#if>
+        <div class="dk-auth-actions">
+            <a class="dk-auth-button dk-auth-button-primary dk-auth-button-block" href="${appReturnUrl}">${msg("backToApplication")}</a>
+        </div>
     </#if>
 </@layout.registrationLayout>

@@ -86,6 +86,10 @@ export default async function LoginView() {
     setStatus('Keycloak-Fehler: ' + detail, true);
   }
 
+  function needsFreshAppSession(err) {
+    return err?.status === 499 || /\bHTTP 499\b/.test(err?.message || '');
+  }
+
   async function completeKeycloakLogin() {
     btn.disabled = true;
     btn.querySelector('.login-submit-text').textContent = 'Authentifiziere…';
@@ -96,6 +100,12 @@ export default async function LoginView() {
       setStatus('Anmeldung erfolgreich. Weiterleitung…');
       navigate(nextPath);
     } catch (err) {
+      if (needsFreshAppSession(err)) {
+        clearPlayer();
+        setStatus('Verifizierung erkannt. Anmeldung wird neu verbunden…');
+        startLogin(nextPath);
+        return;
+      }
       setStatus('Anmeldung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'), true);
     } finally {
       btn.disabled = false;

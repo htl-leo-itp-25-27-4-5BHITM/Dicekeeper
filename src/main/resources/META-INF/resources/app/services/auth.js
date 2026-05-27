@@ -53,7 +53,9 @@ export async function syncAuthenticatedPlayer() {
     } catch (e) {
       text = '';
     }
-    throw new Error(text || res.statusText || ('HTTP ' + res.status));
+    const error = new Error(text || res.statusText || ('HTTP ' + res.status));
+    error.status = res.status;
+    throw error;
   }
 
   const player = await res.json();
