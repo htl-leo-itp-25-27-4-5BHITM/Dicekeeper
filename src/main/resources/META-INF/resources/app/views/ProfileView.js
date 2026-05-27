@@ -1,7 +1,7 @@
 /**
  * Profile View
  */
-import { logout, requirePlayer, setPlayer } from '../services/auth.js';
+import { clearPlayer, logout, requirePlayer, setPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { initials, renderAvatarPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
@@ -58,6 +58,11 @@ export default async function ProfileView() {
 
         <div class="divider"><span>Session</span></div>
         <button class="btn btn-danger" id="pvLogout" style="width:100%;">Abmelden</button>
+        <div class="divider"><span>Gefahrenbereich</span></div>
+        <div class="profile-danger-copy">
+          Dein Account wird dauerhaft gelöscht. Dazu gehören dein Dicekeeper-Profil, deine Mitgliedschaften und dein Keycloak-Konto.
+        </div>
+        <button class="btn btn-danger" id="pvDeleteAccount" style="width:100%;">Account endgültig löschen</button>
         <div id="pvStatus" style="margin-top:16px;font-size:0.9rem;text-align:center;min-height:24px;"></div>
       </div>
     </div>
@@ -138,6 +143,30 @@ export default async function ProfileView() {
 
   document.getElementById('pvBack').addEventListener('click', () => navigate('/campaigns'));
   document.getElementById('pvLogout').addEventListener('click', logout);
+  document.getElementById('pvDeleteAccount').addEventListener('click', async () => {
+    const confirmation = prompt('Dieser Schritt löscht deinen Dicekeeper-Account und dein Keycloak-Konto dauerhaft. Tippe LÖSCHEN, um fortzufahren.');
+    if (confirmation !== 'LÖSCHEN') {
+      setStatus('Account wurde nicht gelöscht.', true);
+      return;
+    }
+
+    const btn = document.getElementById('pvDeleteAccount');
+    btn.disabled = true;
+    btn.textContent = 'Lösche Account...';
+    try {
+      const response = await fetch('/api/player/' + currentPlayer.id, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error(await response.text() || 'Account konnte nicht gelöscht werden');
+      }
+
+      clearPlayer();
+      window.location.assign('/');
+    } catch (err) {
+      setStatus('Account löschen fehlgeschlagen: ' + (err.message || ''), true);
+      btn.disabled = false;
+      btn.textContent = 'Account endgültig löschen';
+    }
+  });
 
   // Cleanup: remove our theme listener and destroy header when view is torn down
   return () => {

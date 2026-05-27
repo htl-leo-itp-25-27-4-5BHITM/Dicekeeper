@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
+import security.KeycloakAdminService;
 import security.SecurityIdentityService;
 
 import java.io.IOException;
@@ -33,6 +34,12 @@ public class PlayerResource {
 
     @Inject
     SecurityIdentity securityIdentity;
+
+    @Inject
+    KeycloakAdminService keycloakAdminService;
+
+    @Inject
+    PlayerDeletionService playerDeletionService;
 
     @GET
     @Path("{email}")
@@ -151,6 +158,35 @@ public class PlayerResource {
         }
 
         return Response.ok(existing).build();
+    }
+
+    @DELETE
+    @Path("{id}")
+    public Response deletePlayer(@PathParam("id") Long id) {
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, id);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
+        Player existing = Player.findById(id);
+        if (existing == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Player with id " + id + " not found")
+                    .build();
+        }
+
+        String keycloakUserId = securityIdentityService.getCurrentSubject(securityIdentity);
+        try {
+            keycloakAdminService.deleteUser(keycloakUserId);
+            playerDeletionService.deleteLocalPlayerAccount(id);
+            return Response.noContent()
+                    .header("Clear-Site-Data", "\"cookies\", \"storage\"")
+                    .build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.BAD_GATEWAY)
+                    .entity("Account could not be deleted completely: " + e.getMessage())
+                    .build();
+        }
     }
 
     private void deleteUploadedFile(String filePath) {

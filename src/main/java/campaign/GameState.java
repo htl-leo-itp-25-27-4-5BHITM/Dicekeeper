@@ -17,6 +17,12 @@ public class GameState {
         return states.computeIfAbsent(campaignId, id -> new CampaignGameState());
     }
 
+    public void remove(Long campaignId) {
+        if (campaignId != null) {
+            states.remove(campaignId);
+        }
+    }
+
     public static class MapUndoSnapshot {
         public final Map<String, MapMarker> markers;
         public final String fogExploration;
@@ -174,4 +180,3 @@ public class GameState {
         }
     }
 }
-

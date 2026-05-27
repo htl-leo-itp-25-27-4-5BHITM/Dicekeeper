@@ -57,11 +57,43 @@ export default async function CampaignsView() {
     infoDiv.appendChild(metaDiv);
     card.appendChild(infoDiv);
 
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'campaign-actions';
+
     if (campaign.isPublic) {
       const badge = document.createElement('span');
       badge.className = 'badge';
       badge.textContent = 'Public';
-      card.appendChild(badge);
+      actionsDiv.appendChild(badge);
+    }
+
+    if (isDM) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'campaign-delete-btn';
+      deleteBtn.type = 'button';
+      deleteBtn.title = 'Kampagne löschen';
+      deleteBtn.setAttribute('aria-label', `Kampagne ${campaign.name || campaign.id} löschen`);
+      deleteBtn.textContent = 'Löschen';
+      deleteBtn.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        if (!confirm(`Kampagne "${campaign.name || 'Unbenannt'}" wirklich löschen?`)) return;
+
+        deleteBtn.disabled = true;
+        try {
+          const res = await fetch('/api/campaign/' + encodeURIComponent(campaign.id), { method: 'DELETE' });
+          if (!res.ok) throw new Error(await res.text() || 'Kampagne konnte nicht gelöscht werden');
+          showToast('Kampagne gelöscht', 'success');
+          load();
+        } catch (err) {
+          showToast('Löschen fehlgeschlagen: ' + (err.message || ''), 'error');
+          deleteBtn.disabled = false;
+        }
+      });
+      actionsDiv.appendChild(deleteBtn);
+    }
+
+    if (actionsDiv.children.length > 0) {
+      card.appendChild(actionsDiv);
     }
 
     card.addEventListener('click', () => {

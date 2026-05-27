@@ -5,6 +5,7 @@ import character.ability.CharacterAbility;
 import background.Background;
 import characterclass.CharacterClass;
 import io.quarkus.security.Authenticated;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -18,6 +19,9 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @Authenticated
 public class CharacterResource {
+
+    @Inject
+    CharacterDeletionService characterDeletionService;
 
     /**
      * Create a new empty character for the character creation flow.
@@ -146,8 +150,7 @@ public class CharacterResource {
                 .entity("Character not found").build();
         }
 
-        CharacterAbility.delete("character", character);
-        character.delete();
+        characterDeletionService.deleteCharacterById(id);
         return Response.noContent().build();
     }
 

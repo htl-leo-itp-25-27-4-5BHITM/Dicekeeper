@@ -36,6 +36,9 @@ public class CampaignResource {
     @Inject
     SecurityIdentity securityIdentity;
 
+    @Inject
+    CampaignDeletionService campaignDeletionService;
+
     @GET
     public List<Campaign> list() {
         return Campaign.listAll();
@@ -204,8 +207,7 @@ public class CampaignResource {
                     .build();
         }
 
-        deleteUploadedFile(existing.mapImagePath);
-        existing.delete();
+        campaignDeletionService.deleteCampaign(existing);
         return Response.noContent().build();
     }
 

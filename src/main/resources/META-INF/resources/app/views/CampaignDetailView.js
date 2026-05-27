@@ -283,9 +283,17 @@ export default async function CampaignDetailView({ id }) {
 
     document.getElementById('cdDelete').onclick = async () => {
       if (!confirm('Kampagne wirklich löschen?')) return;
-      await fetch('/api/campaign/' + id, { method: 'DELETE' });
-      setStatus('Gelöscht');
-      setTimeout(() => navigate('/campaigns'), 1500);
+      const btn = document.getElementById('cdDelete');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/campaign/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text() || 'Kampagne konnte nicht gelöscht werden');
+        setStatus('Gelöscht');
+        setTimeout(() => navigate('/campaigns'), 1500);
+      } catch (err) {
+        setStatus('Löschen fehlgeschlagen: ' + (err.message || ''), true);
+        btn.disabled = false;
+      }
     };
   }
 

@@ -108,6 +108,13 @@ public class SecurityIdentityService {
         return getOrCreateCurrentPlayer(identity).id;
     }
 
+    public String getCurrentSubject(SecurityIdentity identity) {
+        return firstNonBlank(
+                claimString(identity, "sub"),
+                identity != null && identity.getPrincipal() != null ? identity.getPrincipal().getName() : null
+        );
+    }
+
     public Map<String, Object> debugClaims(SecurityIdentity identity) {
         String realEmail = resolveEmail(identity);
         String normalizedRealEmail = isBlank(realEmail) ? null : realEmail.toLowerCase(Locale.ROOT);
