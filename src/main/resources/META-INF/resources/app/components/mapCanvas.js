@@ -11,7 +11,7 @@
  *   mc.destroy();
  */
 import { themeColor } from '../services/theme.js';
-import { resolveOriginalImageUrl } from '../services/utils.js';
+import { initials, resolveOriginalImageUrl } from '../services/utils.js';
 
 export function createMapCanvas(container, opts = {}) {
   const {
@@ -200,11 +200,13 @@ export function createMapCanvas(container, opts = {}) {
     // Draw markers
     if (mapLoaded) {
       const { x, y, size } = getMapRect();
-      markers.forEach(m => {
+      const markerLayout = buildMarkerLayout(x, y, size);
+      markerLayout.singles.forEach(m => {
         const mx = x + m.x * size;
         const my = y + m.y * size;
         drawMarker(ctx, m, mx, my, size, selectedMarkers.has(m.id), hoverMarkerId === m.id);
       });
+      markerLayout.clusters.forEach(cluster => drawPlayerCluster(ctx, cluster, size));
 
       // Fog of war overlay
       if (fogOfWar) {
@@ -225,33 +227,14 @@ export function createMapCanvas(container, opts = {}) {
     ctx.shadowOffsetY = 2;
 
     if (marker.type === 'player-group') {
-      // Group: stacked circles
-      const pids = marker.playerIds ? marker.playerIds.split(',') : [];
-      const count = pids.length;
-
-      // Draw stacked circles
-      const _agRgb = themeColor('--accent-green-rgb') || '105,240,174';
-      for (let i = Math.min(count - 1, 2); i >= 0; i--) {
-        ctx.beginPath();
-        ctx.arc(mx + i * 3, my - i * 3, r, 0, Math.PI * 2);
-        ctx.fillStyle = i === 0 ? `rgba(${_agRgb},0.9)` : `rgba(${_agRgb},0.4)`;
-        ctx.fill();
-        ctx.strokeStyle = isSelected ? (themeColor('--gold') || '#ffc107') : 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
-        ctx.stroke();
-      }
-
-      // Count badge
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = themeColor('--accent-purple') || '#ba68c8';
-      ctx.beginPath();
-      ctx.arc(mx + r * 0.7, my - r * 0.7, r * 0.45, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'white';
-      ctx.font = `bold ${Math.max(9, r * 0.5)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(count, mx + r * 0.7, my - r * 0.7);
+      ctx.restore();
+      drawPlayerCluster(ctx, {
+        items: [{ marker, mx, my }],
+        mx,
+        my,
+        radius: baseRadius
+      }, mapSize);
+      return;
 
     } else if (marker.type === 'player') {
       ctx.beginPath();
@@ -326,6 +309,189 @@ export function createMapCanvas(container, opts = {}) {
       ctx.fillRect(mx - tw / 2 - pad, my + r + 3, tw + pad * 2, labelFont + 4);
       ctx.fillStyle = 'white';
       ctx.fillText(displayLabel, mx, my + r + 5);
+    }
+
+    ctx.restore();
+  }
+
+  function isPlayerMarker(marker) {
+    return marker.type === 'player' || marker.type === 'player-group';
+  }
+
+  function getMarkerPlayerIds(marker) {
+    if (!isPlayerMarker(marker)) return [];
+    if (marker.playerIds) {
+      return marker.playerIds.split(',').map(pid => pid.trim()).filter(Boolean);
+    }
+    return marker.label ? [String(marker.label).trim()] : [];
+  }
+
+  function getPlayerName(playerId, fallback) {
+    const p = players.find(pp => String(pp.id) === String(playerId));
+    return p ? p.name : fallback;
+  }
+
+  function buildMarkerLayout(mapX, mapY, mapSize) {
+    const baseRadius = Math.max(12, mapSize * 0.022);
+    const clusterDistance = baseRadius * 1.35;
+    const playerMarkers = [];
+    const singles = [];
+
+    for (const marker of markers) {
+      if (!isPlayerMarker(marker)) {
+        singles.push(marker);
+        continue;
+      }
+      playerMarkers.push({
+        marker,
+        mx: mapX + marker.x * mapSize,
+        my: mapY + marker.y * mapSize
+      });
+    }
+
+    const visited = new Set();
+    const clusters = [];
+    for (let i = 0; i < playerMarkers.length; i++) {
+      if (visited.has(i)) continue;
+
+      const queue = [i];
+      const groupIndexes = [];
+      visited.add(i);
+
+      while (queue.length > 0) {
+        const idx = queue.pop();
+        const current = playerMarkers[idx];
+        groupIndexes.push(idx);
+
+        for (let j = 0; j < playerMarkers.length; j++) {
+          if (visited.has(j)) continue;
+          const candidate = playerMarkers[j];
+          const dist = Math.hypot(current.mx - candidate.mx, current.my - candidate.my);
+          if (dist <= clusterDistance) {
+            visited.add(j);
+            queue.push(j);
+          }
+        }
+      }
+
+      if (groupIndexes.length === 1) {
+        singles.push(playerMarkers[groupIndexes[0]].marker);
+        continue;
+      }
+
+      const items = groupIndexes.map(idx => playerMarkers[idx]);
+      clusters.push({
+        items,
+        mx: items.reduce((sum, item) => sum + item.mx, 0) / items.length,
+        my: items.reduce((sum, item) => sum + item.my, 0) / items.length,
+        radius: baseRadius
+      });
+    }
+
+    return { singles, clusters };
+  }
+
+  function getClusterPlayers(cluster) {
+    const seen = new Set();
+    const result = [];
+    for (const item of cluster.items) {
+      const ids = getMarkerPlayerIds(item.marker);
+      if (ids.length === 0) {
+        const fallback = item.marker.label || item.marker.id;
+        if (!seen.has(fallback)) {
+          seen.add(fallback);
+          result.push({ id: fallback, name: fallback, marker: item.marker });
+        }
+        continue;
+      }
+      for (const pid of ids) {
+        if (seen.has(pid)) continue;
+        seen.add(pid);
+        result.push({
+          id: pid,
+          name: getPlayerName(pid, item.marker.label || 'Spieler ' + pid),
+          marker: item.marker
+        });
+      }
+    }
+    return result;
+  }
+
+  function drawPlayerCluster(ctx, cluster, mapSize) {
+    const people = getClusterPlayers(cluster);
+    const visibleCount = Math.min(people.length, 5);
+    const avatarRadius = Math.max(10, cluster.radius * 0.78);
+    const overlap = avatarRadius * 0.72;
+    const totalWidth = avatarRadius * 2 + Math.max(0, visibleCount - 1) * overlap;
+    const startX = cluster.mx - totalWidth / 2 + avatarRadius;
+    const colors = [
+      themeColor('--accent-green') || '#69f0ae',
+      themeColor('--accent-purple') || '#ba68c8',
+      themeColor('--gold') || '#ffc107',
+      '#4fc3f7',
+      '#ff8a80'
+    ];
+    const anySelected = cluster.items.some(item => selectedMarkers.has(item.marker.id));
+    const anyHovered = cluster.items.some(item => hoverMarkerId === item.marker.id);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = anyHovered ? 9 : 6;
+    ctx.shadowOffsetY = 2;
+
+    for (let i = visibleCount - 1; i >= 0; i--) {
+      const person = people[i];
+      const cx = startX + i * overlap;
+      const cy = cluster.my - i * avatarRadius * 0.14;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, anyHovered ? avatarRadius * 1.06 : avatarRadius, 0, Math.PI * 2);
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fill();
+      ctx.strokeStyle = anySelected ? (themeColor('--gold') || '#ffc107') : 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = anySelected ? 3 : 1.5;
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.font = `700 ${Math.max(8, avatarRadius * 0.55)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials(person.name).slice(0, 2), cx, cy + 0.5);
+      ctx.shadowBlur = anyHovered ? 9 : 6;
+    }
+
+    if (people.length > visibleCount) {
+      const badgeX = startX + (visibleCount - 1) * overlap + avatarRadius * 0.56;
+      const badgeY = cluster.my - avatarRadius * 0.72;
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(18,24,22,0.95)';
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, avatarRadius * 0.52, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = 'white';
+      ctx.font = `700 ${Math.max(8, avatarRadius * 0.42)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+' + (people.length - visibleCount), badgeX, badgeY);
+    }
+
+    const label = people.slice(0, 3).map(p => p.name).join(', ') + (people.length > 3 ? ' +' + (people.length - 3) : '');
+    if (label) {
+      ctx.shadowBlur = 0;
+      const labelFont = Math.max(9, cluster.radius * 0.55);
+      ctx.font = `600 ${labelFont}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const tw = ctx.measureText(label).width;
+      const pad = 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(cluster.mx - tw / 2 - pad, cluster.my + avatarRadius + 3, tw + pad * 2, labelFont + 4);
+      ctx.fillStyle = 'white';
+      ctx.fillText(label, cluster.mx, cluster.my + avatarRadius + 5);
     }
 
     ctx.restore();
@@ -642,13 +808,14 @@ export function createMapCanvas(container, opts = {}) {
 
     // Redraw player markers on top of fog so they remain visible
     if (positions.length > 0) {
-      for (const m of markers) {
-        if (m.type === 'player' || m.type === 'player-group') {
-          const mx = mapX + m.x * mapSize;
-          const my = mapY + m.y * mapSize;
-          drawMarker(ctx, m, mx, my, mapSize, selectedMarkers.has(m.id), hoverMarkerId === m.id);
-        }
+      const markerLayout = buildMarkerLayout(mapX, mapY, mapSize);
+      for (const m of markerLayout.singles) {
+        if (!isPlayerMarker(m)) continue;
+        const mx = mapX + m.x * mapSize;
+        const my = mapY + m.y * mapSize;
+        drawMarker(ctx, m, mx, my, mapSize, selectedMarkers.has(m.id), hoverMarkerId === m.id);
       }
+      markerLayout.clusters.forEach(cluster => drawPlayerCluster(ctx, cluster, mapSize));
     }
   }
 
@@ -656,11 +823,46 @@ export function createMapCanvas(container, opts = {}) {
     if (!mapLoaded) return null;
     const { x, y, size } = getMapRect();
     const baseRadius = Math.max(12, size * 0.022);
+    const markerLayout = buildMarkerLayout(x, y, size);
+
+    for (let i = markerLayout.clusters.length - 1; i >= 0; i--) {
+      const cluster = markerLayout.clusters[i];
+      const people = getClusterPlayers(cluster);
+      const visibleCount = Math.min(people.length, 5);
+      const avatarRadius = Math.max(10, cluster.radius * 0.78);
+      const overlap = avatarRadius * 0.72;
+      const totalWidth = avatarRadius * 2 + Math.max(0, visibleCount - 1) * overlap;
+      const startX = cluster.mx - totalWidth / 2 + avatarRadius;
+
+      for (let j = visibleCount - 1; j >= 0; j--) {
+        const ax = startX + j * overlap;
+        const ay = cluster.my - j * avatarRadius * 0.14;
+        if (Math.hypot(cx - ax, cy - ay) <= avatarRadius * 1.25) {
+          return people[j].marker;
+        }
+      }
+    }
+
     // Check in reverse (top-most first)
-    for (let i = markers.length - 1; i >= 0; i--) {
-      const m = markers[i];
+    for (let i = markerLayout.singles.length - 1; i >= 0; i--) {
+      const m = markerLayout.singles[i];
       const mx = x + m.x * size;
       const my = y + m.y * size;
+      if (m.type === 'player-group') {
+        const people = getClusterPlayers({ items: [{ marker: m, mx, my }] });
+        const visibleCount = Math.min(people.length, 5);
+        const avatarRadius = Math.max(10, baseRadius * 0.78);
+        const overlap = avatarRadius * 0.72;
+        const totalWidth = avatarRadius * 2 + Math.max(0, visibleCount - 1) * overlap;
+        const startX = mx - totalWidth / 2 + avatarRadius;
+        for (let j = visibleCount - 1; j >= 0; j--) {
+          const ax = startX + j * overlap;
+          const ay = my - j * avatarRadius * 0.14;
+          if (Math.hypot(cx - ax, cy - ay) <= avatarRadius * 1.25) {
+            return m;
+          }
+        }
+      }
       const dist = Math.sqrt((cx - mx) ** 2 + (cy - my) ** 2);
       if (dist <= baseRadius * 1.5) return m;
     }
