@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, renderMapPicture } from '../services/utils.js';
+import { esc, getActiveCampaignMap, getCampaignMaps, initials, renderMapPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
@@ -48,6 +48,30 @@ export default async function CampaignDetailView({ id }) {
       pictureStyle: 'display:block;width:100%;',
       imgStyle: 'width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;'
     });
+  }
+
+  function renderMapManager() {
+    const maps = getCampaignMaps(campaign);
+    const active = getActiveCampaignMap(campaign);
+    const options = maps.map(m => `<option value="${m.index}" ${active && m.path === active.path ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+    const mapList = maps.length === 0
+      ? '<div style="font-size:12px;opacity:0.65;margin-top:8px;">Noch keine Karte hochgeladen.</div>'
+      : `<div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
+          <select id="cdMapSelect" style="flex:1;">${options}</select>
+          <button class="btn btn-danger" id="cdDeleteMap" type="button" style="padding:8px 12px;">Löschen</button>
+        </div>`;
+    const preview = active
+      ? `<div class="map-section" style="margin-top:12px"><div id="cdMapMedia">${renderPreviewMap(active.path, 'cdMapImg')}</div></div>`
+      : '<div class="map-section" style="display:none;margin-top:12px"><div id="cdMapMedia"></div></div>';
+    return `
+      <div class="form-group"><label>Karten (${maps.length}/5)</label>
+        <div class="map-upload ${maps.length >= 5 ? 'disabled' : ''}" id="cdMapUploadArea" style="${maps.length >= 5 ? 'opacity:0.55;pointer-events:none;' : ''}">
+          <span class="map-upload-icon">+</span><span class="map-upload-text">${maps.length >= 5 ? 'Maximal 5 Karten erreicht' : 'Karten hochladen'}</span>
+          <input type="file" id="cdMapFile" accept=".jpg,.png,.svg" multiple style="display:none;" />
+        </div>
+        ${mapList}
+        ${preview}
+      </div>`;
   }
 
   function renderPlayersCompact() {
@@ -118,7 +142,7 @@ export default async function CampaignDetailView({ id }) {
         <div class="preview-divider"></div>
         <div class="players-title">Beigetretene Spieler</div>
         <div class="players-horizontal">${renderPlayersCompact()}</div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div>${renderPreviewMap(campaign.mapImagePath)}</div>` : ''}
+        ${getActiveCampaignMap(campaign) ? `<div class="map-section" style="margin-top:16px"><div class="players-title" style="margin-bottom:10px">Kampagnenkarte</div>${renderPreviewMap(getActiveCampaignMap(campaign).path)}</div>` : ''}
       </div>
       <div class="footer">
         <button class="btn btn-secondary" id="cdBack">Abbrechen</button>
@@ -153,10 +177,7 @@ export default async function CampaignDetailView({ id }) {
           <div class="switch-option option-private">Private</div>
         </div>
       </div>
-      <div class="form-group"><label>Karte</label>
-        <div class="map-upload" id="cdMapUploadArea"><span class="map-upload-icon">+</span><span class="map-upload-text">Karte hochladen</span><input type="file" id="cdMapFile" accept=".jpg,.png,.svg" style="display:none;" /></div>
-        ${campaign.mapImagePath ? `<div class="map-section" style="margin-top:12px"><div id="cdMapMedia">${renderPreviewMap(campaign.mapImagePath, 'cdMapImg')}</div></div>` : '<div class="map-section" style="display:none;margin-top:12px"><div id="cdMapMedia"><img id="cdMapImg" src="" alt="Kampagnenkarte" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;" /></div></div>'}
-      </div>
+      ${renderMapManager()}
       <div class="players-section"><div class="players-title">Beigetretene Spieler</div><div class="players" id="cdPlayersList"></div></div>
       <div class="footer">
         <button class="btn btn-secondary" id="cdCancel">Abbrechen</button>
@@ -174,13 +195,44 @@ export default async function CampaignDetailView({ id }) {
       switchEl.classList.toggle('private', !isPublic);
     };
 
+    const mapSelect = document.getElementById('cdMapSelect');
+    if (mapSelect) {
+      mapSelect.addEventListener('change', async () => {
+        const res = await fetch('/api/campaign/' + id + '/selected-map', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedMapIndex: parseInt(mapSelect.value) })
+        });
+        if (res.ok) {
+          campaign = await res.json();
+          renderDMView();
+        }
+      });
+    }
+    const deleteMapBtn = document.getElementById('cdDeleteMap');
+    if (deleteMapBtn) {
+      deleteMapBtn.addEventListener('click', async () => {
+        if (!confirm('Karte wirklich löschen?')) return;
+        const selectedIndex = parseInt(document.getElementById('cdMapSelect').value);
+        const res = await fetch('/api/campaign/' + id + '/maps/' + selectedIndex, { method: 'DELETE' });
+        if (res.ok) {
+          campaign = await res.json();
+          renderDMView();
+        }
+      });
+    }
     document.getElementById('cdMapUploadArea').addEventListener('click', () => document.getElementById('cdMapFile').click());
     let cdCroppedBlob = null;
     document.getElementById('cdMapFile').addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      if (getCampaignMaps(campaign).length + files.length > 5) {
+        setStatus('Maximal 5 Karten pro Kampagne', true);
+        e.target.value = '';
+        return;
+      }
       try {
-        cdCroppedBlob = await showMapCropModal(file);
+        cdCroppedBlob = await showMapCropModal(files[0]);
         const url = URL.createObjectURL(cdCroppedBlob);
         const mapMedia = document.getElementById('cdMapMedia');
         mapMedia.innerHTML = '<img id="cdMapImg" src="" alt="Kampagnenkarte" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;" />';
@@ -265,19 +317,22 @@ export default async function CampaignDetailView({ id }) {
         campaign = await res.json();
         const mapFile = document.getElementById('cdMapFile');
         if (mapFile.files && mapFile.files.length > 0) {
-          const fd = new FormData();
-          if (cdCroppedBlob) {
-            fd.append('file', cdCroppedBlob, 'map-cropped.png');
-          } else {
-            fd.append('file', mapFile.files[0]);
-          }
-          const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
-          if (uploadRes.ok) {
+          const files = Array.from(mapFile.files);
+          for (let i = 0; i < files.length; i++) {
+            const fd = new FormData();
+            if (i === 0 && cdCroppedBlob) {
+              fd.append('file', cdCroppedBlob, 'map-cropped.png');
+            } else {
+              fd.append('file', files[i]);
+            }
+            const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
+            if (!uploadRes.ok) throw new Error(await uploadRes.text() || 'Map upload failed');
             campaign = await uploadRes.json();
           }
         }
         setStatus('Kampagne aktualisiert');
         btn.disabled = false; btn.textContent = 'Aktualisieren';
+        renderDMView();
       } catch (err) { setStatus('Fehler: ' + err.message, true); btn.disabled = false; btn.textContent = 'Aktualisieren'; }
     };
 

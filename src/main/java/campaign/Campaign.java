@@ -16,6 +16,12 @@ public class Campaign extends PanacheEntity {
     @Column(name = "map_image_path", nullable = true)
     public String mapImagePath;
 
+    @Column(name = "map_image_paths", length = 2048, nullable = true)
+    public String mapImagePaths;
+
+    @Column(name = "selected_map_index", nullable = true)
+    public Integer selectedMapIndex = 0;
+
     @Column(name = "is_public", nullable = false)
     public Boolean isPublic = false;
 

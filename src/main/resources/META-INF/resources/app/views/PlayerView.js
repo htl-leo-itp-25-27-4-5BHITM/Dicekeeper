@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
@@ -148,6 +148,7 @@ export default async function PlayerView({ id }) {
   let playerMapCanvas = null, playerMapMarkers = [];
   let mobileMapCanvas = null;
   let fogExplorationData = null;
+  let activeMap = null;
   const isMobile = () => window.innerWidth <= 768;
 
   function getScore(name) {
@@ -227,6 +228,18 @@ export default async function PlayerView({ id }) {
     eventSource.addEventListener('player_active', e => {
       renderParty();
     });
+    eventSource.addEventListener('campaign_updated', async () => {
+      try {
+        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' });
+        if (!r.ok) return;
+        campaign = await r.json();
+        activeMap = getActiveCampaignMap(campaign);
+        const mapUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+        const fallbackUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+        if (playerMapCanvas) playerMapCanvas.updateMapImage(mapUrl, fallbackUrl);
+        if (mobileMapCanvas) mobileMapCanvas.updateMapImage(mapUrl, fallbackUrl);
+      } catch (e) {}
+    });
   }
 
   function syncPlayerMap() {
@@ -272,6 +285,7 @@ export default async function PlayerView({ id }) {
     try {
       const campRes = await fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' });
       campaign = await campRes.json();
+      activeMap = getActiveCampaignMap(campaign);
 
       const cpRes = await fetch('/api/campaign-player/' + campaignId, { cache: 'no-store' });
       campaignPlayers = await cpRes.json();
@@ -422,7 +436,8 @@ export default async function PlayerView({ id }) {
   // ===== MAP =====
   function renderMap() {
     const box = document.getElementById('pvMapCanvasBox');
-    if (!campaign.mapImagePath) {
+    const map = activeMap || getActiveCampaignMap(campaign);
+    if (!map) {
       box.innerHTML = '<div class="pv2-no-map"><span>🗺️</span><p>Keine Karte verfügbar</p></div>';
       return;
     }
@@ -431,8 +446,8 @@ export default async function PlayerView({ id }) {
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     playerMapCanvas = createMapCanvas(box, {
-      mapImageUrl: resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' }),
-      mapFallbackImageUrl: resolveOriginalImageUrl(campaign.mapImagePath),
+      mapImageUrl: resolveMapUrl(map.path, { variant: 'canvas' }),
+      mapFallbackImageUrl: resolveOriginalImageUrl(map.path),
       markers: playerMapMarkers,
       readOnly: true,
       isMaximized: false,
@@ -764,7 +779,8 @@ export default async function PlayerView({ id }) {
   function renderMobMap() {
     const box = document.getElementById('pvMobMapCanvasBox');
     if (!box) return;
-    if (!campaign.mapImagePath) {
+    const map = activeMap || getActiveCampaignMap(campaign);
+    if (!map) {
       box.innerHTML = `<div class="pv2-mob-no-map">
         <div class="pv2-mob-no-map-icon">🗺️</div>
         <div class="pv2-mob-no-map-title">Keine Karte</div>
@@ -777,8 +793,8 @@ export default async function PlayerView({ id }) {
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     mobileMapCanvas = createMapCanvas(box, {
-      mapImageUrl: resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' }),
-      mapFallbackImageUrl: resolveOriginalImageUrl(campaign.mapImagePath),
+      mapImageUrl: resolveMapUrl(map.path, { variant: 'canvas' }),
+      mapFallbackImageUrl: resolveOriginalImageUrl(map.path),
       markers: playerMapMarkers,
       readOnly: true,
       isMaximized: false,

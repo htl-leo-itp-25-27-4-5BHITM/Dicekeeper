@@ -16,7 +16,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -38,6 +40,9 @@ public class CampaignResource {
 
     @Inject
     CampaignDeletionService campaignDeletionService;
+
+    @Inject
+    SseBroadcaster broadcaster;
 
     @GET
     public List<Campaign> list() {
@@ -186,7 +191,13 @@ public class CampaignResource {
             existing.started = updated.started;
         }
 
-        return Response.ok(existing).build();
+        CampaignDTO dto = new CampaignDTO(existing, true);
+        broadcaster.broadcast(id, "campaign_updated", new CampaignDTO(existing, false));
+        if (Boolean.TRUE.equals(updated.started)) {
+            broadcaster.broadcast(id, "campaign_started", new CampaignDTO(existing, false));
+        }
+
+        return Response.ok(dto).build();
     }
 
     @DELETE
@@ -245,8 +256,12 @@ public class CampaignResource {
         }
 
         try {
-            // Delete old map file if exists
-            deleteUploadedFile(campaign.mapImagePath);
+            List<String> mapPaths = getMapPaths(campaign);
+            if (mapPaths.size() >= 5) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity("A campaign can have at most 5 maps")
+                        .build();
+            }
 
             java.nio.file.Path mapsDir = Paths.get(uploadDir, "maps").toAbsolutePath();
             Files.createDirectories(mapsDir);
@@ -262,13 +277,87 @@ public class CampaignResource {
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
             UploadPermissionUtil.ensureSharedReadAccess(target);
 
-            campaign.mapImagePath = "/uploads/maps/" + newFileName;
+            String mapPath = "/uploads/maps/" + newFileName;
+            mapPaths.add(mapPath);
+            campaign.selectedMapIndex = mapPaths.size() - 1;
+            saveMapPaths(campaign, mapPaths);
+            campaign.mapImagePath = mapPath;
 
-            return Response.ok(campaign).build();
+            CampaignDTO dto = new CampaignDTO(campaign, true);
+            broadcaster.broadcast(id, "campaign_updated", new CampaignDTO(campaign, false));
+
+            return Response.ok(dto).build();
         } catch (IOException e) {
             String msg = "Failed to upload map: " + e.getMessage();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(msg).build();
         }
+    }
+
+    @PATCH
+    @Path("{id}/selected-map")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response selectMap(@PathParam("id") Long id, Map<String, Object> body) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+        }
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN).entity("Only the DM can select maps").build();
+        }
+
+        Integer index = toInt(body != null ? body.get("selectedMapIndex") : null);
+        List<String> mapPaths = getMapPaths(campaign);
+        if (index == null || index < 0 || index >= mapPaths.size()) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid map index").build();
+        }
+
+        campaign.selectedMapIndex = index;
+        campaign.mapImagePath = mapPaths.get(index);
+        saveMapPaths(campaign, mapPaths);
+
+        CampaignDTO dto = new CampaignDTO(campaign, true);
+        broadcaster.broadcast(id, "campaign_updated", new CampaignDTO(campaign, false));
+        return Response.ok(dto).build();
+    }
+
+    @DELETE
+    @Path("{id}/maps/{mapIndex}")
+    @Transactional
+    public Response deleteMap(@PathParam("id") Long id, @PathParam("mapIndex") int mapIndex) {
+        Campaign campaign = Campaign.findById(id);
+        if (campaign == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+        }
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN).entity("Only the DM can delete maps").build();
+        }
+
+        List<String> mapPaths = getMapPaths(campaign);
+        if (mapIndex < 0 || mapIndex >= mapPaths.size()) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Map not found").build();
+        }
+
+        String removedPath = mapPaths.remove(mapIndex);
+        deleteUploadedFile(removedPath);
+
+        int selected = campaign.selectedMapIndex != null ? campaign.selectedMapIndex : 0;
+        if (mapPaths.isEmpty()) {
+            campaign.selectedMapIndex = 0;
+            campaign.mapImagePath = null;
+        } else {
+            if (mapIndex < selected) selected--;
+            if (mapIndex == selected) selected = Math.min(selected, mapPaths.size() - 1);
+            campaign.selectedMapIndex = Math.max(0, selected);
+            campaign.mapImagePath = mapPaths.get(campaign.selectedMapIndex);
+        }
+        saveMapPaths(campaign, mapPaths);
+
+        CampaignDTO dto = new CampaignDTO(campaign, true);
+        broadcaster.broadcast(id, "campaign_updated", new CampaignDTO(campaign, false));
+        return Response.ok(dto).build();
     }
 
     @GET
@@ -304,5 +393,39 @@ public class CampaignResource {
         String lower = filename.toLowerCase();
         return lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
                 lower.endsWith(".png") || lower.endsWith(".svg");
+    }
+
+    private List<String> getMapPaths(Campaign campaign) {
+        List<String> paths = new ArrayList<>();
+        if (campaign.mapImagePaths != null && !campaign.mapImagePaths.isBlank()) {
+            for (String path : campaign.mapImagePaths.split("\\R")) {
+                if (path != null && !path.isBlank() && !paths.contains(path.trim())) {
+                    paths.add(path.trim());
+                }
+            }
+        }
+        if (paths.isEmpty() && campaign.mapImagePath != null && !campaign.mapImagePath.isBlank()) {
+            paths.add(campaign.mapImagePath);
+        }
+        return paths;
+    }
+
+    private void saveMapPaths(Campaign campaign, List<String> paths) {
+        campaign.mapImagePaths = String.join("\n", paths);
+        if (paths.isEmpty()) {
+            campaign.selectedMapIndex = 0;
+            campaign.mapImagePath = null;
+            return;
+        }
+        int selected = campaign.selectedMapIndex != null ? campaign.selectedMapIndex : 0;
+        selected = Math.max(0, Math.min(selected, paths.size() - 1));
+        campaign.selectedMapIndex = selected;
+        campaign.mapImagePath = paths.get(selected);
+    }
+
+    private Integer toInt(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Number) return ((Number) obj).intValue();
+        try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
     }
 }

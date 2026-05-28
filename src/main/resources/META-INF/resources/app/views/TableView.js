@@ -4,7 +4,7 @@
  * Syncs in real-time with DM changes via SSE.
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, getActiveCampaignMap, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function TableView({ id }) {
@@ -53,6 +53,7 @@ export default async function TableView({ id }) {
   let mapCanvas = null;
   let mapImageUrl = '';
   let mapFallbackImageUrl = '';
+  let activeMap = null;
   let mapMarkers = [];
   let eventSource = null;
 
@@ -62,9 +63,10 @@ export default async function TableView({ id }) {
     if (cr.ok) {
       campaign = await cr.json();
       document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
-      if (campaign.mapImagePath) {
-        mapImageUrl = resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' });
-        mapFallbackImageUrl = resolveOriginalImageUrl(campaign.mapImagePath);
+      activeMap = getActiveCampaignMap(campaign);
+      if (activeMap) {
+        mapImageUrl = resolveMapUrl(activeMap.path, { variant: 'canvas' });
+        mapFallbackImageUrl = resolveOriginalImageUrl(activeMap.path);
       }
     }
   } catch (e) {}
@@ -323,6 +325,18 @@ export default async function TableView({ id }) {
       if (mapCanvas && d.fogExploration) {
         mapCanvas.loadExplorationData(d.fogExploration);
       }
+    });
+
+    eventSource.addEventListener('campaign_updated', async () => {
+      try {
+        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
+        if (!r.ok) return;
+        campaign = await r.json();
+        activeMap = getActiveCampaignMap(campaign);
+        mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+        mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+        if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
+      } catch (e) {}
     });
 
     eventSource.onerror = () => console.warn('Table SSE lost, reconnecting...');

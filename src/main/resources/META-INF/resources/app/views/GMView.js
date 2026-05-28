@@ -2,7 +2,7 @@
  * GM Game View – Dungeon Master UI (SPA version)
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, calcMod, fmtMod, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
@@ -19,6 +19,7 @@ export default async function GMView({ id }) {
       <div class="gm-main">
         <div class="glass map-container">
           <div class="map-toolbar">
+            <select class="map-tb-btn" id="gmMapSelect" style="min-width:120px;"></select>
             <button class="map-tb-btn" id="gmMapZoomIn" title="Zoom in">🔍+</button>
             <button class="map-tb-btn" id="gmMapZoomOut" title="Zoom out">🔍−</button>
             <button class="map-tb-btn" id="gmMapReset" title="Ansicht zurücksetzen">↺</button>
@@ -65,6 +66,7 @@ export default async function GMView({ id }) {
           <button class="map-tb-btn" id="gmMaxZoomIn" title="Zoom in">🔍+</button>
           <button class="map-tb-btn" id="gmMaxZoomOut" title="Zoom out">🔍−</button>
           <button class="map-tb-btn" id="gmMaxReset" title="Ansicht zurücksetzen">↺</button>
+          <select class="map-tb-btn" id="gmMaxMapSelect" style="min-width:130px;"></select>
           <div class="map-tb-separator"></div>
           <button class="map-tb-btn map-tb-add" id="gmAddStructure" title="Gebäude hinzufügen">🏛️+</button>
           <button class="map-tb-btn map-tb-add" id="gmAddQuest" title="Quest hinzufügen">⭐+</button>
@@ -136,6 +138,7 @@ export default async function GMView({ id }) {
   let mapCanvasMax = null;
   let mapImageUrl = '';
   let mapFallbackImageUrl = '';
+  let activeMap = null;
   let mapMarkers = [];
   let isMaximized = false;
   let pendingMarkerType = null;
@@ -147,10 +150,7 @@ export default async function GMView({ id }) {
     const cr = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
     if (cr.ok) {
       campaign = await cr.json();
-      if (campaign.mapImagePath) {
-        mapImageUrl = resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' });
-        mapFallbackImageUrl = resolveOriginalImageUrl(campaign.mapImagePath);
-      }
+      applyCampaignMap(campaign);
     }
   } catch (e) {}
 
@@ -169,6 +169,50 @@ export default async function GMView({ id }) {
     if (mapCanvas) mapCanvas.updateMarkers(mapMarkers);
     if (mapCanvasMax) mapCanvasMax.updateMarkers(mapMarkers);
     renderMaxSidebar();
+  }
+
+  function applyCampaignMap(nextCampaign) {
+    activeMap = getActiveCampaignMap(nextCampaign);
+    mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+    mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+  }
+
+  function renderMapSelectors() {
+    const maps = getCampaignMaps(campaign);
+    const html = maps.length
+      ? maps.map(m => `<option value="${m.index}" ${activeMap && activeMap.path === m.path ? 'selected' : ''}>${esc(m.name)}</option>`).join('')
+      : '<option value="">Keine Karte</option>';
+    ['gmMapSelect', 'gmMaxMapSelect'].forEach(id => {
+      const select = document.getElementById(id);
+      if (select) select.innerHTML = html;
+    });
+  }
+
+  function updateMapImages() {
+    renderMapSelectors();
+    if (!mapImageUrl) {
+      const box = document.getElementById('gmMapBox');
+      if (box) box.innerHTML = '<div style="color:var(--accent-green);text-align:center;">Keine Karte hochgeladen</div>';
+      if (mapCanvas) mapCanvas.updateMapImage('', '');
+      if (mapCanvasMax) mapCanvasMax.updateMapImage('', '');
+      return;
+    }
+    if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
+    if (mapCanvasMax) mapCanvasMax.updateMapImage(mapImageUrl, mapFallbackImageUrl);
+  }
+
+  async function selectCampaignMap(index) {
+    if (index === '') return;
+    const res = await fetch('/api/campaign/' + campaignId + '/selected-map', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selectedMapIndex: parseInt(index) })
+    });
+    if (res.ok) {
+      campaign = await res.json();
+      applyCampaignMap(campaign);
+      updateMapImages();
+    }
   }
 
   function initMiniMap() {
@@ -234,6 +278,10 @@ export default async function GMView({ id }) {
   document.getElementById('gmMapClose').addEventListener('click', closeMaximized);
   document.getElementById('gmTableView').addEventListener('click', () => {
     window.open('#/campaign/' + campaignId + '/table', '_blank');
+  });
+  ['gmMapSelect', 'gmMaxMapSelect'].forEach(selectId => {
+    const select = document.getElementById(selectId);
+    if (select) select.addEventListener('change', () => selectCampaignMap(select.value));
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isMaximized) closeMaximized(); });
 
@@ -499,6 +547,15 @@ export default async function GMView({ id }) {
     eventSource.addEventListener('undo', e => {
       const d = JSON.parse(e.data);
       if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
+    });
+    eventSource.addEventListener('campaign_updated', async () => {
+      try {
+        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
+        if (!r.ok) return;
+        campaign = await r.json();
+        applyCampaignMap(campaign);
+        updateMapImages();
+      } catch (e) {}
     });
     eventSource.onerror = () => console.warn('SSE lost, reconnecting...');
   }
@@ -815,6 +872,7 @@ export default async function GMView({ id }) {
   }
 
   // Init – load markers BEFORE players so the "create default group" check works
+  renderMapSelectors();
   initMiniMap();
   connectSSE();
   await loadMapMarkers();

@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, getActiveCampaignMap, getCampaignMaps, initials, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
@@ -27,10 +27,12 @@ export default async function CockpitView({ id }) {
 
   let campaign = null, campaignPlayers = [], playerNameMap = {};
   let ckMapCanvas = null;
+  let activeMap = null;
 
   try {
     const cRes = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
     campaign = await cRes.json();
+    activeMap = getActiveCampaignMap(campaign);
 
     const cpRes = await fetch('/api/campaign-player/' + campaignId, { cache: 'no-store' });
     campaignPlayers = await cpRes.json();
@@ -96,6 +98,9 @@ export default async function CockpitView({ id }) {
             <span class="ck-card-icon">🗺️</span>
             <h3>Karte</h3>
             <div class="ck-map-tools">
+              <select id="ckMapSelect" style="min-width:120px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.08);color:white;border:1px solid rgba(255,255,255,0.15);">
+                ${getCampaignMaps(campaign).map(m => `<option value="${m.index}" ${activeMap && activeMap.path === m.path ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+              </select>
               <button class="ck-map-btn" id="ckMapZoomIn" title="Zoom +">🔍+</button>
               <button class="ck-map-btn" id="ckMapZoomOut" title="Zoom −">🔍−</button>
               <button class="ck-map-btn" id="ckMapReset" title="Reset">↺</button>
@@ -103,7 +108,7 @@ export default async function CockpitView({ id }) {
             </div>
           </div>
           <div class="ck-map-box" id="ckMapBox">
-            ${campaign.mapImagePath ? '' : '<div class="ck-empty" style="padding:40px;">Keine Karte hochgeladen. Bearbeite die Kampagne, um eine Karte hinzuzufügen.</div>'}
+            ${activeMap ? '' : '<div class="ck-empty" style="padding:40px;">Keine Karte hochgeladen. Bearbeite die Kampagne, um eine Karte hinzuzufügen.</div>'}
           </div>
           <div class="ck-map-marker-list" id="ckMarkerList"></div>
         </div>
@@ -189,6 +194,23 @@ export default async function CockpitView({ id }) {
     document.getElementById('ckTableView').addEventListener('click', () => {
       window.open('#/campaign/' + campaignId + '/table', '_blank');
     });
+    const ckMapSelect = document.getElementById('ckMapSelect');
+    if (ckMapSelect) {
+      ckMapSelect.addEventListener('change', async () => {
+        const res = await fetch('/api/campaign/' + campaignId + '/selected-map', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedMapIndex: parseInt(ckMapSelect.value) })
+        });
+        if (res.ok) {
+          campaign = await res.json();
+          activeMap = getActiveCampaignMap(campaign);
+          if (ckMapCanvas && activeMap) {
+            ckMapCanvas.updateMapImage(resolveMapUrl(activeMap.path, { variant: 'canvas' }), resolveOriginalImageUrl(activeMap.path));
+          }
+        }
+      });
+    }
 
     document.getElementById('ckStartGame').addEventListener('click', async () => {
       const btn = document.getElementById('ckStartGame');
@@ -243,7 +265,7 @@ export default async function CockpitView({ id }) {
     }
 
     async function initCkMap() {
-      if (!campaign.mapImagePath) return;
+      if (!activeMap) return;
       await loadCkMarkers();
       const box = document.getElementById('ckMapBox');
 
@@ -268,8 +290,8 @@ export default async function CockpitView({ id }) {
       }
 
       ckMapCanvas = createMapCanvas(box, {
-        mapImageUrl: resolveMapUrl(campaign.mapImagePath, { variant: 'canvas' }),
-        mapFallbackImageUrl: resolveOriginalImageUrl(campaign.mapImagePath),
+        mapImageUrl: resolveMapUrl(activeMap.path, { variant: 'canvas' }),
+        mapFallbackImageUrl: resolveOriginalImageUrl(activeMap.path),
         markers: ckMapMarkers,
         readOnly: false,
         isMaximized: false,

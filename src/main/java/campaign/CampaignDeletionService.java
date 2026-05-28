@@ -34,9 +34,26 @@ public class CampaignDeletionService {
         Notification.delete("referenceId", campaignId);
         CampaignPlayer.delete("campaignId", campaignId);
 
-        deleteUploadedFile(campaign.mapImagePath);
+        for (String mapPath : getMapPaths(campaign)) {
+            deleteUploadedFile(mapPath);
+        }
         campaign.delete();
         gameState.remove(campaignId);
+    }
+
+    private java.util.List<String> getMapPaths(Campaign campaign) {
+        java.util.List<String> paths = new java.util.ArrayList<>();
+        if (campaign.mapImagePaths != null && !campaign.mapImagePaths.isBlank()) {
+            for (String path : campaign.mapImagePaths.split("\\R")) {
+                if (path != null && !path.isBlank() && !paths.contains(path.trim())) {
+                    paths.add(path.trim());
+                }
+            }
+        }
+        if (paths.isEmpty() && campaign.mapImagePath != null && !campaign.mapImagePath.isBlank()) {
+            paths.add(campaign.mapImagePath);
+        }
+        return paths;
     }
 
     private void deleteUploadedFile(String filePath) {

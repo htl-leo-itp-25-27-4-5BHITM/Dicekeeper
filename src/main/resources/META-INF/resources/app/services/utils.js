@@ -238,6 +238,33 @@ export function resolveMapUrl(mapImagePath, options = {}) {
   });
 }
 
+export function getCampaignMaps(campaign) {
+  if (!campaign) return [];
+  if (Array.isArray(campaign.maps) && campaign.maps.length > 0) {
+    return campaign.maps.filter(m => m?.path);
+  }
+  if (Array.isArray(campaign.mapImagePaths) && campaign.mapImagePaths.length > 0) {
+    return campaign.mapImagePaths
+      .filter(Boolean)
+      .map((path, index) => ({
+        index,
+        name: 'Karte ' + (index + 1),
+        path,
+        selected: index === (campaign.selectedMapIndex || 0)
+      }));
+  }
+  return campaign.mapImagePath
+    ? [{ index: 0, name: 'Karte 1', path: campaign.mapImagePath, selected: true }]
+    : [];
+}
+
+export function getActiveCampaignMap(campaign) {
+  const maps = getCampaignMaps(campaign);
+  if (maps.length === 0) return null;
+  const selectedIndex = Number.isFinite(Number(campaign?.selectedMapIndex)) ? Number(campaign.selectedMapIndex) : 0;
+  return maps.find(m => m.selected) || maps.find(m => m.index === selectedIndex) || maps[0];
+}
+
 export function renderMapPicture(mapImagePath, options = {}) {
   const normalizedPath = resolveOriginalImageUrl(mapImagePath);
   if (!normalizedPath) return '';

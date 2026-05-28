@@ -34,6 +34,8 @@ export function createMapCanvas(container, opts = {}) {
   } = opts;
 
   let gameStarted = initialGameStarted;
+  let currentMapImageUrl = mapImageUrl;
+  let currentMapFallbackImageUrl = mapFallbackImageUrl;
 
   let markers = [...initialMarkers];
   let zoom = 1;
@@ -130,22 +132,33 @@ export function createMapCanvas(container, opts = {}) {
 
   const ctx = canvas.getContext('2d');
 
-  // Load map image
-  if (mapImageUrl) {
+  function loadMapImage(nextMapImageUrl, nextFallbackImageUrl = '') {
+    currentMapImageUrl = nextMapImageUrl || '';
+    currentMapFallbackImageUrl = nextFallbackImageUrl || '';
+    mapLoaded = false;
+    mapImg = null;
+    if (!currentMapImageUrl) {
+      draw();
+      return;
+    }
     mapImg = new Image();
     mapImg.crossOrigin = 'anonymous';
     mapImg.onload = () => { mapLoaded = true; resize(); draw(); };
     mapImg.onerror = () => {
-      const fallbackUrl = resolveOriginalImageUrl(mapFallbackImageUrl || mapImageUrl);
-      if (fallbackUrl && mapImg.src !== fallbackUrl) {
+      const fallbackUrl = resolveOriginalImageUrl(currentMapFallbackImageUrl || currentMapImageUrl);
+      const fallbackSrc = fallbackUrl ? new URL(fallbackUrl, window.location.href).href : '';
+      if (fallbackUrl && mapImg.src !== fallbackSrc) {
         mapImg.src = fallbackUrl;
         return;
       }
       mapLoaded = false;
       draw();
     };
-    mapImg.src = mapImageUrl;
+    mapImg.src = currentMapImageUrl;
   }
+
+  // Load map image
+  loadMapImage(currentMapImageUrl, currentMapFallbackImageUrl);
 
   function resize() {
     const rect = wrap.getBoundingClientRect();
@@ -194,7 +207,7 @@ export function createMapCanvas(container, opts = {}) {
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Keine Karte verfügbar', cw / 2, ch / 2);
+      ctx.fillText(currentMapImageUrl ? 'Karte wird geladen...' : 'Keine Karte verfügbar', cw / 2, ch / 2);
     }
 
     // Draw markers
@@ -1072,6 +1085,9 @@ export function createMapCanvas(container, opts = {}) {
         stampExploration(fogPositions);
       }
       draw();
+    },
+    updateMapImage(nextMapImageUrl, nextFallbackImageUrl = '') {
+      loadMapImage(nextMapImageUrl, nextFallbackImageUrl);
     },
     getMarkers() { return markers; },
     getZoom() { return zoom; },
