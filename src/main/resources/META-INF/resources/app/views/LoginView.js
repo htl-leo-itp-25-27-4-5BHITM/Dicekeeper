@@ -3,7 +3,6 @@
  */
 import { clearPlayer, getPlayer, sanitizeRedirectPath, startLogin, syncAuthenticatedPlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { getTheme, toggleTheme } from '../services/theme.js';
 
 export default async function LoginView() {
   const app = document.getElementById('app');
@@ -23,23 +22,6 @@ export default async function LoginView() {
   }
 
   app.innerHTML = `
-    <nav class="lp-nav">
-      <div class="lp-nav-inner">
-        <button class="lp-nav-brand login-nav-brand" id="loginHome" type="button">
-          <svg viewBox="0 0 100 100" class="lp-nav-dice">
-            <polygon points="50,2 95,27 95,73 50,98 5,73 5,27" fill="none" stroke="rgba(var(--primary-rgb),0.6)" stroke-width="2.5"/>
-            <text x="50" y="58" text-anchor="middle" fill="rgba(var(--primary-rgb),0.9)" font-size="26" font-weight="700" font-family="system-ui">20</text>
-          </svg>
-          <span>Dicekeeper</span>
-        </button>
-        <div class="lp-nav-right">
-          <button class="lp-a11y-toggle" id="loginThemeToggle" title="Barrierefreie Farben" aria-pressed="${getTheme() === 'accessible'}">
-            <span class="lp-a11y-icon">👁</span>
-            <span class="lp-a11y-label">Barrierefreie Farben</span>
-          </button>
-        </div>
-      </div>
-    </nav>
     <div class="login-page">
       <div class="login-ambient"></div>
       <div class="login-card">
@@ -79,22 +61,6 @@ export default async function LoginView() {
 
   const btn = document.getElementById('loginBtn');
   const statusEl = document.getElementById('loginStatus');
-  const themeBtn = document.getElementById('loginThemeToggle');
-
-  document.getElementById('loginHome').addEventListener('click', () => navigate('/'));
-  themeBtn.classList.toggle('active', getTheme() === 'accessible');
-  themeBtn.addEventListener('click', () => {
-    const next = toggleTheme();
-    themeBtn.classList.toggle('active', next === 'accessible');
-    themeBtn.setAttribute('aria-pressed', next === 'accessible');
-  });
-
-  function onThemeChanged(e) {
-    const theme = e?.detail?.theme || getTheme();
-    themeBtn.classList.toggle('active', theme === 'accessible');
-    themeBtn.setAttribute('aria-pressed', theme === 'accessible');
-  }
-  document.addEventListener('theme:changed', onThemeChanged);
 
   function setStatus(msg, isError = false) {
     statusEl.textContent = msg || '';
@@ -164,5 +130,5 @@ export default async function LoginView() {
     completeKeycloakLogin();
   }
 
-  return () => { document.removeEventListener('theme:changed', onThemeChanged); };
+  return () => {};
 }

@@ -5,12 +5,22 @@
 
 const STORAGE_KEY = 'dicekeeper-theme';
 
+function getCookieTheme() {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + STORAGE_KEY + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function persistThemeCookie(theme) {
+  document.cookie = STORAGE_KEY + '=' + encodeURIComponent(theme) + '; Path=/; Max-Age=31536000; SameSite=Lax';
+}
+
 export function getTheme() {
-  return localStorage.getItem(STORAGE_KEY) || 'default';
+  return localStorage.getItem(STORAGE_KEY) || getCookieTheme() || 'default';
 }
 
 export function setTheme(theme) {
   localStorage.setItem(STORAGE_KEY, theme);
+  persistThemeCookie(theme);
   applyTheme(theme);
 }
 
@@ -41,5 +51,7 @@ export function themeColor(varName) {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-// Apply persisted theme on load
-applyTheme(getTheme());
+// Apply persisted theme on load and mirror it for non-SPA pages.
+const initialTheme = getTheme();
+persistThemeCookie(initialTheme);
+applyTheme(initialTheme);

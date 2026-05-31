@@ -45,18 +45,6 @@
     </#if>
 </head>
 <body class="dk-auth-page ${bodyClass}">
-<nav class="dk-auth-nav">
-    <div class="dk-auth-nav-inner">
-        <a class="dk-auth-nav-brand" href="/">
-            <span class="dk-auth-nav-dice">20</span>
-            <span>Dicekeeper</span>
-        </a>
-        <button class="dk-auth-theme-toggle" id="dkAuthThemeToggle" type="button" aria-pressed="false">
-            <span>👁</span>
-            <span>Barrierefreie Farben</span>
-        </button>
-    </div>
-</nav>
 <div class="dk-auth-shell">
     <aside class="dk-auth-showcase">
         <div class="dk-auth-showcase-inner">

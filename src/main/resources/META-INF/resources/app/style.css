@@ -401,9 +401,6 @@ body.has-header { padding-top: 70px; }
   display: flex; align-items: center; gap: 10px;
   font-size: 18px; font-weight: 800; color: var(--brand-color-3); letter-spacing: 0.3px;
 }
-.login-nav-brand {
-  background: transparent; border: 0; padding: 0; cursor: pointer;
-}
 .lp-nav-dice { width: 28px; height: 28px; }
 .lp-nav-login {
   padding: 8px 22px; border-radius: 10px; border: 1px solid rgba(var(--primary-rgb),0.35);
@@ -627,7 +624,7 @@ body.has-header { padding-top: 70px; }
 /* ===== LOGIN PAGE (redesigned) ===== */
 .login-page {
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  min-height: 100vh; margin: 0; padding-top: 60px; position: relative; overflow: hidden;
+  min-height: 100vh; margin: 0; position: relative; overflow: hidden;
 }
 .login-ambient {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
