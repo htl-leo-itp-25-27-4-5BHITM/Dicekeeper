@@ -29,6 +29,13 @@
         </#list>
     </#if>
     <title>${msg("loginTitle", realmName)}</title>
+    <script>
+        try {
+            if (localStorage.getItem("dicekeeper-theme") === "accessible") {
+                document.documentElement.classList.add("dk-theme-accessible");
+            }
+        } catch (e) {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="${url.resourcesPath}/img/favicon.svg">
     <link rel="shortcut icon" href="${url.resourcesPath}/img/favicon.svg">
     <#if properties.styles?has_content>
@@ -38,6 +45,18 @@
     </#if>
 </head>
 <body class="dk-auth-page ${bodyClass}">
+<nav class="dk-auth-nav">
+    <div class="dk-auth-nav-inner">
+        <a class="dk-auth-nav-brand" href="/">
+            <span class="dk-auth-nav-dice">20</span>
+            <span>Dicekeeper</span>
+        </a>
+        <button class="dk-auth-theme-toggle" id="dkAuthThemeToggle" type="button" aria-pressed="false">
+            <span>👁</span>
+            <span>Barrierefreie Farben</span>
+        </button>
+    </div>
+</nav>
 <div class="dk-auth-shell">
     <aside class="dk-auth-showcase">
         <div class="dk-auth-showcase-inner">
@@ -122,6 +141,30 @@
         <p class="dk-auth-footer">${msg("dicekeeperLoginFooter")}</p>
     </main>
 </div>
+<script>
+    (function () {
+        var button = document.getElementById("dkAuthThemeToggle");
+        if (!button) return;
+
+        function getTheme() {
+            try { return localStorage.getItem("dicekeeper-theme") || "default"; }
+            catch (e) { return "default"; }
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.classList.toggle("dk-theme-accessible", theme === "accessible");
+            button.classList.toggle("active", theme === "accessible");
+            button.setAttribute("aria-pressed", theme === "accessible" ? "true" : "false");
+        }
+
+        applyTheme(getTheme());
+        button.addEventListener("click", function () {
+            var next = getTheme() === "accessible" ? "default" : "accessible";
+            try { localStorage.setItem("dicekeeper-theme", next); } catch (e) {}
+            applyTheme(next);
+        });
+    })();
+</script>
 </body>
 </html>
 </#macro>

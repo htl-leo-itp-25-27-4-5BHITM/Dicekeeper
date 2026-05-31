@@ -8,6 +8,8 @@ import { renderHeader, initHeader, destroyHeader } from '../components/header.js
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
 
+const MAX_CAMPAIGN_MAPS = 5;
+
 export default async function CampaignDetailView({ id }) {
   const player = requirePlayer();
   if (!player) return;
@@ -28,11 +30,49 @@ export default async function CampaignDetailView({ id }) {
   let playerNameMap = {};
   let playerRole = null;
   let isPublic = true;
+  let dmInitialState = null;
 
   const content = document.getElementById('cdContent');
 
   function setStatus(msg, isError = false) {
     showToast(msg, isError ? 'error' : 'success');
+  }
+
+  function showDeleteMapDialog(mapName = 'diese Karte') {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'dk-confirm-overlay';
+      overlay.innerHTML = `
+        <div class="dk-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dkConfirmTitle">
+          <div class="dk-confirm-title" id="dkConfirmTitle">Karte löschen?</div>
+          <div class="dk-confirm-copy">Soll ${esc(mapName)} wirklich gelöscht werden? Diese Aktion kann nicht rückgängig gemacht werden.</div>
+          <div class="dk-confirm-actions">
+            <button class="btn btn-secondary" type="button" id="dkConfirmCancel">Abbrechen</button>
+            <button class="btn btn-danger" type="button" id="dkConfirmDelete">Löschen</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const close = (confirmed) => {
+        document.removeEventListener('keydown', onKeydown);
+        overlay.remove();
+        resolve(confirmed);
+      };
+
+      overlay.querySelector('#dkConfirmCancel').addEventListener('click', () => close(false));
+      overlay.querySelector('#dkConfirmDelete').addEventListener('click', () => close(true));
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) close(false);
+      });
+      const onKeydown = (e) => {
+        if (e.key === 'Escape') {
+          close(false);
+        }
+      };
+      document.addEventListener('keydown', onKeydown);
+      overlay.querySelector('#dkConfirmDelete').focus();
+    });
   }
 
   function getDMName() {
@@ -64,14 +104,127 @@ export default async function CampaignDetailView({ id }) {
       ? `<div class="map-section" style="margin-top:12px"><div id="cdMapMedia">${renderPreviewMap(active.path, 'cdMapImg')}</div></div>`
       : '<div class="map-section" style="display:none;margin-top:12px"><div id="cdMapMedia"></div></div>';
     return `
-      <div class="form-group"><label>Karten (${maps.length}/5)</label>
-        <div class="map-upload ${maps.length >= 5 ? 'disabled' : ''}" id="cdMapUploadArea" style="${maps.length >= 5 ? 'opacity:0.55;pointer-events:none;' : ''}">
-          <span class="map-upload-icon">+</span><span class="map-upload-text">${maps.length >= 5 ? 'Maximal 5 Karten erreicht' : 'Karten hochladen'}</span>
+      <div class="form-group" id="cdMapManager"><label>Karten (${maps.length}/${MAX_CAMPAIGN_MAPS})</label>
+        <div class="map-upload ${maps.length >= MAX_CAMPAIGN_MAPS ? 'disabled' : ''}" id="cdMapUploadArea" style="${maps.length >= MAX_CAMPAIGN_MAPS ? 'opacity:0.55;pointer-events:none;' : ''}">
+          <span class="map-upload-icon">+</span><span class="map-upload-text">${maps.length >= MAX_CAMPAIGN_MAPS ? 'Maximal 5 Karten erreicht' : 'Karten hochladen'}</span>
           <input type="file" id="cdMapFile" accept=".jpg,.png,.svg" multiple style="display:none;" />
         </div>
         ${mapList}
         ${preview}
       </div>`;
+  }
+
+  function refreshMapManager() {
+    const manager = document.getElementById('cdMapManager');
+    if (!manager) return;
+    manager.outerHTML = renderMapManager();
+    bindMapManagerEvents();
+    updateDmDirtyState();
+  }
+
+  function getMapSignature() {
+    return getCampaignMaps(campaign).map(m => m.path).join('|') + '::' + (campaign?.selectedMapIndex || 0);
+  }
+
+  function getDmCurrentState() {
+    return {
+      name: document.getElementById('cdTitle')?.value.trim() || '',
+      description: document.getElementById('cdDesc')?.value.trim() || '',
+      story: document.getElementById('cdStory')?.value.trim() || '',
+      isPublic,
+      maxPlayerCount: document.getElementById('cdMaxPlayers')?.value ? parseInt(document.getElementById('cdMaxPlayers').value, 10) : null,
+      maps: getMapSignature()
+    };
+  }
+
+  function snapshotDmState() {
+    dmInitialState = getDmCurrentState();
+  }
+
+  function updateDmDirtyState() {
+    const btn = document.getElementById('cdUpdate');
+    if (!btn || !dmInitialState) return;
+    const current = getDmCurrentState();
+    const isDirty = Object.keys(dmInitialState).some(key => current[key] !== dmInitialState[key]);
+    btn.disabled = !isDirty;
+    btn.classList.toggle('is-idle', !isDirty);
+  }
+
+  async function uploadMapFile(file, croppedBlob = null) {
+    const fd = new FormData();
+    fd.append('file', croppedBlob || file, croppedBlob ? 'map-cropped.png' : file.name);
+    const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
+    if (!uploadRes.ok) throw new Error(await uploadRes.text() || 'Map upload failed');
+    return uploadRes.json();
+  }
+
+  function bindMapManagerEvents() {
+    const mapSelect = document.getElementById('cdMapSelect');
+    if (mapSelect) {
+      mapSelect.addEventListener('change', async () => {
+        const res = await fetch('/api/campaign/' + id + '/selected-map', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedMapIndex: parseInt(mapSelect.value) })
+        });
+        if (res.ok) {
+          campaign = await res.json();
+          refreshMapManager();
+        }
+      });
+    }
+
+    const deleteMapBtn = document.getElementById('cdDeleteMap');
+    if (deleteMapBtn) {
+      deleteMapBtn.addEventListener('click', async () => {
+        const selectedIndex = parseInt(document.getElementById('cdMapSelect').value);
+        const selectedMap = getCampaignMaps(campaign).find(m => m.index === selectedIndex);
+        if (!await showDeleteMapDialog(selectedMap?.name || 'diese Karte')) return;
+        deleteMapBtn.disabled = true;
+        const res = await fetch('/api/campaign/' + id + '/maps/' + selectedIndex, { method: 'DELETE' });
+        if (res.ok) {
+          campaign = await res.json();
+          refreshMapManager();
+        } else {
+          deleteMapBtn.disabled = false;
+          setStatus(await res.text() || 'Karte konnte nicht gelöscht werden', true);
+        }
+      });
+    }
+
+    const uploadArea = document.getElementById('cdMapUploadArea');
+    const fileInput = document.getElementById('cdMapFile');
+    if (!uploadArea || !fileInput) return;
+
+    uploadArea.addEventListener('click', () => {
+      if (getCampaignMaps(campaign).length >= MAX_CAMPAIGN_MAPS) {
+        setStatus('Maximal 5 Karten pro Kampagne', true);
+        return;
+      }
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      if (getCampaignMaps(campaign).length + files.length > MAX_CAMPAIGN_MAPS) {
+        setStatus('Maximal 5 Karten pro Kampagne', true);
+        e.target.value = '';
+        refreshMapManager();
+        return;
+      }
+
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const croppedBlob = i === 0 ? await showMapCropModal(files[i]) : null;
+          campaign = await uploadMapFile(files[i], croppedBlob);
+          refreshMapManager();
+        } catch (err) {
+          setStatus('Fehler: ' + (err.message || 'Karten-Upload fehlgeschlagen'), true);
+        }
+      }
+      e.target.value = '';
+    });
   }
 
   function renderPlayersCompact() {
@@ -193,56 +346,10 @@ export default async function CampaignDetailView({ id }) {
       isPublic = !isPublic;
       switchEl.classList.toggle('public', isPublic);
       switchEl.classList.toggle('private', !isPublic);
+      updateDmDirtyState();
     };
 
-    const mapSelect = document.getElementById('cdMapSelect');
-    if (mapSelect) {
-      mapSelect.addEventListener('change', async () => {
-        const res = await fetch('/api/campaign/' + id + '/selected-map', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ selectedMapIndex: parseInt(mapSelect.value) })
-        });
-        if (res.ok) {
-          campaign = await res.json();
-          renderDMView();
-        }
-      });
-    }
-    const deleteMapBtn = document.getElementById('cdDeleteMap');
-    if (deleteMapBtn) {
-      deleteMapBtn.addEventListener('click', async () => {
-        if (!confirm('Karte wirklich löschen?')) return;
-        const selectedIndex = parseInt(document.getElementById('cdMapSelect').value);
-        const res = await fetch('/api/campaign/' + id + '/maps/' + selectedIndex, { method: 'DELETE' });
-        if (res.ok) {
-          campaign = await res.json();
-          renderDMView();
-        }
-      });
-    }
-    document.getElementById('cdMapUploadArea').addEventListener('click', () => document.getElementById('cdMapFile').click());
-    let cdCroppedBlob = null;
-    document.getElementById('cdMapFile').addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files || []);
-      if (files.length === 0) return;
-      if (getCampaignMaps(campaign).length + files.length > 5) {
-        setStatus('Maximal 5 Karten pro Kampagne', true);
-        e.target.value = '';
-        return;
-      }
-      try {
-        cdCroppedBlob = await showMapCropModal(files[0]);
-        const url = URL.createObjectURL(cdCroppedBlob);
-        const mapMedia = document.getElementById('cdMapMedia');
-        mapMedia.innerHTML = '<img id="cdMapImg" src="" alt="Kampagnenkarte" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;display:block;" />';
-        const img = document.getElementById('cdMapImg');
-        img.src = url;
-        mapMedia.parentElement.style.display = 'block';
-      } catch (err) {
-        cdCroppedBlob = null;
-      }
-    });
+    bindMapManagerEvents();
 
     // Render players for DM
     const playersList = document.getElementById('cdPlayersList');
@@ -297,9 +404,15 @@ export default async function CampaignDetailView({ id }) {
 
     document.getElementById('cdCancel').onclick = () => navigate('/campaigns');
     document.getElementById('cdCockpit').onclick = () => navigate('/campaign/' + id + '/cockpit');
+    ['cdTitle', 'cdDesc', 'cdStory', 'cdMaxPlayers'].forEach(inputId => {
+      document.getElementById(inputId).addEventListener('input', updateDmDirtyState);
+    });
+    snapshotDmState();
+    updateDmDirtyState();
 
     document.getElementById('cdUpdate').onclick = async () => {
       const btn = document.getElementById('cdUpdate');
+      if (btn.disabled) return;
       btn.disabled = true; btn.textContent = 'Aktualisiere...';
       try {
         const payload = {
@@ -315,21 +428,6 @@ export default async function CampaignDetailView({ id }) {
           throw new Error(errText || 'Update failed');
         }
         campaign = await res.json();
-        const mapFile = document.getElementById('cdMapFile');
-        if (mapFile.files && mapFile.files.length > 0) {
-          const files = Array.from(mapFile.files);
-          for (let i = 0; i < files.length; i++) {
-            const fd = new FormData();
-            if (i === 0 && cdCroppedBlob) {
-              fd.append('file', cdCroppedBlob, 'map-cropped.png');
-            } else {
-              fd.append('file', files[i]);
-            }
-            const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
-            if (!uploadRes.ok) throw new Error(await uploadRes.text() || 'Map upload failed');
-            campaign = await uploadRes.json();
-          }
-        }
         setStatus('Kampagne aktualisiert');
         btn.disabled = false; btn.textContent = 'Aktualisieren';
         renderDMView();

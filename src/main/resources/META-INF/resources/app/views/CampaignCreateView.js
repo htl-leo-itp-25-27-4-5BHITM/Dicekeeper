@@ -6,7 +6,9 @@ import { navigate } from '../router.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
-import { renderMapPicture } from '../services/utils.js';
+import { esc, getActiveCampaignMap, getCampaignMaps, renderMapPicture } from '../services/utils.js';
+
+const MAX_CAMPAIGN_MAPS = 5;
 
 function renderPreviewMap(mapImagePath) {
   return renderMapPicture(mapImagePath, {
@@ -57,9 +59,10 @@ export default async function CampaignCreateView({ id }) {
             <span class="image-upload-text-main">Karte hochladen</span><br>
             <span class="image-upload-text-sub">Klicke, um eine Karte auszuwählen</span>
           </span>
-          <input type="file" accept="image/jpeg,image/png" style="display:none" id="ccMapFile" />
+          <input type="file" accept="image/jpeg,image/png" multiple style="display:none" id="ccMapFile" />
         </div>
         <div id="ccMapPreview" style="display:none;">
+          <div id="ccMapSelector" style="display:none;margin-bottom:8px;"></div>
           <div id="ccMapMedia">
             <img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block;" />
           </div>
@@ -95,10 +98,14 @@ export default async function CampaignCreateView({ id }) {
   const visibilityText = document.getElementById('ccVisibilityText');
   const mapInput = document.getElementById('ccMapFile');
   let isPublic = true;
-  let croppedMapBlob = null;
+  let campaignState = null;
+  let pendingMaps = [];
+  let selectedMapIndex = 0;
+  let initialEditState = null;
 
   storyInput.addEventListener('input', () => {
     descChars.textContent = 'Zeichen: ' + (storyInput.maxLength - storyInput.value.length);
+    updateEditDirtyState();
   });
 
   switchEl.addEventListener('click', () => {
@@ -106,83 +113,201 @@ export default async function CampaignCreateView({ id }) {
     switchEl.classList.toggle('public', isPublic);
     switchEl.classList.toggle('private', !isPublic);
     visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
+    updateEditDirtyState();
   });
 
   document.getElementById('ccMapUpload').addEventListener('click', () => mapInput.click());
 
-  // Upload & Filter
-  mapInput.addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
+  function getEditableMaps() {
+    return isEdit ? getCampaignMaps(campaignState) : pendingMaps;
+  }
 
-    // 1️⃣ Dateityp prüfen
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      setStatus('Nur JPG/JPEG/PNG Dateien erlaubt', true);
-      mapInput.value = '';
+  function updateUploadState() {
+    const count = getEditableMaps().length;
+    const upload = document.getElementById('ccMapUpload');
+    const main = upload.querySelector('.image-upload-text-main');
+    const sub = upload.querySelector('.image-upload-text-sub');
+    const isFull = count >= MAX_CAMPAIGN_MAPS;
+    upload.style.opacity = isFull ? '0.55' : '';
+    upload.style.pointerEvents = isFull ? 'none' : '';
+    main.textContent = isFull ? 'Maximal 5 Karten erreicht' : 'Karte hochladen';
+    sub.textContent = `Karten ${count}/${MAX_CAMPAIGN_MAPS}`;
+  }
+
+  function renderMapState() {
+    const maps = getEditableMaps();
+    const preview = document.getElementById('ccMapPreview');
+    const selector = document.getElementById('ccMapSelector');
+    const mapMedia = document.getElementById('ccMapMedia');
+    const fileName = document.getElementById('ccMapFileName');
+
+    if (maps.length === 0) {
+      preview.style.display = 'none';
+      selector.style.display = 'none';
+      mapMedia.innerHTML = '<img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block;" />';
+      fileName.textContent = '';
+      updateUploadState();
+      updateEditDirtyState();
       return;
     }
 
-    // 2️⃣ Bild laden und Seitenverhältnis prüfen
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = async () => {
-      const ratio = img.width / img.height;
-      const allowedRatios = [1, 16/4, 21/9];
+    const active = isEdit
+      ? (getActiveCampaignMap(campaignState) || maps[0])
+      : maps[Math.max(0, Math.min(selectedMapIndex, maps.length - 1))];
 
-      // Funktion prüft ±15% Toleranz
-      const isRatioOk = allowedRatios.some(r => {
-        const lower = r * 0.4;
-        const upper = r * 1.6;
-        return ratio >= lower && ratio <= upper;
+    preview.style.display = 'block';
+    selector.style.display = maps.length > 1 ? 'block' : 'none';
+    selector.innerHTML = maps.length > 1
+      ? `<select id="ccMapSelect" style="width:100%;">${maps.map((m, index) => {
+          const value = isEdit ? m.index : index;
+          const selected = active && (isEdit ? m.path === active.path : index === selectedMapIndex) ? 'selected' : '';
+          return `<option value="${value}" ${selected}>${esc(m.name || ('Karte ' + (index + 1)))}</option>`;
+        }).join('')}</select>`
+      : '';
+    mapMedia.innerHTML = renderPreviewMap(active.path);
+    fileName.textContent = `Karten ${maps.length}/${MAX_CAMPAIGN_MAPS}`;
+
+    const select = document.getElementById('ccMapSelect');
+    if (select) {
+      select.addEventListener('change', async () => {
+        selectedMapIndex = parseInt(select.value, 10);
+        if (isEdit) {
+          const res = await fetch('/api/campaign/' + encodeURIComponent(id) + '/selected-map', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectedMapIndex })
+          });
+          if (res.ok) campaignState = await res.json();
+        }
+        renderMapState();
       });
+    }
+    updateUploadState();
+    updateEditDirtyState();
+  }
 
-      if (!isRatioOk) {
-        setStatus('Seitenverhältnis erlaubt: 1:1, 16:4, 21:9 (+/- 15%)', true);
-        mapInput.value = '';
-        return;
-      }
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Ungültige Bilddatei'));
+      };
+      img.src = objectUrl;
+    });
+  }
 
-      // 3️⃣ Transparenz prüfen (nur für PNG)
-      if (file.type === 'image/png') {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const pixels = ctx.getImageData(0, 0, img.width, img.height).data;
-        let transparent = false;
-        for (let i = 3; i < pixels.length; i += 4) {
-          if (pixels[i] < 255) {
-            transparent = true;
-            break;
-          }
-        }
-        if (transparent) {
-          setStatus('PNG darf keine Transparenz enthalten', true);
-          mapInput.value = '';
-          return;
-        }
-      }
+  async function validateMapFile(file) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Nur JPG/JPEG/PNG Dateien erlaubt');
+    }
 
-      // 4️⃣ Crop Modal öffnen
-      try {
-        croppedMapBlob = await showMapCropModal(file);
-        const url = URL.createObjectURL(croppedMapBlob);
-        const mapMedia = document.getElementById('ccMapMedia');
-        mapMedia.innerHTML = '<img id="ccMapImage" alt="Kampagnenkarte" src="" style="max-width:100%;max-height:200px;border-radius:8px;display:block;" />';
-        document.getElementById('ccMapImage').src = url;
-        document.getElementById('ccMapFileName').textContent = file.name + ' (zugeschnitten)';
-        document.getElementById('ccMapPreview').style.display = 'block';
-      } catch {
-        croppedMapBlob = null;
+    const img = await loadImage(file);
+    const ratio = img.width / img.height;
+    const allowedRatios = [1, 16/4, 21/9];
+    const isRatioOk = allowedRatios.some(r => {
+      const lower = r * 0.4;
+      const upper = r * 1.6;
+      return ratio >= lower && ratio <= upper;
+    });
+    if (!isRatioOk) {
+      throw new Error('Seitenverhältnis erlaubt: 1:1, 16:4, 21:9 (+/- 15%)');
+    }
+
+    if (file.type === 'image/png') {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const pixels = ctx.getImageData(0, 0, img.width, img.height).data;
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] < 255) throw new Error('PNG darf keine Transparenz enthalten');
       }
+    }
+  }
+
+  async function uploadMapBlob(campaignId, blob) {
+    const formData = new FormData();
+    formData.append('file', blob, 'map-cropped.png');
+    const res = await fetch('/api/campaign/' + campaignId + '/upload-map', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error(await res.text() || 'Karten-Upload fehlgeschlagen');
+    return res.json();
+  }
+
+  function getMapSignature() {
+    return getEditableMaps().map(m => m.path).join('|') + '::' + selectedMapIndex;
+  }
+
+  function getCurrentEditState() {
+    return {
+      name: document.getElementById('ccName').value.trim(),
+      description: storyInput.value.trim(),
+      story: document.getElementById('ccDmStory').value.trim(),
+      isPublic,
+      maxPlayerCount: document.getElementById('ccMaxPlayers').value ? parseInt(document.getElementById('ccMaxPlayers').value, 10) : null,
+      maps: getMapSignature()
     };
+  }
 
-    img.onerror = () => {
-      setStatus('Ungültige Bilddatei', true);
+  function snapshotEditState() {
+    if (!isEdit) return;
+    initialEditState = getCurrentEditState();
+  }
+
+  function updateEditDirtyState() {
+    if (!isEdit || !initialEditState) return;
+    const btn = document.getElementById('ccCreateBtn');
+    const current = getCurrentEditState();
+    const isDirty = Object.keys(initialEditState).some(key => current[key] !== initialEditState[key]);
+    btn.disabled = !isDirty;
+  }
+
+  // Upload & Filter
+  mapInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const existingCount = getEditableMaps().length;
+    if (existingCount >= MAX_CAMPAIGN_MAPS || existingCount + files.length > MAX_CAMPAIGN_MAPS) {
+      setStatus('Maximal 5 Karten pro Kampagne', true);
       mapInput.value = '';
-    };
+      updateUploadState();
+      return;
+    }
+
+    for (const file of files) {
+      try {
+        await validateMapFile(file);
+        const croppedMapBlob = await showMapCropModal(file);
+        const url = URL.createObjectURL(croppedMapBlob);
+
+        if (isEdit) {
+          campaignState = await uploadMapBlob(id, croppedMapBlob);
+          selectedMapIndex = Number.isFinite(Number(campaignState.selectedMapIndex)) ? Number(campaignState.selectedMapIndex) : getCampaignMaps(campaignState).length - 1;
+          URL.revokeObjectURL(url);
+        } else {
+          pendingMaps.push({
+            index: pendingMaps.length,
+            name: 'Karte ' + (pendingMaps.length + 1),
+            path: url,
+            blob: croppedMapBlob,
+            selected: false
+          });
+          selectedMapIndex = pendingMaps.length - 1;
+        }
+        renderMapState();
+      } catch (err) {
+        setStatus(err.message || 'Karte konnte nicht verarbeitet werden', true);
+      }
+    }
+    mapInput.value = '';
   });
 
   if (isEdit) {
@@ -190,6 +315,7 @@ export default async function CampaignCreateView({ id }) {
       const res = await fetch('/api/campaign/' + encodeURIComponent(id) + '?playerId=' + player.id, { cache: 'no-store' });
       if (res.ok) {
         const c = await res.json();
+        campaignState = c;
         document.getElementById('ccName').value = c.name || '';
         storyInput.value = c.description || '';
         document.getElementById('ccDmStory').value = c.story || '';
@@ -198,14 +324,18 @@ export default async function CampaignCreateView({ id }) {
         switchEl.classList.toggle('public', isPublic);
         switchEl.classList.toggle('private', !isPublic);
         visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
-        if (c.mapImagePath) {
-          document.getElementById('ccMapMedia').innerHTML = renderPreviewMap(c.mapImagePath);
-          document.getElementById('ccMapFileName').textContent = 'Karte geladen';
-          document.getElementById('ccMapPreview').style.display = 'block';
-        }
+        selectedMapIndex = Number.isFinite(Number(c.selectedMapIndex)) ? Number(c.selectedMapIndex) : 0;
+        renderMapState();
+        snapshotEditState();
+        updateEditDirtyState();
       }
     } catch (err) {}
   }
+  renderMapState();
+
+  ['ccName', 'ccMaxPlayers', 'ccDmStory'].forEach(inputId => {
+    document.getElementById(inputId).addEventListener('input', updateEditDirtyState);
+  });
 
   function setStatus(msg, isError) {
     if (msg) showToast(msg, isError ? 'error' : 'info');
@@ -214,10 +344,11 @@ export default async function CampaignCreateView({ id }) {
   document.getElementById('ccBackBtn').addEventListener('click', () => navigate('/campaigns'));
 
   document.getElementById('ccCreateBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('ccCreateBtn');
+    if (isEdit && btn.disabled) return;
     const name = document.getElementById('ccName').value.trim();
     if (!name) { setStatus('Kampagnenname ist erforderlich.', true); return; }
 
-    const btn = document.getElementById('ccCreateBtn');
     btn.disabled = true;
     setStatus(isEdit ? 'Aktualisiere...' : 'Erstelle...');
 
@@ -247,12 +378,12 @@ export default async function CampaignCreateView({ id }) {
       }
 
       if (!res.ok) throw new Error(await res.text() || 'Fehler');
-      const campaign = await res.json();
+      let campaign = await res.json();
 
-      if (croppedMapBlob) {
-        const formData = new FormData();
-        formData.append('file', croppedMapBlob, 'map-cropped.png');
-        await fetch('/api/campaign/' + campaign.id + '/upload-map', { method: 'POST', body: formData });
+      if (!isEdit && pendingMaps.length > 0) {
+        for (const map of pendingMaps) {
+          campaign = await uploadMapBlob(campaign.id, map.blob);
+        }
       }
 
       navigate('/campaigns');

@@ -401,6 +401,9 @@ body.has-header { padding-top: 70px; }
   display: flex; align-items: center; gap: 10px;
   font-size: 18px; font-weight: 800; color: var(--brand-color-3); letter-spacing: 0.3px;
 }
+.login-nav-brand {
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+}
 .lp-nav-dice { width: 28px; height: 28px; }
 .lp-nav-login {
   padding: 8px 22px; border-radius: 10px; border: 1px solid rgba(var(--primary-rgb),0.35);
@@ -624,7 +627,7 @@ body.has-header { padding-top: 70px; }
 /* ===== LOGIN PAGE (redesigned) ===== */
 .login-page {
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  min-height: 100vh; margin: 0; position: relative; overflow: hidden;
+  min-height: 100vh; margin: 0; padding-top: 60px; position: relative; overflow: hidden;
 }
 .login-ambient {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -837,13 +840,36 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 .btn-secondary { border-color: var(--border-input); }
 .btn-secondary:hover { background: var(--overlay-button-hover); transform: translateY(-1px); }
 .btn-primary { background: var(--accent-primary); font-weight: 600; box-shadow: 0 0 20px var(--accent-glow); }
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 24px var(--accent-glow); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 24px var(--accent-glow); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.35); box-shadow: none; }
 .btn-danger { background: var(--danger-bg); border-color: var(--danger-border); font-weight: 600; }
 .btn-danger:hover { background: var(--danger-bg-hover); border-color: var(--danger-border-hover); }
 .btn-success { background: rgba(var(--success-rgb),0.8); font-weight: 600; }
 .btn-success:hover { background: rgba(var(--success-rgb),1); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dk-confirm-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.dk-confirm-dialog {
+  width: 360px; max-width: 100%;
+  background: rgba(var(--glass-solid-rgb),0.96);
+  border: 1px solid rgba(var(--primary-rgb),0.16);
+  border-radius: 18px; padding: 22px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(var(--primary-rgb),0.06);
+  color: var(--text-primary);
+}
+.dk-confirm-title {
+  font-size: 18px; font-weight: 700; margin-bottom: 8px;
+}
+.dk-confirm-copy {
+  color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 18px;
+}
+.dk-confirm-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+}
 
 /* ===== CAMPAIGN DETAIL PAGE (from CampaignDetail.css) ===== */
 .campaign-detail-page {
