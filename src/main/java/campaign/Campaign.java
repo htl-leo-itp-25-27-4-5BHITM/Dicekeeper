@@ -7,7 +7,9 @@ import jakarta.persistence.Entity;
 @Entity
 public class Campaign extends PanacheEntity {
     public String name;
+    @Column(length = 1000)
     public String description;
+    @Column(length = 1000)
     public String story;
 
     @Column(name = "player_id", nullable = true)
