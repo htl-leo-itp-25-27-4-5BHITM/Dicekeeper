@@ -536,13 +536,7 @@ export default async function GMView({ id }) {
       if (idx >= 0) { currentIndex = idx; renderPlayers(); }
       },
       dice: d => {
-      if (d.playerName !== 'Dungeon Master') {
-        const chat = document.getElementById('gmChat');
-        const div = document.createElement('div');
-        div.innerHTML = '🎲 <strong>' + esc(d.playerName) + '</strong> würfelt ' + esc(d.diceType) + ': <strong>' + d.result + '</strong>';
-        div.style.color = 'var(--accent-purple)';
-        chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
-      }
+      showBroadcastDiceRoll(d);
       },
       hp: d => {
       const p = players.find(x => x.id === d.playerId);
@@ -677,8 +671,9 @@ export default async function GMView({ id }) {
       div.className = 'player' + (i === currentIndex ? ' active' : '');
       const pct = p.maxHp > 0 ? Math.round((p.hp / p.maxHp) * 100) : 0;
       let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
-      div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
-        <span>${esc(p.name)}</span>
+      div.innerHTML = `<div class="gm-player-head">
+        <span class="gm-player-name">${esc(p.name)}</span>
+        ${i === currentIndex ? '<span class="gm-turn-badge">Am Zug</span>' : ''}
         <button class="purple-btn" style="padding:6px 10px;font-size:12px;">${p.active ? 'Aussetzen' : 'Aktivieren'}</button>
       </div>
       <div style="margin-top:8px;font-size:13px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -765,6 +760,29 @@ export default async function GMView({ id }) {
   function showFb(msg, color) {
     const fb = document.getElementById('gmDiceFb'); fb.textContent = msg; fb.style.color = color; fb.style.opacity = '1';
     setTimeout(() => { fb.style.opacity = '0'; }, 3000);
+  }
+
+  function showBroadcastDiceRoll(d) {
+    if (!d) return;
+    const resultEl = document.getElementById('gmDiceResult');
+    const labelEl = document.getElementById('gmDiceLabel');
+    if (labelEl) labelEl.textContent = String(d.diceType || '').toUpperCase();
+    if (resultEl) {
+      resultEl.textContent = d.result;
+      resultEl.classList.remove('rolling');
+      void resultEl.offsetWidth;
+      resultEl.classList.add('rolling');
+    }
+    showFb((d.playerName || 'Ein Spieler') + ' würfelt ' + (d.diceType || '') + ': ' + d.result, 'var(--accent-green)');
+
+    const chat = document.getElementById('gmChat');
+    if (chat) {
+      const div = document.createElement('div');
+      div.innerHTML = '🎲 <strong>' + esc(d.playerName || 'Ein Spieler') + '</strong> würfelt ' + esc(d.diceType || '') + ': <strong>' + esc(String(d.result)) + '</strong>';
+      div.style.color = 'var(--accent-purple)';
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
   }
 
   document.getElementById('gmRollBtn').addEventListener('click', () => {

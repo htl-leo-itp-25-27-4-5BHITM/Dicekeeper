@@ -226,7 +226,7 @@ export default async function PlayerView({ id }) {
       }
       },
       dice: d => {
-      if (d.playerId !== currentPlayer.id) showDiceToast(d.playerName, d.diceType, d.result);
+      handleDiceEvent(d);
       },
       decision: d => {
       if (!decisions.find(x => x.id === d.id)) decisions.push(d);
@@ -308,6 +308,51 @@ export default async function PlayerView({ id }) {
 
   function showDiceToast(name, dt, result) {
     showToast('🎲 ' + (name || 'Ein Spieler') + ' würfelt ' + dt + ': ' + result, 'info', 4000);
+  }
+
+  function renderDiceHistoryInto(id) {
+    const h = document.getElementById(id);
+    if (!h) return;
+    if (diceHistory.length === 0) {
+      h.innerHTML = '<div class="pv2-hist-empty">Noch keine Würfe</div>';
+      return;
+    }
+    h.innerHTML = diceHistory.map(e => `<div class="pv2-hist-row"><span class="pv2-hist-dice">${esc(e.dice)}</span><span class="pv2-hist-result">${esc(String(e.result))}</span><span class="pv2-hist-time">${esc(e.time)}</span></div>`).join('');
+  }
+
+  function showDiceResultInView(prefix, d) {
+    const label = document.getElementById(prefix + 'DiceLabel');
+    const value = document.getElementById(prefix + 'DiceVal');
+    const feedback = document.getElementById(prefix + 'DiceFb');
+    if (label) label.textContent = String(d.diceType || '').toUpperCase();
+    if (value) {
+      value.textContent = d.result;
+      value.classList.remove('rolling');
+      void value.offsetWidth;
+      value.classList.add('rolling');
+    }
+    if (feedback) {
+      feedback.textContent = (d.playerName || 'Ein Spieler') + ' würfelt';
+      feedback.style.color = 'var(--accent-green)';
+      feedback.style.opacity = '1';
+      setTimeout(() => { feedback.style.opacity = '0'; }, 3000);
+    }
+  }
+
+  function handleDiceEvent(d) {
+    if (!d) return;
+    const isOwnRoll = d.playerId === currentPlayer.id;
+    diceHistory.unshift({
+      dice: (d.playerName || 'Ein Spieler') + ' · ' + (d.diceType || ''),
+      result: d.result,
+      time: new Date(d.timestamp || Date.now()).toLocaleTimeString()
+    });
+    if (diceHistory.length > 20) diceHistory.pop();
+    showDiceResultInView('pv', d);
+    showDiceResultInView('pvMob', d);
+    renderDiceHistoryInto('pvDiceHist');
+    renderDiceHistoryInto('pvMobDiceHist');
+    if (!isOwnRoll) showDiceToast(d.playerName, d.diceType, d.result);
   }
 
   // ===== LOAD =====
@@ -599,9 +644,7 @@ export default async function PlayerView({ id }) {
     });
     function showFb(msg, color) { const fb = document.getElementById('pvDiceFb'); fb.textContent = msg; fb.style.color = color; fb.style.opacity = '1'; setTimeout(() => { fb.style.opacity = '0'; }, 3000); }
     function renderHist() {
-      const h = document.getElementById('pvDiceHist');
-      if (diceHistory.length === 0) { h.innerHTML = '<div class="pv2-hist-empty">Noch keine Würfe</div>'; return; }
-      h.innerHTML = diceHistory.map(e => `<div class="pv2-hist-row"><span class="pv2-hist-dice">${e.dice}</span><span class="pv2-hist-result">${e.result}</span><span class="pv2-hist-time">${e.time}</span></div>`).join('');
+      renderDiceHistoryInto('pvDiceHist');
     }
     document.getElementById('pvRollBtn').addEventListener('click', () => {
       const manIn = document.getElementById('pvManualIn');
@@ -618,8 +661,6 @@ export default async function PlayerView({ id }) {
           if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: f, time: new Date().toLocaleTimeString() });
-          if (diceHistory.length > 20) diceHistory.pop(); renderHist();
           const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
           fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
         }
@@ -635,10 +676,10 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
-      diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() }); renderHist();
       const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
       fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
     });
+    renderHist();
   }
 
   // ===== PARTY =====
@@ -661,9 +702,10 @@ export default async function PlayerView({ id }) {
       return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
         <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
         <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}${isTurn && !isDM ? ' 🟢' : ''}</div>
+          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}</div>
           <div class="pv2-party-detail">${esc(detail)}</div>
         </div>
+        ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
         <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
       </div>`;
     }).join('');
@@ -909,10 +951,7 @@ export default async function PlayerView({ id }) {
     });
     function showFb(msg, color) { const fb = document.getElementById('pvMobDiceFb'); if (fb) { fb.textContent = msg; fb.style.color = color; fb.style.opacity = '1'; setTimeout(() => { fb.style.opacity = '0'; }, 3000); } }
     function renderHist() {
-      const h = document.getElementById('pvMobDiceHist');
-      if (!h) return;
-      if (diceHistory.length === 0) { h.innerHTML = '<div class="pv2-hist-empty">Noch keine Würfe</div>'; return; }
-      h.innerHTML = diceHistory.map(e => `<div class="pv2-hist-row"><span class="pv2-hist-dice">${e.dice}</span><span class="pv2-hist-result">${e.result}</span><span class="pv2-hist-time">${e.time}</span></div>`).join('');
+      renderDiceHistoryInto('pvMobDiceHist');
     }
     document.getElementById('pvMobRollBtn').addEventListener('click', () => {
       const manIn = document.getElementById('pvMobManualIn');
@@ -929,8 +968,6 @@ export default async function PlayerView({ id }) {
           if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          diceHistory.unshift({ dice: 'd' + selectedDiceSides, result: f, time: new Date().toLocaleTimeString() });
-          if (diceHistory.length > 20) diceHistory.pop(); renderHist();
           const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
           fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
         }
@@ -946,10 +983,10 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvMobRollBtn').disabled = false;
-      diceHistory.unshift({ dice: 'd' + selectedDiceSides + ' (manuell)', result: val, time: new Date().toLocaleTimeString() }); renderHist();
       const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
       fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
     });
+    renderHist();
   }
 
   function renderMobParty() {
@@ -964,9 +1001,10 @@ export default async function PlayerView({ id }) {
       return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
         <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
         <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}${isTurn && !isDM ? ' 🟢' : ''}</div>
+          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}</div>
           <div class="pv2-party-detail">${esc(detail)}</div>
         </div>
+        ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
         <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
       </div>`;
     }).join('');
