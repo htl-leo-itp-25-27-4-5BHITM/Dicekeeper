@@ -1639,10 +1639,6 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 .turn-banner.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
 .turn-banner.my-turn { background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end)); color: rgba(var(--lp-dark-rgb),1); box-shadow: 0 4px 20px rgba(var(--gradient-start-rgb),0.3); }
 .turn-banner.other-turn { background: rgba(var(--glass-solid-rgb),0.9); color: var(--text-muted); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
-.dice-toast { position: fixed; top: 120px; right: 20px; z-index: 1500; background: rgba(var(--glass-solid-rgb),0.95); backdrop-filter: blur(18px); border-radius: 16px; padding: 14px 20px; color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,0.5); border-left: 3px solid var(--accent-purple); transform: translateX(120%); transition: transform 0.3s ease; max-width: 280px; }
-.dice-toast.visible { transform: translateX(0); }
-.toast-title { font-weight: 700; font-size: 12px; color: var(--accent-purple); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-.toast-result { font-size: 28px; font-weight: 800; color: var(--accent-green); }
 .decision-card-player { background: var(--glass-dark); padding: 14px 16px; border-radius: 16px; margin-bottom: 10px; border-left: 3px solid var(--accent-purple); }
 .decision-card-player h4 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
 .decision-card-player .decision-desc { font-size: 12.5px; opacity: 0.8; margin-bottom: 10px; line-height: 1.4; white-space: pre-wrap; }
@@ -2694,23 +2690,6 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   }
   .pv2-turn-banner.visible {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .dice-toast {
-    top: auto;
-    bottom: 70px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) translateY(20px);
-    opacity: 0;
-    max-width: 80vw;
-    border-radius: 14px;
-    pointer-events: none;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-  }
-  .dice-toast.visible {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
     pointer-events: auto;

@@ -35,7 +35,6 @@ export default async function PlayerView({ id }) {
 
   app.innerHTML = renderHeader() + `
     <div id="pvTurnBanner" class="pv2-turn-banner"></div>
-    <div id="pvDiceToast" class="dice-toast"><div class="toast-title" id="pvToastTitle"></div><div class="toast-result" id="pvToastResult"></div></div>
     <div class="pv2-loading" id="pvLoading"><span class="loading-spinner"></span> Spiel wird geladen...</div>
 
     <!-- ===== MOBILE: compact top bar + tab panels ===== -->
@@ -307,13 +306,8 @@ export default async function PlayerView({ id }) {
     }
   }
 
-  let toastTimeout = null;
   function showDiceToast(name, dt, result) {
-    document.getElementById('pvToastTitle').textContent = '🎲 ' + name + ' würfelt ' + dt;
-    document.getElementById('pvToastResult').textContent = result;
-    document.getElementById('pvDiceToast').classList.add('visible');
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => document.getElementById('pvDiceToast').classList.remove('visible'), 4000);
+    showToast('🎲 ' + (name || 'Ein Spieler') + ' würfelt ' + dt + ': ' + result, 'info', 4000);
   }
 
   // ===== LOAD =====
