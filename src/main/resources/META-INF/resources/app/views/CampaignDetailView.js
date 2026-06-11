@@ -7,6 +7,7 @@ import { esc, getActiveCampaignMap, getCampaignMaps, initials, renderMapPicture 
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
+import { bindMaxPlayerCountValidation, readMaxPlayerCount } from '../services/campaignValidation.js';
 
 const MAX_CAMPAIGN_MAPS = 5;
 
@@ -132,7 +133,9 @@ export default async function CampaignDetailView({ id }) {
       description: document.getElementById('cdDesc')?.value.trim() || '',
       story: document.getElementById('cdStory')?.value.trim() || '',
       isPublic,
-      maxPlayerCount: document.getElementById('cdMaxPlayers')?.value ? parseInt(document.getElementById('cdMaxPlayers').value, 10) : null,
+      maxPlayerCount: document.getElementById('cdMaxPlayers')
+        ? readMaxPlayerCount(document.getElementById('cdMaxPlayers')).value
+        : null,
       maps: getMapSignature()
     };
   }
@@ -251,7 +254,7 @@ export default async function CampaignDetailView({ id }) {
         <div class="preview-info">
           <div class="preview-info-item"><strong>DM:</strong> <span>${esc(getDMName())}</span></div>
           <div class="preview-info-item"><strong>Spieler:</strong> <span>${campaignPlayers.filter(cp => cp.role === 'PLAYER').length}</span></div>
-          <div class="preview-info-item"><strong>Max:</strong> <span>${campaign.maxPlayerCount || 'Unbegrenzt'}</span></div>
+          <div class="preview-info-item"><strong>Max:</strong> <span>${campaign.maxPlayerCount ?? 'Unbegrenzt'}</span></div>
         </div>
         <div class="preview-divider"></div>
         <div class="players-title">Beigetretene Spieler</div>
@@ -290,7 +293,7 @@ export default async function CampaignDetailView({ id }) {
         <div class="preview-info">
           <div class="preview-info-item"><strong>DM:</strong> <span>${esc(getDMName())}</span></div>
           <div class="preview-info-item"><strong>Spieler:</strong> <span>${campaignPlayers.filter(cp => cp.role === 'PLAYER').length}</span></div>
-          <div class="preview-info-item"><strong>Max:</strong> <span>${campaign.maxPlayerCount || 'Unbegrenzt'}</span></div>
+          <div class="preview-info-item"><strong>Max:</strong> <span>${campaign.maxPlayerCount ?? 'Unbegrenzt'}</span></div>
         </div>
         <div class="preview-divider"></div>
         <div class="players-title">Beigetretene Spieler</div>
@@ -321,7 +324,7 @@ export default async function CampaignDetailView({ id }) {
       <div class="form-group"><label>Titel</label><input type="text" id="cdTitle" value="${esc(campaign.name || '')}" /></div>
       <div class="form-group"><label>Beschreibung</label><textarea id="cdDesc">${esc(campaign.description || '')}</textarea></div>
       <div class="form-group"><label>Story (nur für dich)</label><textarea id="cdStory" class="story">${esc(campaign.story || '')}</textarea><div style="font-size:11px;opacity:0.6;margin-top:4px;">🔒 Nur für den DM sichtbar</div></div>
-      <div class="form-group"><label>Max. Spieler</label><input type="number" id="cdMaxPlayers" min="1" value="${campaign.maxPlayerCount || ''}" style="max-width:150px;" /></div>
+      <div class="form-group"><label>Max. Spieler</label><input type="number" id="cdMaxPlayers" min="0" step="1" value="${campaign.maxPlayerCount ?? ''}" aria-describedby="cdMaxPlayersError" style="max-width:150px;" /><div id="cdMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div></div>
       <div class="switch-wrapper">
         <span class="switch-label-text">Sichtbarkeit</span>
         <div class="switch ${campaign.isPublic ? 'public' : 'private'}" id="cdSwitch">
@@ -350,6 +353,12 @@ export default async function CampaignDetailView({ id }) {
     };
 
     bindMapManagerEvents();
+    const maxPlayersInput = document.getElementById('cdMaxPlayers');
+    const validateMaxPlayers = bindMaxPlayerCountValidation(
+      maxPlayersInput,
+      document.getElementById('cdMaxPlayersError'),
+      updateDmDirtyState
+    );
 
     // Render players for DM
     const playersList = document.getElementById('cdPlayersList');
@@ -413,6 +422,12 @@ export default async function CampaignDetailView({ id }) {
     document.getElementById('cdUpdate').onclick = async () => {
       const btn = document.getElementById('cdUpdate');
       if (btn.disabled) return;
+      const maxPlayers = validateMaxPlayers();
+      if (!maxPlayers.valid) {
+        setStatus(maxPlayers.message, true);
+        maxPlayersInput.focus();
+        return;
+      }
       btn.disabled = true; btn.textContent = 'Aktualisiere...';
       try {
         const payload = {
@@ -420,7 +435,7 @@ export default async function CampaignDetailView({ id }) {
           description: document.getElementById('cdDesc').value.trim(),
           story: document.getElementById('cdStory').value.trim(),
           isPublic,
-          maxPlayerCount: document.getElementById('cdMaxPlayers').value ? parseInt(document.getElementById('cdMaxPlayers').value) : null
+          maxPlayerCount: maxPlayers.value
         };
         const res = await fetch('/api/campaign/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!res.ok) {

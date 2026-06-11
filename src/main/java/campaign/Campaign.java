@@ -3,6 +3,8 @@ package campaign;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @Entity
 public class Campaign extends PanacheEntity {
@@ -32,4 +34,13 @@ public class Campaign extends PanacheEntity {
 
     @Column(name = "started", nullable = false)
     public Boolean started = false;
+
+    @PrePersist
+    @PreUpdate
+    void validate() {
+        String validationError = CampaignValidation.validateMaxPlayerCount(maxPlayerCount);
+        if (validationError != null) {
+            throw new IllegalArgumentException(validationError);
+        }
+    }
 }

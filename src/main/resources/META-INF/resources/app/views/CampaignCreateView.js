@@ -7,6 +7,7 @@ import { renderHeader, initHeader, destroyHeader } from '../components/header.js
 import { showToast } from '../components/toast.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { esc, getActiveCampaignMap, getCampaignMaps, renderMapPicture } from '../services/utils.js';
+import { bindMaxPlayerCountValidation, readMaxPlayerCount } from '../services/campaignValidation.js';
 
 const MAX_CAMPAIGN_MAPS = 5;
 
@@ -39,7 +40,8 @@ export default async function CampaignCreateView({ id }) {
           </div>
           <div class="form-group" style="max-width:140px;">
             <label for="ccMaxPlayers">Max Spieler</label>
-            <input type="number" id="ccMaxPlayers" min="1" max="99" value="4" />
+            <input type="number" id="ccMaxPlayers" min="0" step="1" value="4" aria-describedby="ccMaxPlayersError" />
+            <div id="ccMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div>
           </div>
         </div>
         <div class="form-group">
@@ -97,6 +99,12 @@ export default async function CampaignCreateView({ id }) {
   const switchEl = document.getElementById('ccVisibilitySwitch');
   const visibilityText = document.getElementById('ccVisibilityText');
   const mapInput = document.getElementById('ccMapFile');
+  const maxPlayersInput = document.getElementById('ccMaxPlayers');
+  const validateMaxPlayers = bindMaxPlayerCountValidation(
+    maxPlayersInput,
+    document.getElementById('ccMaxPlayersError'),
+    updateEditDirtyState
+  );
   let isPublic = true;
   let campaignState = null;
   let pendingMaps = [];
@@ -251,7 +259,7 @@ export default async function CampaignCreateView({ id }) {
       description: storyInput.value.trim(),
       story: document.getElementById('ccDmStory').value.trim(),
       isPublic,
-      maxPlayerCount: document.getElementById('ccMaxPlayers').value ? parseInt(document.getElementById('ccMaxPlayers').value, 10) : null,
+      maxPlayerCount: readMaxPlayerCount(maxPlayersInput).value,
       maps: getMapSignature()
     };
   }
@@ -319,7 +327,7 @@ export default async function CampaignCreateView({ id }) {
         document.getElementById('ccName').value = c.name || '';
         storyInput.value = c.description || '';
         document.getElementById('ccDmStory').value = c.story || '';
-        if (c.maxPlayerCount) document.getElementById('ccMaxPlayers').value = c.maxPlayerCount;
+        if (c.maxPlayerCount !== null && c.maxPlayerCount !== undefined) maxPlayersInput.value = c.maxPlayerCount;
         isPublic = c.isPublic || false;
         switchEl.classList.toggle('public', isPublic);
         switchEl.classList.toggle('private', !isPublic);
@@ -348,6 +356,12 @@ export default async function CampaignCreateView({ id }) {
     if (isEdit && btn.disabled) return;
     const name = document.getElementById('ccName').value.trim();
     if (!name) { setStatus('Kampagnenname ist erforderlich.', true); return; }
+    const maxPlayers = validateMaxPlayers();
+    if (!maxPlayers.valid) {
+      setStatus(maxPlayers.message, true);
+      maxPlayersInput.focus();
+      return;
+    }
 
     btn.disabled = true;
     setStatus(isEdit ? 'Aktualisiere...' : 'Erstelle...');
@@ -359,7 +373,7 @@ export default async function CampaignCreateView({ id }) {
         story: document.getElementById('ccDmStory').value.trim(),
         playerId: Number(player.id),
         isPublic,
-        maxPlayerCount: document.getElementById('ccMaxPlayers').value ? parseInt(document.getElementById('ccMaxPlayers').value) : null
+        maxPlayerCount: maxPlayers.value
       };
 
       let res;

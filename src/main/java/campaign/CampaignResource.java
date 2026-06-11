@@ -134,6 +134,10 @@ public class CampaignResource {
                     .entity("Campaign name is required")
                     .build();
         }
+        Response validationError = validateMaxPlayerCount(campaign.maxPlayerCount);
+        if (validationError != null) {
+            return validationError;
+        }
 
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         Player player = Player.findById(currentPlayerId);
@@ -158,6 +162,11 @@ public class CampaignResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
     public Response update(@PathParam("id") Long id, Campaign updated) {
+        if (updated == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Campaign update is required")
+                    .build();
+        }
         Campaign existing = Campaign.findById(id);
         if (existing == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -170,6 +179,10 @@ public class CampaignResource {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity("Only the DM can update this campaign")
                     .build();
+        }
+        Response validationError = validateMaxPlayerCount(updated.maxPlayerCount);
+        if (validationError != null) {
+            return validationError;
         }
 
         if (updated.name != null) {
@@ -393,6 +406,13 @@ public class CampaignResource {
         String lower = filename.toLowerCase();
         return lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
                 lower.endsWith(".png") || lower.endsWith(".svg");
+    }
+
+    private Response validateMaxPlayerCount(Integer maxPlayerCount) {
+        String validationError = CampaignValidation.validateMaxPlayerCount(maxPlayerCount);
+        return validationError == null
+                ? null
+                : Response.status(Response.Status.BAD_REQUEST).entity(validationError).build();
     }
 
     private List<String> getMapPaths(Campaign campaign) {

@@ -141,7 +141,10 @@ public class CampaignPlayerResource {
         }
 
         if (campaign.maxPlayerCount != null) {
-            long currentPlayerCount = CampaignPlayer.find("campaignId", campaignId).count();
+            long currentPlayerCount = CampaignPlayer.find(
+                    "campaignId = ?1 and role = 'PLAYER'",
+                    campaignId
+            ).count();
             if (currentPlayerCount >= campaign.maxPlayerCount) {
                 return Response.status(Response.Status.CONFLICT)
                         .entity("Campaign is full")

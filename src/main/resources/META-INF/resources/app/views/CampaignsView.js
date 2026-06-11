@@ -51,7 +51,9 @@ export default async function CampaignsView() {
     titleDiv.textContent = campaign.name || 'Unnamed Campaign';
     const metaDiv = document.createElement('div');
     metaDiv.className = 'campaign-meta';
-    const maxPlayers = campaign.maxPlayerCount ? `Max: ${campaign.maxPlayerCount} Spieler` : 'Unbegrenzt';
+    const maxPlayers = campaign.maxPlayerCount !== null && campaign.maxPlayerCount !== undefined
+      ? `Max: ${campaign.maxPlayerCount} Spieler`
+      : 'Unbegrenzt';
     metaDiv.textContent = campaign.description ? `${campaign.description.substring(0, 50)}${campaign.description.length > 50 ? '...' : ''} • ${maxPlayers}` : maxPlayers;
     infoDiv.appendChild(titleDiv);
     infoDiv.appendChild(metaDiv);

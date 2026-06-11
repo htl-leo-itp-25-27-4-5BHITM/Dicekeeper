@@ -61,7 +61,7 @@ export default async function CockpitView({ id }) {
           <p class="ck-desc">${esc(campaign.description || 'Keine Beschreibung vorhanden.')}</p>
           <div class="ck-stats-row">
             <div class="ck-stat"><span class="ck-stat-value">${playerCount}</span><span class="ck-stat-label">Spieler</span></div>
-            <div class="ck-stat"><span class="ck-stat-value">${campaign.maxPlayerCount || '∞'}</span><span class="ck-stat-label">Max</span></div>
+            <div class="ck-stat"><span class="ck-stat-value">${campaign.maxPlayerCount ?? '∞'}</span><span class="ck-stat-label">Max</span></div>
             <div class="ck-stat"><span class="ck-stat-value">${canStart ? '✓' : '⏳'}</span><span class="ck-stat-label">Status</span></div>
           </div>
           <div class="ck-hero-actions">
