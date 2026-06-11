@@ -25,6 +25,9 @@ public class CampaignPlayerResource {
     @Inject
     SecurityIdentity securityIdentity;
 
+    @Inject
+    SseBroadcaster broadcaster;
+
     @GET
     @Path("{campaignId}")
     public Response getCampaignPlayers(@PathParam("campaignId") Long campaignId) {
@@ -148,6 +151,7 @@ public class CampaignPlayerResource {
 
         CampaignPlayer cp = new CampaignPlayer(campaignId, playerId, "PLAYER");
         cp.persist();
+        broadcastRosterUpdate(campaignId, "joined", playerId);
 
         // Return with needsCharacter flag to redirect user to character creation
         return Response.status(Response.Status.CREATED)
@@ -215,6 +219,7 @@ public class CampaignPlayerResource {
                 cp.id // CampaignPlayer ID for easy lookup
         );
         dmNotification.persist();
+        broadcastRosterUpdate(campaignId, "character_submitted", playerId);
 
         return Response.ok(cp).build();
     }
@@ -265,6 +270,7 @@ public class CampaignPlayerResource {
                 playerCp.characterId
         );
         playerNotification.persist();
+        broadcastRosterUpdate(campaignId, "character_approved", playerCp.playerId);
 
         return Response.ok(playerCp).build();
     }
@@ -317,6 +323,7 @@ public class CampaignPlayerResource {
                 playerCp.characterId
         );
         playerNotification.persist();
+        broadcastRosterUpdate(campaignId, "character_rejected", playerCp.playerId);
 
         return Response.ok(playerCp).build();
     }
@@ -359,6 +366,7 @@ public class CampaignPlayerResource {
                 cp.id
         );
         dmNotification.persist();
+        broadcastRosterUpdate(campaignId, "character_resubmitted", playerId);
 
         return Response.ok(cp).build();
     }
@@ -386,6 +394,7 @@ public class CampaignPlayerResource {
             }
 
             targetMembership.delete();
+            broadcastRosterUpdate(campaignId, "left", playerId);
             return Response.noContent().build();
         }
 
@@ -402,7 +411,15 @@ public class CampaignPlayerResource {
         }
 
         targetMembership.delete();
+        broadcastRosterUpdate(campaignId, "removed", playerId);
         return Response.noContent().build();
+    }
+
+    private void broadcastRosterUpdate(Long campaignId, String action, Long playerId) {
+        broadcaster.broadcast(campaignId, "roster_updated", java.util.Map.of(
+                "action", action,
+                "playerId", playerId
+        ));
     }
 
     private CampaignPlayer findMembership(Long campaignId, Long playerId) {

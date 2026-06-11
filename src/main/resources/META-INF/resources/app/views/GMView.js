@@ -3,6 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
@@ -488,14 +489,53 @@ export default async function GMView({ id }) {
   }
 
   // ===== SSE =====
+  async function reconcileLiveState() {
+    const [stateResult, markersResult, decisionsResult, campaignResult] = await Promise.allSettled([
+      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' })
+    ]);
+
+    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
+      const state = await stateResult.value.json();
+      for (const p of players) {
+        if (state.playerHp?.[p.id] !== undefined) p.hp = state.playerHp[p.id];
+        if (state.playerMaxHp?.[p.id] !== undefined) p.maxHp = state.playerMaxHp[p.id];
+        if (state.playerActive?.[p.id] !== undefined) p.active = state.playerActive[p.id];
+      }
+      if (state.currentTurnPlayerId && state.currentTurnPlayerId !== -1) {
+        const index = players.findIndex(p => p.id === state.currentTurnPlayerId);
+        if (index >= 0) currentIndex = index;
+      }
+      renderPlayers();
+    }
+
+    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
+      mapMarkers = await markersResult.value.json();
+      syncMapCanvases();
+    }
+
+    if (decisionsResult.status === 'fulfilled' && decisionsResult.value.ok) {
+      decisions = await decisionsResult.value.json();
+      renderDecisions();
+    }
+
+    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
+      campaign = await campaignResult.value.json();
+      applyCampaignMap(campaign);
+      renderMapSelectors();
+      updateMapImages();
+    }
+  }
+
   function connectSSE() {
-    eventSource = new EventSource('/api/campaign/' + campaignId + '/sse');
-    eventSource.addEventListener('turn', e => {
-      const d = JSON.parse(e.data); const idx = players.findIndex(p => p.id === d.playerId);
+    eventSource = connectCampaignEvents(campaignId, {
+      turn: d => {
+      const idx = players.findIndex(p => p.id === d.playerId);
       if (idx >= 0) { currentIndex = idx; renderPlayers(); }
-    });
-    eventSource.addEventListener('dice', e => {
-      const d = JSON.parse(e.data);
+      },
+      dice: d => {
       if (d.playerName !== 'Dungeon Master') {
         const chat = document.getElementById('gmChat');
         const div = document.createElement('div');
@@ -503,61 +543,49 @@ export default async function GMView({ id }) {
         div.style.color = 'var(--accent-purple)';
         chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
       }
-    });
-    eventSource.addEventListener('hp', e => {
-      const d = JSON.parse(e.data); const p = players.find(x => x.id === d.playerId);
+      },
+      hp: d => {
+      const p = players.find(x => x.id === d.playerId);
       if (p) { p.hp = d.currentHp; p.maxHp = d.maxHp; renderPlayers(); }
-    });
-    eventSource.addEventListener('decision', e => {
-      const d = JSON.parse(e.data);
+      },
+      decision: d => {
       if (!decisions.find(x => x.id === d.id)) { decisions.push(d); renderDecisions(); }
-    });
-    eventSource.addEventListener('vote', e => {
-      const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
+      },
+      vote: d => {
+      const dec = decisions.find(x => x.id === d.decisionId);
       if (dec) { dec.yes = d.yes; dec.no = d.no; renderDecisions(); }
-    });
-    eventSource.addEventListener('decision_resolved', e => {
-      const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
+      },
+      decision_resolved: d => {
+      const dec = decisions.find(x => x.id === d.decisionId);
       if (dec) { dec.status = 'RESOLVED'; dec.yes = d.yes; dec.no = d.no; dec.decisionMade = d.decisionMade; renderDecisions(); }
-    });
-    // Map marker SSE events
-    eventSource.addEventListener('marker_add', e => {
-      const m = JSON.parse(e.data);
+      },
+      marker_add: m => {
       if (!mapMarkers.find(x => x.id === m.id)) { mapMarkers.push(m); syncMapCanvases(); }
-    });
-    eventSource.addEventListener('marker_move', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_move: d => {
       const m = mapMarkers.find(x => x.id === d.id);
       if (m) { m.x = d.x; m.y = d.y; syncMapCanvases(); }
-    });
-    eventSource.addEventListener('marker_remove', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_remove: d => {
       mapMarkers = mapMarkers.filter(m => m.id !== d.id);
       syncMapCanvases();
-    });
-    eventSource.addEventListener('marker_group', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_group: d => {
       if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
-    });
-    eventSource.addEventListener('player_active', e => {
-      const d = JSON.parse(e.data);
+      },
+      player_active: d => {
       const p = players.find(x => x.id === d.playerId);
       if (p) { p.active = d.active; renderPlayers(); }
-    });
-    eventSource.addEventListener('undo', e => {
-      const d = JSON.parse(e.data);
+      },
+      undo: d => {
       if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
+      },
+      campaign_updated: () => reconcileLiveState(),
+      roster_updated: () => loadPlayers(),
+      state_reset: () => reconcileLiveState()
+    }, {
+      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
     });
-    eventSource.addEventListener('campaign_updated', async () => {
-      try {
-        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
-        if (!r.ok) return;
-        campaign = await r.json();
-        applyCampaignMap(campaign);
-        updateMapImages();
-      } catch (e) {}
-    });
-    eventSource.onerror = () => console.warn('SSE lost, reconnecting...');
   }
 
   // ===== LOAD PLAYERS =====

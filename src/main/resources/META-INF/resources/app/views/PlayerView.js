@@ -4,6 +4,7 @@
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
@@ -168,77 +169,112 @@ export default async function PlayerView({ id }) {
   }
 
   // ===== SSE =====
+  async function reconcileLiveState() {
+    const [stateResult, decisionsResult, markersResult, campaignResult] = await Promise.allSettled([
+      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' })
+    ]);
+
+    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
+      const state = await stateResult.value.json();
+      if (state.playerHp?.[currentPlayer.id] !== undefined) currentHP = state.playerHp[currentPlayer.id];
+      if (state.playerMaxHp?.[currentPlayer.id] !== undefined) maxHP = state.playerMaxHp[currentPlayer.id];
+      if (state.currentTurnPlayerId && state.currentTurnPlayerId !== -1) {
+        currentTurnPlayerId = state.currentTurnPlayerId;
+        updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
+      }
+      renderCoreStats();
+      renderParty();
+      if (isMobile()) renderMobParty();
+    }
+
+    if (decisionsResult.status === 'fulfilled' && decisionsResult.value.ok) {
+      decisions = await decisionsResult.value.json();
+      renderDecisions();
+      if (isMobile()) renderMobDecisions();
+    }
+
+    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
+      playerMapMarkers = await markersResult.value.json();
+      syncPlayerMap();
+    }
+
+    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
+      campaign = await campaignResult.value.json();
+      activeMap = getActiveCampaignMap(campaign);
+      const mapUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+      const fallbackUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+      if (playerMapCanvas) playerMapCanvas.updateMapImage(mapUrl, fallbackUrl);
+      if (mobileMapCanvas) mobileMapCanvas.updateMapImage(mapUrl, fallbackUrl);
+    }
+  }
+
   function connectSSE() {
-    eventSource = new EventSource('/api/campaign/' + campaignId + '/sse');
-    eventSource.addEventListener('turn', e => {
-      const d = JSON.parse(e.data); currentTurnPlayerId = d.playerId;
+    eventSource = connectCampaignEvents(campaignId, {
+      turn: d => {
+      currentTurnPlayerId = d.playerId;
       updateTurnBanner(d.playerId, d.playerName);
       renderParty();
-    });
-    eventSource.addEventListener('hp', e => {
-      const d = JSON.parse(e.data);
+      if (isMobile()) renderMobParty();
+      },
+      hp: d => {
       if (d.playerId === currentPlayer.id) {
         currentHP = d.currentHp; maxHP = d.maxHp; renderCoreStats();
         if (d.delta < 0) showToast('Du hast ' + Math.abs(d.delta) + ' Schaden erhalten! ❤️ ' + currentHP + '/' + maxHP, 'error');
         else if (d.delta > 0) showToast('Du wurdest um ' + d.delta + ' geheilt! ❤️ ' + currentHP + '/' + maxHP, 'success');
       }
-    });
-    eventSource.addEventListener('dice', e => {
-      const d = JSON.parse(e.data);
+      },
+      dice: d => {
       if (d.playerId !== currentPlayer.id) showDiceToast(d.playerName, d.diceType, d.result);
-    });
-    eventSource.addEventListener('decision', e => {
-      const d = JSON.parse(e.data); decisions.push(d); renderDecisions(); if (isMobile()) renderMobDecisions();
+      },
+      decision: d => {
+      if (!decisions.find(x => x.id === d.id)) decisions.push(d);
+      renderDecisions(); if (isMobile()) renderMobDecisions();
       showToast('⚖️ Neue Abstimmung: ' + d.title, 'info');
-    });
-    eventSource.addEventListener('vote', e => {
-      const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
+      },
+      vote: d => {
+      const dec = decisions.find(x => x.id === d.decisionId);
       if (dec) { dec.yes = d.yes; dec.no = d.no; renderDecisions(); if (isMobile()) renderMobDecisions(); }
-    });
-    eventSource.addEventListener('decision_resolved', e => {
-      const d = JSON.parse(e.data); const dec = decisions.find(x => x.id === d.decisionId);
+      },
+      decision_resolved: d => {
+      const dec = decisions.find(x => x.id === d.decisionId);
       if (dec) { dec.status = 'RESOLVED'; dec.yes = d.yes; dec.no = d.no; dec.decisionMade = d.decisionMade; renderDecisions(); if (isMobile()) renderMobDecisions(); }
-    });
-    eventSource.addEventListener('marker_add', e => {
-      const m = JSON.parse(e.data);
+      },
+      marker_add: m => {
       if (!playerMapMarkers.find(x => x.id === m.id)) { playerMapMarkers.push(m); syncPlayerMap(); }
-    });
-    eventSource.addEventListener('marker_move', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_move: d => {
       const m = playerMapMarkers.find(x => x.id === d.id);
       if (m) { m.x = d.x; m.y = d.y; syncPlayerMap(); }
-    });
-    eventSource.addEventListener('marker_remove', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_remove: d => {
       playerMapMarkers = playerMapMarkers.filter(m => m.id !== d.id);
       syncPlayerMap();
-    });
-    eventSource.addEventListener('marker_group', e => {
-      const d = JSON.parse(e.data);
+      },
+      marker_group: d => {
       if (d.allMarkers) { playerMapMarkers = d.allMarkers; syncPlayerMap(); }
-    });
-    eventSource.addEventListener('undo', e => {
-      const d = JSON.parse(e.data);
+      },
+      undo: d => {
       if (d.allMarkers) { playerMapMarkers = d.allMarkers; syncPlayerMap(); }
       if (d.fogExploration) {
         if (playerMapCanvas) playerMapCanvas.loadExplorationData(d.fogExploration);
         if (mobileMapCanvas) mobileMapCanvas.loadExplorationData(d.fogExploration);
       }
-    });
-    eventSource.addEventListener('player_active', e => {
+      },
+      fog_updated: d => {
+        if (playerMapCanvas && d.data) playerMapCanvas.loadExplorationData(d.data);
+        if (mobileMapCanvas && d.data) mobileMapCanvas.loadExplorationData(d.data);
+      },
+      player_active: () => {
       renderParty();
-    });
-    eventSource.addEventListener('campaign_updated', async () => {
-      try {
-        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' });
-        if (!r.ok) return;
-        campaign = await r.json();
-        activeMap = getActiveCampaignMap(campaign);
-        const mapUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
-        const fallbackUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
-        if (playerMapCanvas) playerMapCanvas.updateMapImage(mapUrl, fallbackUrl);
-        if (mobileMapCanvas) mobileMapCanvas.updateMapImage(mapUrl, fallbackUrl);
-      } catch (e) {}
+      if (isMobile()) renderMobParty();
+      },
+      campaign_updated: () => reconcileLiveState(),
+      state_reset: () => reconcileLiveState()
+    }, {
+      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
     });
   }
 

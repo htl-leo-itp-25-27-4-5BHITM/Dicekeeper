@@ -101,6 +101,11 @@ public class GameState {
             playerMaxHp.put(playerId, max);
         }
 
+        public void initializeHp(Long playerId, int hp, int max) {
+            playerMaxHp.putIfAbsent(playerId, max);
+            playerHp.putIfAbsent(playerId, hp);
+        }
+
         public void recordDiceRoll(Long playerId, String playerName, String diceType, int result) {
             this.lastDiceRoll = new DiceRollInfo(playerId, playerName, diceType, result, System.currentTimeMillis());
         }

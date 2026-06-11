@@ -5,6 +5,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { esc, getActiveCampaignMap, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function TableView({ id }) {
@@ -250,74 +251,96 @@ export default async function TableView({ id }) {
   }
 
   // ===== SSE =====
-  function connectSSE() {
-    eventSource = new EventSource('/api/campaign/' + campaignId + '/sse');
+  async function reconcileLiveState() {
+    const [stateResult, markersResult, campaignResult] = await Promise.allSettled([
+      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
+      fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' })
+    ]);
 
-    eventSource.addEventListener('turn', e => {
-      const d = JSON.parse(e.data);
+    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
+      const state = await stateResult.value.json();
+      currentTurnPlayerId = state.currentTurnPlayerId !== -1 ? state.currentTurnPlayerId : currentTurnPlayerId;
+      for (const p of players) {
+        if (state.playerHp?.[p.id] !== undefined) p.hp = state.playerHp[p.id];
+        if (state.playerMaxHp?.[p.id] !== undefined) p.maxHp = state.playerMaxHp[p.id];
+        if (state.playerActive?.[p.id] !== undefined) p.active = state.playerActive[p.id];
+      }
+      renderPlayers();
+    }
+
+    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
+      mapMarkers = await markersResult.value.json();
+      syncMap();
+    }
+
+    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
+      campaign = await campaignResult.value.json();
+      document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
+      activeMap = getActiveCampaignMap(campaign);
+      mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+      mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+      if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
+    }
+  }
+
+  function connectSSE() {
+    eventSource = connectCampaignEvents(campaignId, {
+      turn: d => {
       currentTurnPlayerId = d.playerId;
       renderPlayers();
-    });
+      },
 
-    eventSource.addEventListener('hp', e => {
-      const d = JSON.parse(e.data);
+      hp: d => {
       const p = players.find(x => x.id === d.playerId);
       if (p) {
         p.hp = d.currentHp;
         p.maxHp = d.maxHp;
         renderPlayers();
       }
-    });
+      },
 
-    eventSource.addEventListener('dice', e => {
-      const d = JSON.parse(e.data);
+      dice: d => {
       showDiceRoll(d.playerName, d.diceType, d.result);
-    });
+      },
 
-    eventSource.addEventListener('player_active', e => {
-      const d = JSON.parse(e.data);
+      player_active: d => {
       const p = players.find(x => x.id === d.playerId);
       if (p) {
         p.active = d.active;
         renderPlayers();
       }
-    });
+      },
 
-    // Map marker SSE events
-    eventSource.addEventListener('marker_add', e => {
-      const m = JSON.parse(e.data);
+      marker_add: m => {
       if (!mapMarkers.find(x => x.id === m.id)) {
         mapMarkers.push(m);
         syncMap();
       }
-    });
+      },
 
-    eventSource.addEventListener('marker_move', e => {
-      const d = JSON.parse(e.data);
+      marker_move: d => {
       const m = mapMarkers.find(x => x.id === d.id);
       if (m) {
         m.x = d.x;
         m.y = d.y;
         syncMap();
       }
-    });
+      },
 
-    eventSource.addEventListener('marker_remove', e => {
-      const d = JSON.parse(e.data);
+      marker_remove: d => {
       mapMarkers = mapMarkers.filter(m => m.id !== d.id);
       syncMap();
-    });
+      },
 
-    eventSource.addEventListener('marker_group', e => {
-      const d = JSON.parse(e.data);
+      marker_group: d => {
       if (d.allMarkers) {
         mapMarkers = d.allMarkers;
         syncMap();
       }
-    });
+      },
 
-    eventSource.addEventListener('undo', e => {
-      const d = JSON.parse(e.data);
+      undo: d => {
       if (d.allMarkers) {
         mapMarkers = d.allMarkers;
         syncMap();
@@ -325,21 +348,16 @@ export default async function TableView({ id }) {
       if (mapCanvas && d.fogExploration) {
         mapCanvas.loadExplorationData(d.fogExploration);
       }
-    });
+      },
+      fog_updated: d => {
+        if (mapCanvas && d.data) mapCanvas.loadExplorationData(d.data);
+      },
 
-    eventSource.addEventListener('campaign_updated', async () => {
-      try {
-        const r = await fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' });
-        if (!r.ok) return;
-        campaign = await r.json();
-        activeMap = getActiveCampaignMap(campaign);
-        mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
-        mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
-        if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
-      } catch (e) {}
+      campaign_updated: () => reconcileLiveState(),
+      state_reset: () => reconcileLiveState()
+    }, {
+      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
     });
-
-    eventSource.onerror = () => console.warn('Table SSE lost, reconnecting...');
   }
 
   // ===== INIT =====

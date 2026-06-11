@@ -180,11 +180,15 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.setHp(playerId, hp, maxHp);
+        state.initializeHp(playerId, hp, maxHp);
         // Also initialize active state if not set
         state.playerActive.putIfAbsent(playerId, true);
 
-        return Response.ok(Map.of("playerId", playerId, "hp", hp, "maxHp", maxHp)).build();
+        return Response.ok(Map.of(
+                "playerId", playerId,
+                "hp", state.playerHp.get(playerId),
+                "maxHp", state.playerMaxHp.get(playerId)
+        )).build();
     }
 
     // ===== PLAYER ACTIVE STATE =====
@@ -649,6 +653,7 @@ public class GameActionResource {
         }
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         state.fogExploration = data;
+        broadcaster.broadcast(campaignId, "fog_updated", Map.of("data", data));
         return Response.ok(Map.of("saved", true)).build();
     }
 
@@ -698,6 +703,7 @@ public class GameActionResource {
         state.playerActive.clear();
         state.lastDiceRoll = null;
         // Keep map markers (they are placed before the game starts)
+        broadcaster.broadcast(campaignId, "state_reset", state.snapshot());
         return Response.ok(Map.of("reset", true)).build();
     }
 
