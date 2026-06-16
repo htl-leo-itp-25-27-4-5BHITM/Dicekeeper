@@ -6,6 +6,7 @@ import { navigate } from '../router.js';
 import { esc, calcMod, fmtMod } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
+import { clearSessionDraft, readSessionDraft, writeSessionDraft } from '../services/sessionDraft.js';
 
 export default async function CharacterCreateView() {
   const player = requirePlayer();
@@ -13,6 +14,7 @@ export default async function CharacterCreateView() {
 
   const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const campaignId = params.get('campaignId');
+  const draftKey = 'dicekeeper:character-create:draft:' + (campaignId || 'standalone');
 
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
@@ -88,6 +90,7 @@ export default async function CharacterCreateView() {
   let abilityScores = {};
   const totalPoints = 27;
   const subtitles = ['Step 1: Basic Information', 'Step 2: Choose Your Class', 'Step 3: Choose Your Background', 'Step 4: Assign Ability Scores', 'Character Complete!'];
+  let isRestoringDraft = false;
 
   function showStatus(msg, type = 'info') {
     const toastType = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
@@ -107,6 +110,44 @@ export default async function CharacterCreateView() {
     });
     document.getElementById('ccStepTitle').textContent = subtitles[step - 1] || '';
     hideStatus();
+    saveDraft();
+  }
+
+  function getDraftData() {
+    return {
+      currentStep,
+      name: document.getElementById('ccCharName').value,
+      race: document.getElementById('ccRace').value,
+      alignment: document.getElementById('ccAlign').value,
+      selectedClassId,
+      selectedBackgroundId,
+      backstory: document.getElementById('ccBackstory').value,
+      abilityScores
+    };
+  }
+
+  function saveDraft() {
+    if (isRestoringDraft) return;
+    if (currentStep > 4) return;
+    writeSessionDraft(draftKey, getDraftData());
+  }
+
+  function clearDraft() {
+    clearSessionDraft(draftKey);
+  }
+
+  function applyDraft(draft) {
+    if (!draft || typeof draft !== 'object') return 1;
+    isRestoringDraft = true;
+    document.getElementById('ccCharName').value = draft.name || '';
+    document.getElementById('ccRace').value = draft.race || '';
+    document.getElementById('ccAlign').value = draft.alignment || '';
+    document.getElementById('ccBackstory').value = draft.backstory || '';
+    selectedClassId = draft.selectedClassId ? Number(draft.selectedClassId) : null;
+    selectedBackgroundId = draft.selectedBackgroundId ? Number(draft.selectedBackgroundId) : null;
+    abilityScores = draft.abilityScores && typeof draft.abilityScores === 'object' ? { ...draft.abilityScores } : {};
+    isRestoringDraft = false;
+    return Math.max(1, Math.min(4, Number(draft.currentStep) || 1));
   }
 
   const costMap = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
@@ -141,6 +182,7 @@ export default async function CharacterCreateView() {
         if (cost > getRemaining()) return;
         abilityScores[id] = nv;
         renderAbilityGrid();
+        saveDraft();
       });
     });
     const el = document.getElementById('ccPoints');
@@ -149,7 +191,86 @@ export default async function CharacterCreateView() {
     el.style.color = rem < 0 ? 'var(--danger)' : 'var(--green-accent)';
   }
 
+  function renderClassGrid() {
+    const grid = document.getElementById('ccClassGrid');
+    grid.innerHTML = '';
+    classes.forEach(cls => {
+      const card = document.createElement('div');
+      card.className = 'selection-card' + (selectedClassId === cls.id ? ' selected' : '');
+      card.innerHTML = `<div class="selection-card-icon">⚔️</div><div class="selection-card-name">${esc(cls.name)}</div>
+        <div class="selection-card-desc">${esc((cls.description || '').substring(0, 50))}${cls.description && cls.description.length > 50 ? '...' : ''}</div>`;
+      card.addEventListener('click', () => {
+        selectedClassId = cls.id;
+        grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        document.getElementById('ccNext2').disabled = false;
+        saveDraft();
+      });
+      grid.appendChild(card);
+    });
+    document.getElementById('ccNext2').disabled = !selectedClassId;
+  }
+
+  async function loadClasses() {
+    const grid = document.getElementById('ccClassGrid');
+    try {
+      const r = await fetch('/api/classes');
+      classes = await r.json();
+      renderClassGrid();
+    } catch (e) {
+      grid.innerHTML = '<p style="opacity:0.7">Failed to load classes</p>';
+    }
+  }
+
+  function renderBackgroundGrid() {
+    const grid = document.getElementById('ccBgGrid');
+    grid.innerHTML = '';
+    backgrounds.forEach(bg => {
+      const card = document.createElement('div');
+      card.className = 'selection-card' + (selectedBackgroundId === bg.id ? ' selected' : '');
+      card.innerHTML = `<div class="selection-card-icon">📜</div><div class="selection-card-name">${esc(bg.name)}</div>
+        <div class="selection-card-desc">${esc((bg.description || '').substring(0, 50))}${bg.description && bg.description.length > 50 ? '...' : ''}</div>`;
+      card.addEventListener('click', () => {
+        selectedBackgroundId = bg.id;
+        grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        document.getElementById('ccNext3').disabled = false;
+        saveDraft();
+      });
+      grid.appendChild(card);
+    });
+    document.getElementById('ccNext3').disabled = backgrounds.length > 0 && !selectedBackgroundId;
+  }
+
+  async function loadBackgrounds() {
+    const grid = document.getElementById('ccBgGrid');
+    try {
+      const r = await fetch('/api/background/all');
+      backgrounds = await r.json();
+      renderBackgroundGrid();
+    } catch (e) {
+      grid.innerHTML = '<p style="opacity:0.7">No backgrounds</p>';
+      document.getElementById('ccNext3').disabled = false;
+    }
+  }
+
+  async function loadAbilities() {
+    try {
+      const r = await fetch('/api/ability/all');
+      abilities = await r.json();
+      abilities.forEach(ab => { if (!abilityScores[ab.id]) abilityScores[ab.id] = 8; });
+      renderAbilityGrid();
+    } catch (e) {
+      document.getElementById('ccAbilityGrid').innerHTML = '<p>Failed to load</p>';
+    }
+  }
+
   // Step 1
+  ['ccCharName', 'ccRace', 'ccAlign', 'ccBackstory'].forEach(inputId => {
+    document.getElementById(inputId).addEventListener('input', saveDraft);
+    document.getElementById(inputId).addEventListener('change', saveDraft);
+  });
+
   document.getElementById('ccCancel').addEventListener('click', () => {
     if (campaignId) navigate('/campaign/' + campaignId + '/select-character');
     else navigate('/campaigns');
@@ -158,83 +279,23 @@ export default async function CharacterCreateView() {
   document.getElementById('ccNext1').addEventListener('click', async () => {
     const name = document.getElementById('ccCharName').value.trim();
     if (!name) { showStatus('Please enter a name', 'error'); return; }
-    if (!characterId) {
-      showStatus('Creating character...', 'info');
-      try {
-        const r = await fetch('/api/character/createInitialCharacter', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        if (!r.ok) throw new Error(await r.text());
-        const c = await r.json();
-        characterId = c.id;
-        await fetch('/api/character/' + characterId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, level: 1, race: document.getElementById('ccRace').value || null, alignment: document.getElementById('ccAlign').value || null })
-        });
-      } catch (err) { showStatus('Error: ' + err.message, 'error'); return; }
-    } else {
-      try { await fetch('/api/character/' + characterId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, race: document.getElementById('ccRace').value || null, alignment: document.getElementById('ccAlign').value || null })
-      }); } catch (e) { /* ignore */ }
-    }
     goToStep(2);
-    // Load classes
-    const grid = document.getElementById('ccClassGrid');
-    try {
-      const r = await fetch('/api/classes'); classes = await r.json();
-      grid.innerHTML = '';
-      classes.forEach(cls => {
-        const card = document.createElement('div');
-        card.className = 'selection-card' + (selectedClassId === cls.id ? ' selected' : '');
-        card.innerHTML = `<div class="selection-card-icon">⚔️</div><div class="selection-card-name">${esc(cls.name)}</div>
-          <div class="selection-card-desc">${esc((cls.description || '').substring(0, 50))}${cls.description && cls.description.length > 50 ? '...' : ''}</div>`;
-        card.addEventListener('click', () => {
-          selectedClassId = cls.id;
-          grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          document.getElementById('ccNext2').disabled = false;
-        });
-        grid.appendChild(card);
-      });
-    } catch (e) { grid.innerHTML = '<p style="opacity:0.7">Failed to load classes</p>'; }
+    await loadClasses();
   });
 
   // Step 2
   document.getElementById('ccBack2').addEventListener('click', () => goToStep(1));
   document.getElementById('ccNext2').addEventListener('click', async () => {
     if (!selectedClassId) { showStatus('Select a class', 'error'); return; }
-    try { await fetch('/api/character/' + characterId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ classId: selectedClassId }) }); } catch (e) {}
     goToStep(3);
-    const grid = document.getElementById('ccBgGrid');
-    try {
-      const r = await fetch('/api/background/all'); backgrounds = await r.json();
-      grid.innerHTML = '';
-      backgrounds.forEach(bg => {
-        const card = document.createElement('div');
-        card.className = 'selection-card' + (selectedBackgroundId === bg.id ? ' selected' : '');
-        card.innerHTML = `<div class="selection-card-icon">📜</div><div class="selection-card-name">${esc(bg.name)}</div>
-          <div class="selection-card-desc">${esc((bg.description || '').substring(0, 50))}${bg.description && bg.description.length > 50 ? '...' : ''}</div>`;
-        card.addEventListener('click', () => {
-          selectedBackgroundId = bg.id;
-          grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          document.getElementById('ccNext3').disabled = false;
-        });
-        grid.appendChild(card);
-      });
-      if (backgrounds.length === 0) document.getElementById('ccNext3').disabled = false;
-    } catch (e) { grid.innerHTML = '<p style="opacity:0.7">No backgrounds</p>'; document.getElementById('ccNext3').disabled = false; }
+    await loadBackgrounds();
   });
 
   // Step 3
   document.getElementById('ccBack3').addEventListener('click', () => goToStep(2));
   document.getElementById('ccNext3').addEventListener('click', async () => {
-    try { await fetch('/api/character/' + characterId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ backgroundId: selectedBackgroundId || null, info: document.getElementById('ccBackstory').value.trim() || null })
-    }); } catch (e) {}
     goToStep(4);
-    try {
-      const r = await fetch('/api/ability/all'); abilities = await r.json();
-      abilities.forEach(ab => { if (!abilityScores[ab.id]) abilityScores[ab.id] = 8; });
-      renderAbilityGrid();
-    } catch (e) { document.getElementById('ccAbilityGrid').innerHTML = '<p>Failed to load</p>'; }
+    await loadAbilities();
   });
 
   // Step 4
@@ -244,6 +305,25 @@ export default async function CharacterCreateView() {
     btn.disabled = true; btn.textContent = 'Creating...';
     showStatus('Saving...', 'info');
     try {
+      const name = document.getElementById('ccCharName').value.trim();
+      const r = await fetch('/api/character/createInitialCharacter', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!r.ok) throw new Error(await r.text());
+      const c = await r.json();
+      characterId = c.id;
+      const patchRes = await fetch('/api/character/' + characterId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          level: 1,
+          race: document.getElementById('ccRace').value || null,
+          alignment: document.getElementById('ccAlign').value || null,
+          classId: selectedClassId,
+          backgroundId: selectedBackgroundId || null,
+          info: document.getElementById('ccBackstory').value.trim() || null
+        })
+      });
+      if (!patchRes.ok) throw new Error(await patchRes.text());
       for (const [abilityId, score] of Object.entries(abilityScores)) {
         await fetch(`/api/character-ability/${characterId}/${abilityId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) });
       }
@@ -258,6 +338,7 @@ export default async function CharacterCreateView() {
         </div>
         <div class="preview-stats">${abilities.map(ab => `<div class="preview-stat"><div class="preview-stat-label">${ab.name.substring(0, 3).toUpperCase()}</div><div class="preview-stat-value">${abilityScores[ab.id] || 8}</div></div>`).join('')}</div>
         </div>`;
+      clearDraft();
       goToStep(5);
     } catch (err) { showStatus('Error: ' + err.message, 'error'); btn.disabled = false; btn.textContent = 'Create Character'; }
   });
@@ -265,9 +346,11 @@ export default async function CharacterCreateView() {
   // Step 5
   document.getElementById('ccAnother').addEventListener('click', () => {
     characterId = null; selectedClassId = null; selectedBackgroundId = null; abilityScores = {};
+    clearDraft();
     document.getElementById('ccCharName').value = '';
     document.getElementById('ccRace').value = '';
     document.getElementById('ccAlign').value = '';
+    document.getElementById('ccBackstory').value = '';
     document.getElementById('ccNext2').disabled = true;
     document.getElementById('ccNext3').disabled = true;
     goToStep(1);
@@ -277,6 +360,11 @@ export default async function CharacterCreateView() {
     else navigate('/campaigns');
   });
 
+  const restoredStep = applyDraft(readSessionDraft(draftKey));
+  if (restoredStep >= 2) await loadClasses();
+  if (restoredStep >= 3) await loadBackgrounds();
+  if (restoredStep >= 4) await loadAbilities();
+  goToStep(restoredStep);
+
   return () => { destroyHeader(); };
 }
-

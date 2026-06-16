@@ -8,6 +8,7 @@ import { showToast } from '../components/toast.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { esc, getActiveCampaignMap, getCampaignMaps, renderMapPicture } from '../services/utils.js';
 import { bindMaxPlayerCountValidation, readMaxPlayerCount } from '../services/campaignValidation.js';
+import { blobToDataUrl, clearSessionDraft, dataUrlToBlob, readSessionDraft, writeSessionDraft } from '../services/sessionDraft.js';
 
 const MAX_CAMPAIGN_MAPS = 5;
 
@@ -26,6 +27,7 @@ export default async function CampaignCreateView({ id }) {
   if (!player) return;
 
   const isEdit = id && id !== 'new';
+  const draftKey = 'dicekeeper:campaign-create:draft';
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
 
@@ -110,10 +112,12 @@ export default async function CampaignCreateView({ id }) {
   let pendingMaps = [];
   let selectedMapIndex = 0;
   let initialEditState = null;
+  let isRestoringDraft = false;
 
   storyInput.addEventListener('input', () => {
     descChars.textContent = 'Zeichen: ' + (storyInput.maxLength - storyInput.value.length);
     updateEditDirtyState();
+    saveCreateDraft();
   });
 
   switchEl.addEventListener('click', () => {
@@ -122,6 +126,7 @@ export default async function CampaignCreateView({ id }) {
     switchEl.classList.toggle('private', !isPublic);
     visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
     updateEditDirtyState();
+    saveCreateDraft();
   });
 
   document.getElementById('ccMapUpload').addEventListener('click', () => mapInput.click());
@@ -192,6 +197,71 @@ export default async function CampaignCreateView({ id }) {
     }
     updateUploadState();
     updateEditDirtyState();
+    saveCreateDraft();
+  }
+
+  function getCreateDraftData() {
+    return {
+      name: document.getElementById('ccName').value,
+      description: storyInput.value,
+      story: document.getElementById('ccDmStory').value,
+      maxPlayerCount: maxPlayersInput.value,
+      isPublic,
+      selectedMapIndex,
+      maps: pendingMaps.map((map, index) => ({
+        index,
+        name: map.name,
+        dataUrl: map.dataUrl
+      })).filter(map => map.dataUrl)
+    };
+  }
+
+  function saveCreateDraft() {
+    if (isEdit || isRestoringDraft) return;
+    writeSessionDraft(draftKey, getCreateDraftData());
+  }
+
+  function clearCreateDraft() {
+    clearSessionDraft(draftKey);
+  }
+
+  async function restoreCreateDraft() {
+    if (isEdit) return;
+    const draft = readSessionDraft(draftKey);
+    if (!draft || typeof draft !== 'object') return;
+
+    isRestoringDraft = true;
+    document.getElementById('ccName').value = draft.name || '';
+    storyInput.value = draft.description || '';
+    document.getElementById('ccDmStory').value = draft.story || '';
+    maxPlayersInput.value = draft.maxPlayerCount !== undefined && draft.maxPlayerCount !== null ? draft.maxPlayerCount : '4';
+    isPublic = draft.isPublic !== false;
+    selectedMapIndex = Math.max(0, Number(draft.selectedMapIndex) || 0);
+
+    switchEl.classList.toggle('public', isPublic);
+    switchEl.classList.toggle('private', !isPublic);
+    visibilityText.textContent = isPublic ? 'Kampagne ist öffentlich' : 'Kampagne ist privat';
+    descChars.textContent = 'Zeichen: ' + (storyInput.maxLength - storyInput.value.length);
+
+    pendingMaps = [];
+    for (const [index, map] of (draft.maps || []).entries()) {
+      if (!map.dataUrl) continue;
+      try {
+        const blob = await dataUrlToBlob(map.dataUrl);
+        pendingMaps.push({
+          index,
+          name: map.name || ('Karte ' + (index + 1)),
+          path: URL.createObjectURL(blob),
+          blob,
+          dataUrl: map.dataUrl,
+          selected: false
+        });
+      } catch (e) {
+        // Skip unreadable map draft entries.
+      }
+    }
+    if (pendingMaps.length > 0) selectedMapIndex = Math.min(selectedMapIndex, pendingMaps.length - 1);
+    isRestoringDraft = false;
   }
 
   function loadImage(file) {
@@ -301,11 +371,13 @@ export default async function CampaignCreateView({ id }) {
           selectedMapIndex = Number.isFinite(Number(campaignState.selectedMapIndex)) ? Number(campaignState.selectedMapIndex) : getCampaignMaps(campaignState).length - 1;
           URL.revokeObjectURL(url);
         } else {
+          const dataUrl = await blobToDataUrl(croppedMapBlob);
           pendingMaps.push({
             index: pendingMaps.length,
             name: 'Karte ' + (pendingMaps.length + 1),
             path: url,
             blob: croppedMapBlob,
+            dataUrl,
             selected: false
           });
           selectedMapIndex = pendingMaps.length - 1;
@@ -339,10 +411,15 @@ export default async function CampaignCreateView({ id }) {
       }
     } catch (err) {}
   }
+  await restoreCreateDraft();
   renderMapState();
 
   ['ccName', 'ccMaxPlayers', 'ccDmStory'].forEach(inputId => {
-    document.getElementById(inputId).addEventListener('input', updateEditDirtyState);
+    document.getElementById(inputId).addEventListener('input', () => {
+      updateEditDirtyState();
+      saveCreateDraft();
+    });
+    document.getElementById(inputId).addEventListener('change', saveCreateDraft);
   });
 
   function setStatus(msg, isError) {
@@ -400,6 +477,7 @@ export default async function CampaignCreateView({ id }) {
         }
       }
 
+      if (!isEdit) clearCreateDraft();
       navigate('/campaigns');
     } catch (err) {
       setStatus('Fehler: ' + (err.message || ''), true);
