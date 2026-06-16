@@ -1,10 +1,10 @@
-export const MAX_PLAYER_COUNT_ERROR = 'Die maximale Spieleranzahl darf nicht negativ sein.';
+export const MAX_PLAYER_COUNT_ERROR = 'Die maximale Spieleranzahl muss mindestens 1 sein.';
 
 export function readMaxPlayerCount(input) {
   const rawValue = input.value.trim();
   const value = rawValue === '' ? null : Number(rawValue);
   const valid = !input.validity.badInput
-    && (value === null || (Number.isInteger(value) && value >= 0));
+    && (value === null || (Number.isInteger(value) && value >= 1));
   const message = valid ? '' : MAX_PLAYER_COUNT_ERROR;
 
   input.setCustomValidity(message);

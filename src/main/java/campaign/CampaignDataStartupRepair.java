@@ -15,12 +15,11 @@ public class CampaignDataStartupRepair {
         try {
             QuarkusTransaction.requiringNew().run(() -> {
                 long repaired = Campaign.update(
-                        "maxPlayerCount = ?1 where maxPlayerCount < ?2",
-                        0,
+                        "maxPlayerCount = null where maxPlayerCount <= ?1",
                         0
                 );
                 if (repaired > 0) {
-                    LOG.warnv("Normalized negative max player counts for {0} campaigns", repaired);
+                    LOG.warnv("Normalized non-positive max player counts for {0} campaigns", repaired);
                 }
             });
         } catch (Exception exception) {

@@ -9,24 +9,27 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class CampaignValidationTest {
 
     @Test
-    void rejectsNegativeMaxPlayerCount() {
+    void rejectsNonPositiveMaxPlayerCount() {
         assertEquals(
                 CampaignValidation.MAX_PLAYER_COUNT_ERROR,
                 CampaignValidation.validateMaxPlayerCount(-1)
         );
+        assertEquals(
+                CampaignValidation.MAX_PLAYER_COUNT_ERROR,
+                CampaignValidation.validateMaxPlayerCount(0)
+        );
     }
 
     @Test
-    void acceptsZeroPositiveAndUnlimitedMaxPlayerCounts() {
-        assertNull(CampaignValidation.validateMaxPlayerCount(0));
+    void acceptsPositiveAndUnlimitedMaxPlayerCounts() {
         assertNull(CampaignValidation.validateMaxPlayerCount(5));
         assertNull(CampaignValidation.validateMaxPlayerCount(null));
     }
 
     @Test
-    void entityValidationRejectsNegativeMaxPlayerCount() {
+    void entityValidationRejectsNonPositiveMaxPlayerCount() {
         Campaign campaign = new Campaign();
-        campaign.maxPlayerCount = -1;
+        campaign.maxPlayerCount = 0;
 
         assertThrows(IllegalArgumentException.class, campaign::validate);
     }

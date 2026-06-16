@@ -42,7 +42,7 @@ export default async function CampaignCreateView({ id }) {
           </div>
           <div class="form-group" style="max-width:140px;">
             <label for="ccMaxPlayers">Max Spieler</label>
-            <input type="number" id="ccMaxPlayers" min="0" step="1" value="4" aria-describedby="ccMaxPlayersError" />
+            <input type="number" id="ccMaxPlayers" min="1" step="1" value="4" aria-describedby="ccMaxPlayersError" />
             <div id="ccMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div>
           </div>
         </div>
