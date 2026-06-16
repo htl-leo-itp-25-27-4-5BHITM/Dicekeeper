@@ -17,11 +17,13 @@ import GMView from './views/GMView.js';
 import PlayerView from './views/PlayerView.js';
 import CockpitView from './views/CockpitView.js';
 import TableView from './views/TableView.js';
+import GuideView from './views/GuideView.js';
 
 installAuthFetchInterceptor();
 
 // Landing
 addRoute('/', () => LandingView());
+addRoute('/guide', () => GuideView());
 
 // Auth
 addRoute('/login', () => LoginView());

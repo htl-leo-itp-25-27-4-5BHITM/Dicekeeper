@@ -29,6 +29,7 @@ export default async function LandingView() {
               <span class="lp-a11y-icon">👁</span>
               <span class="lp-a11y-label">Barrierefreie Farben</span>
             </button>
+            <button class="lp-nav-guide" id="lpNavGuide">Getting Started</button>
             <button class="lp-nav-login" id="lpNavLogin">Anmelden</button>
           </div>
         </div>
@@ -43,6 +44,7 @@ export default async function LandingView() {
           <p>Pen&nbsp;&&nbsp;Paper Abenteuer online erleben. Kampagnen leiten, Helden erschaffen, gemeinsam w\u00fcrfeln\u00a0\u2013 alles an einem Ort.</p>
           <div class="lp-hero-actions">
             <button class="lp-btn-primary" id="lpHeroCta">Kostenlos starten</button>
+            <button class="lp-btn-secondary" id="lpHeroGuide">User Guide</button>
           </div>
         </div>
         <div class="lp-hero-scroll">
@@ -110,16 +112,19 @@ export default async function LandingView() {
             </div>
           </div>
         </div>
-    
+      </section>
 
       <!-- Final CTA -->
       <section class="lp-section lp-cta-section">
         <div class="lp-container lp-cta-inner">
           <h2>Bereit f\u00fcr dein n\u00e4chstes Abenteuer?</h2>
           <p>Erstelle deinen Account in Sekunden und starte deine erste Kampagne.</p>
-          <button class="lp-btn-primary" id="lpBottomCta">Jetzt loslegen</button>
+          <div class="lp-cta-actions">
+            <button class="lp-btn-primary" id="lpBottomCta">Jetzt loslegen</button>
+            <button class="lp-btn-secondary" id="lpBottomGuide">How It Works</button>
+          </div>
         </div>
-      </section>  </section>
+      </section>
 
       <!-- Footer -->
       <footer class="lp-footer">
@@ -136,6 +141,9 @@ export default async function LandingView() {
   document.getElementById('lpNavLogin').addEventListener('click', goLogin);
   document.getElementById('lpHeroCta').addEventListener('click', goLogin);
   document.getElementById('lpBottomCta').addEventListener('click', goLogin);
+  document.getElementById('lpNavGuide').addEventListener('click', () => navigate('/guide'));
+  document.getElementById('lpHeroGuide').addEventListener('click', () => navigate('/guide'));
+  document.getElementById('lpBottomGuide').addEventListener('click', () => navigate('/guide'));
 
   // Theme toggle
   const themeBtn = document.getElementById('lpThemeToggle');
