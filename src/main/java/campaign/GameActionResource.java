@@ -62,14 +62,13 @@ public class GameActionResource {
         }
 
         Long playerId = toLong(body.get("playerId"));
-        String playerName = (String) body.getOrDefault("playerName", "Unknown");
-
         if (playerId == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity("playerId required").build();
         }
         if (findMembership(campaignId, playerId) == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Player not in campaign").build();
         }
+        String playerName = resolvePlayerLoginName(playerId);
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         state.setTurn(playerId);
@@ -97,9 +96,7 @@ public class GameActionResource {
         boolean isDm = "DM".equals(membership.role);
         Long submittedPlayerId = toLong(body.get("playerId"));
         Long playerId = isDm && submittedPlayerId == null ? null : currentPlayerId;
-        String playerName = isDm && submittedPlayerId == null
-                ? "Dungeon Master"
-                : resolvePlayerDisplayName(currentPlayerId);
+        String playerName = resolvePlayerLoginName(currentPlayerId);
         String diceType = (String) body.getOrDefault("diceType", "d20");
         Integer result = toInt(body.get("result"));
 
@@ -302,7 +299,7 @@ public class GameActionResource {
         Long decisionId = toLong(body.get("decisionId"));
         String voteType = (String) body.get("vote"); // "yes" or "no"
         Long playerId = currentPlayerId();
-        String playerName = resolvePlayerDisplayName(playerId);
+        String playerName = resolvePlayerLoginName(playerId);
 
         if (decisionId == null || voteType == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity("decisionId and vote required").build();
@@ -731,16 +728,13 @@ public class GameActionResource {
         return securityIdentityService.getCurrentPlayerId(securityIdentity);
     }
 
-    private String resolvePlayerDisplayName(Long playerId) {
+    private String resolvePlayerLoginName(Long playerId) {
         if (playerId == null) {
             return "Unknown";
         }
         Player player = Player.findById(playerId);
         if (player == null) {
             return "Unknown";
-        }
-        if (player.name != null && !player.name.isBlank()) {
-            return player.name;
         }
         if (player.username != null && !player.username.isBlank()) {
             return player.username;

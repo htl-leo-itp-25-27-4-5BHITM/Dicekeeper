@@ -4,7 +4,7 @@
  * Syncs in real-time with DM changes via SSE.
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, getActiveCampaignMap, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, getActiveCampaignMap, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
@@ -114,7 +114,7 @@ export default async function TableView({ id }) {
         const restoredActive = existingActive[String(pid)] !== undefined ? existingActive[String(pid)] : true;
         players.push({
           id: pid,
-          name: pd.username || pd.name || 'Unknown',
+          name: playerLoginName(pd),
           characterId: cp.characterId,
           hp: restoredHp,
           maxHp: restoredMaxHp,
@@ -250,6 +250,15 @@ export default async function TableView({ id }) {
     }, 8000);
   }
 
+  function resolveEventPlayerName(event) {
+    const id = Number(event?.playerId);
+    if (Number.isFinite(id) && id > 0) {
+      const p = players.find(x => x.id === id);
+      if (p) return p.name;
+    }
+    return event?.playerName || 'Ein Spieler';
+  }
+
   // ===== SSE =====
   async function reconcileLiveState() {
     const [stateResult, markersResult, campaignResult] = await Promise.allSettled([
@@ -301,7 +310,7 @@ export default async function TableView({ id }) {
       },
 
       dice: d => {
-      showDiceRoll(d.playerName, d.diceType, d.result);
+      showDiceRoll(resolveEventPlayerName(d), d.diceType, d.result);
       },
 
       player_active: d => {

@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod, renderAvatarPicture } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, playerLoginName, renderAvatarPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 
@@ -43,7 +43,8 @@ export default async function CharacterReviewView({ id, cpId }) {
     if (!cp) { showStatus('Campaign player not found', 'error'); return; }
 
     const pRes = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' });
-    const playerData = pRes.ok ? await pRes.json() : { name: 'Unknown' };
+    const playerData = pRes.ok ? await pRes.json() : { username: 'Unknown' };
+    const reviewerLoginName = playerLoginName(playerData);
 
     let character = null;
     if (cp.characterId) {
@@ -76,7 +77,7 @@ export default async function CharacterReviewView({ id, cpId }) {
       return `<div class="stat-box"><div class="stat-label">${a.label}</div><div class="stat-value">${v}</div><div class="stat-modifier">${fmtMod(calcMod(v))}</div></div>`;
     }).join('');
 
-    let avatarHtml = initials(playerData.name || playerData.username);
+    let avatarHtml = initials(reviewerLoginName);
     if (playerData.profilePicture) avatarHtml = renderAvatarPicture(playerData.profilePicture, {
       cssSize: 48,
       alt: 'Avatar',
@@ -87,7 +88,7 @@ export default async function CharacterReviewView({ id, cpId }) {
     content.innerHTML = `
       <div class="player-info">
         <div class="player-avatar" style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg, var(--avatar-start), var(--avatar-end));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--avatar-text);overflow:hidden;">${avatarHtml}</div>
-        <div style="flex:1;"><div style="font-size:16px;font-weight:600;">${esc(playerData.name || playerData.username)}</div><div style="font-size:13px;opacity:0.7;">${esc(playerData.email || '')}</div></div>
+        <div style="flex:1;"><div style="font-size:16px;font-weight:600;">${esc(reviewerLoginName)}</div><div style="font-size:13px;opacity:0.7;">${esc(playerData.email || '')}</div></div>
         <span class="character-status status-${cp.characterStatus === 'PENDING' ? 'pending' : cp.characterStatus === 'APPROVED' ? 'approved' : 'rejected'}">${cp.characterStatus}</span>
       </div>
       <div class="section" style="margin-top:20px">

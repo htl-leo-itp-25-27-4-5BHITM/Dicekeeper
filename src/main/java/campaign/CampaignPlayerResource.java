@@ -216,7 +216,7 @@ public class CampaignPlayerResource {
                 campaign.playerId, // DM's player ID
                 "CHARACTER_SUBMITTED",
                 "Character Submitted for Approval",
-                (player.name != null && !player.name.isBlank() ? player.name : player.username)
+                resolvePlayerLoginName(player, playerId)
                         + " has submitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
                 campaignId,
                 cp.id // CampaignPlayer ID for easy lookup
@@ -363,7 +363,7 @@ public class CampaignPlayerResource {
                 campaign.playerId,
                 "CHARACTER_SUBMITTED",
                 "Character Resubmitted",
-                (player.name != null && !player.name.isBlank() ? player.name : player.username)
+                resolvePlayerLoginName(player, playerId)
                         + " has resubmitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
                 campaignId,
                 cp.id
@@ -432,6 +432,13 @@ public class CampaignPlayerResource {
     private boolean isDm(Long campaignId, Long playerId) {
         CampaignPlayer cp = findMembership(campaignId, playerId);
         return cp != null && "DM".equals(cp.role);
+    }
+
+    private String resolvePlayerLoginName(Player player, Long playerId) {
+        if (player != null && player.username != null && !player.username.isBlank()) {
+            return player.username;
+        }
+        return "Player " + playerId;
     }
 
     // Response class for join campaign

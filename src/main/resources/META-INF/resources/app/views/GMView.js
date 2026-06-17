@@ -2,7 +2,7 @@
  * GM Game View – Dungeon Master UI (SPA version)
  */
 import { requirePlayer } from '../services/auth.js';
-import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
@@ -11,6 +11,7 @@ export default async function GMView({ id }) {
   const player = requirePlayer();
   if (!player) return;
   const campaignId = id;
+  const dmLoginName = playerLoginName(player, 'Dungeon Master');
 
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
@@ -625,7 +626,7 @@ export default async function GMView({ id }) {
           const restoredMaxHp = hasExisting ? existingMaxHp[String(pid)] : maxHp;
           const restoredActive = existingActive[String(pid)] !== undefined ? existingActive[String(pid)] : true;
 
-          loaded.push({ id: pid, name: pd.username || pd.name || 'Unknown', characterId: cp.characterId, hp: restoredHp, maxHp: restoredMaxHp, active: restoredActive });
+          loaded.push({ id: pid, name: playerLoginName(pd), characterId: cp.characterId, hp: restoredHp, maxHp: restoredMaxHp, active: restoredActive });
         } catch (e) {}
       }
       players = loaded;
@@ -762,8 +763,18 @@ export default async function GMView({ id }) {
     setTimeout(() => { fb.style.opacity = '0'; }, 3000);
   }
 
+  function resolveEventPlayerName(event) {
+    const id = Number(event?.playerId);
+    if (Number.isFinite(id) && id > 0) {
+      const p = players.find(x => x.id === id);
+      if (p) return p.name;
+    }
+    return event?.playerName || 'Ein Spieler';
+  }
+
   function showBroadcastDiceRoll(d) {
     if (!d) return;
+    const eventPlayerName = resolveEventPlayerName(d);
     const resultEl = document.getElementById('gmDiceResult');
     const labelEl = document.getElementById('gmDiceLabel');
     if (labelEl) labelEl.textContent = String(d.diceType || '').toUpperCase();
@@ -773,12 +784,12 @@ export default async function GMView({ id }) {
       void resultEl.offsetWidth;
       resultEl.classList.add('rolling');
     }
-    showFb((d.playerName || 'Ein Spieler') + ' würfelt ' + (d.diceType || '') + ': ' + d.result, 'var(--accent-green)');
+    showFb(eventPlayerName + ' würfelt ' + (d.diceType || '') + ': ' + d.result, 'var(--accent-green)');
 
     const chat = document.getElementById('gmChat');
     if (chat) {
       const div = document.createElement('div');
-      div.innerHTML = '🎲 <strong>' + esc(d.playerName || 'Ein Spieler') + '</strong> würfelt ' + esc(d.diceType || '') + ': <strong>' + esc(String(d.result)) + '</strong>';
+      div.innerHTML = '🎲 <strong>' + esc(eventPlayerName) + '</strong> würfelt ' + esc(d.diceType || '') + ': <strong>' + esc(String(d.result)) + '</strong>';
       div.style.color = 'var(--accent-purple)';
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
@@ -801,7 +812,7 @@ export default async function GMView({ id }) {
         if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
         else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
         else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-        fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: 'Dungeon Master', diceType: 'd' + selectedDiceSides, result: f }) });
+        fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: f }) });
       }
     }, 55);
   });
@@ -814,7 +825,7 @@ export default async function GMView({ id }) {
     r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
     showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
     document.getElementById('gmRollBtn').disabled = false;
-    fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: 'Dungeon Master', diceType: 'd' + selectedDiceSides, result: val }) });
+    fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: val }) });
   });
 
   const manIn = document.getElementById('gmManualInput');
@@ -850,7 +861,7 @@ export default async function GMView({ id }) {
 
   window._gmVote = async function(did, type) {
     const d = decisions.find(x => x.id === did); if (!d || d.status === 'RESOLVED') return;
-    await fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: did, vote: type, playerName: 'Dungeon Master' }) });
+    await fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: did, vote: type, playerName: dmLoginName }) });
   };
 
   function renderDecisions() {

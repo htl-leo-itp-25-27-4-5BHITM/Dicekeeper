@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, getActiveCampaignMap, getCampaignMaps, initials, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, getActiveCampaignMap, getCampaignMaps, initials, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showToast } from '../components/toast.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
@@ -38,7 +38,7 @@ export default async function CockpitView({ id }) {
     campaignPlayers = await cpRes.json();
 
     for (const cp of campaignPlayers) {
-      try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = p.name || p.username || 'Player ' + cp.playerId; } } catch(e) {}
+      try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = playerLoginName(p, 'Player ' + cp.playerId); } } catch(e) {}
     }
 
     const content = document.getElementById('ckContent');

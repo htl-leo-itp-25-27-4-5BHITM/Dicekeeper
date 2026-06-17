@@ -14,6 +14,10 @@ export function initials(name) {
     : parts[0].substring(0, 2).toUpperCase();
 }
 
+export function playerLoginName(player, fallback = 'Unknown') {
+  return player?.username || fallback;
+}
+
 export function timeAgo(timestamp) {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
   if (seconds < 60) return 'Gerade eben';

@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, getActiveCampaignMap, getCampaignMaps, initials, renderMapPicture } from '../services/utils.js';
+import { esc, getActiveCampaignMap, getCampaignMaps, initials, playerLoginName, renderMapPicture } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
@@ -477,7 +477,7 @@ export default async function CampaignDetailView({ id }) {
       for (const cp of campaignPlayers) {
         try {
           const pRes = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' });
-          if (pRes.ok) { const p = await pRes.json(); playerNameMap[cp.playerId] = p.name || `Player ${cp.playerId}`; }
+          if (pRes.ok) { const p = await pRes.json(); playerNameMap[cp.playerId] = playerLoginName(p, `Player ${cp.playerId}`); }
         } catch (e) { playerNameMap[cp.playerId] = `Player ${cp.playerId}`; }
       }
 

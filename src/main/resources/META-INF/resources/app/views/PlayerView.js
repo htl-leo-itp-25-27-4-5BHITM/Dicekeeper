@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
+import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, playerLoginName, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
@@ -158,7 +158,7 @@ export default async function PlayerView({ id }) {
   }
   function getProfBonus() { return Math.floor(((character?.level || 1) - 1) / 4) + 2; }
   function renderCurrentPlayerAvatar(cssSize) {
-    if (!currentPlayer.profilePicture) return initials(character?.name || currentPlayer.name);
+    if (!currentPlayer.profilePicture) return initials(playerLoginName(currentPlayer, 'Spieler'));
     return renderAvatarPicture(currentPlayer.profilePicture, {
       cssSize,
       alt: 'Avatar',
@@ -214,7 +214,7 @@ export default async function PlayerView({ id }) {
     eventSource = connectCampaignEvents(campaignId, {
       turn: d => {
       currentTurnPlayerId = d.playerId;
-      updateTurnBanner(d.playerId, d.playerName);
+      updateTurnBanner(d.playerId, resolveEventPlayerName(d));
       renderParty();
       if (isMobile()) renderMobParty();
       },
@@ -306,6 +306,14 @@ export default async function PlayerView({ id }) {
     }
   }
 
+  function resolveEventPlayerName(event) {
+    const id = Number(event?.playerId);
+    if (Number.isFinite(id) && id > 0) {
+      return playerNameMap[id] || 'Spieler ' + id;
+    }
+    return event?.playerName || 'Ein Spieler';
+  }
+
   function showDiceToast(name, dt, result) {
     showToast('🎲 ' + (name || 'Ein Spieler') + ' würfelt ' + dt + ': ' + result, 'info', 4000);
   }
@@ -321,6 +329,7 @@ export default async function PlayerView({ id }) {
   }
 
   function showDiceResultInView(prefix, d) {
+    const eventPlayerName = resolveEventPlayerName(d);
     const label = document.getElementById(prefix + 'DiceLabel');
     const value = document.getElementById(prefix + 'DiceVal');
     const feedback = document.getElementById(prefix + 'DiceFb');
@@ -332,7 +341,7 @@ export default async function PlayerView({ id }) {
       value.classList.add('rolling');
     }
     if (feedback) {
-      feedback.textContent = (d.playerName || 'Ein Spieler') + ' würfelt';
+      feedback.textContent = eventPlayerName + ' würfelt';
       feedback.style.color = 'var(--accent-green)';
       feedback.style.opacity = '1';
       setTimeout(() => { feedback.style.opacity = '0'; }, 3000);
@@ -342,8 +351,9 @@ export default async function PlayerView({ id }) {
   function handleDiceEvent(d) {
     if (!d) return;
     const isOwnRoll = d.playerId === currentPlayer.id;
+    const eventPlayerName = resolveEventPlayerName(d);
     diceHistory.unshift({
-      dice: (d.playerName || 'Ein Spieler') + ' · ' + (d.diceType || ''),
+      dice: eventPlayerName + ' · ' + (d.diceType || ''),
       result: d.result,
       time: new Date(d.timestamp || Date.now()).toLocaleTimeString()
     });
@@ -352,7 +362,7 @@ export default async function PlayerView({ id }) {
     showDiceResultInView('pvMob', d);
     renderDiceHistoryInto('pvDiceHist');
     renderDiceHistoryInto('pvMobDiceHist');
-    if (!isOwnRoll) showDiceToast(d.playerName, d.diceType, d.result);
+    if (!isOwnRoll) showDiceToast(eventPlayerName, d.diceType, d.result);
   }
 
   // ===== LOAD =====
@@ -372,7 +382,7 @@ export default async function PlayerView({ id }) {
       character = await charRes.json();
 
       await Promise.all(campaignPlayers.map(async cp => {
-        try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = p.username || p.name; } } catch(e){}
+        try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = playerLoginName(p, 'Spieler ' + cp.playerId); } } catch(e){}
         if (cp.characterId && cp.playerId !== currentPlayer.id) {
           try { const r = await fetch('/api/character/' + cp.characterId, { cache: 'no-store' }); if (r.ok) characterMap[cp.playerId] = await r.json(); } catch(e){}
         }
@@ -609,7 +619,7 @@ export default async function PlayerView({ id }) {
         votedDecisions[did] = vt;
         renderDecisions();
 
-        const name = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Unknown';
+        const name = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer);
 
         fetch('/api/campaign/' + campaignId + '/game/vote', {
           method: 'POST',
@@ -661,7 +671,7 @@ export default async function PlayerView({ id }) {
           if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
+          const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
           fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
         }
       }, 55);
@@ -676,7 +686,7 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
-      const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
+      const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
       fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
     });
     renderHist();
@@ -700,9 +710,9 @@ export default async function PlayerView({ id }) {
       const isTurn = currentTurnPlayerId === cp.playerId;
       const isMe = cp.playerId === currentPlayer.id;
       return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
-        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
+        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(name)}</div>
         <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}</div>
+          <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}</div>
           <div class="pv2-party-detail">${esc(detail)}</div>
         </div>
         ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
@@ -923,7 +933,7 @@ export default async function PlayerView({ id }) {
         const did = parseInt(btn.dataset.did); const vt = btn.dataset.v;
         if (votedDecisions[did]) return;
         votedDecisions[did] = vt; renderMobDecisions();
-        const name = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Unknown';
+        const name = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer);
         fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ decisionId: did, vote: vt, playerName: name, playerId: currentPlayer.id }) });
       });
@@ -968,7 +978,7 @@ export default async function PlayerView({ id }) {
           if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          const myName = playerNameMap[currentPlayer.id] || currentPlayer.name || 'Spieler';
+          const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
           fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
         }
       }, 55);
@@ -983,7 +993,7 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvMobRollBtn').disabled = false;
-      const myName = playerNameMap[currentPlayer.id] || currentPlayer.name;
+      const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
       fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
     });
     renderHist();
@@ -999,9 +1009,9 @@ export default async function PlayerView({ id }) {
       const isTurn = currentTurnPlayerId === cp.playerId;
       const isMe = cp.playerId === currentPlayer.id;
       return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
-        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(ch ? ch.name : name)}</div>
+        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(name)}</div>
         <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(isDM ? name : (ch ? ch.name : name))}${isMe ? ' (Du)' : ''}</div>
+          <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}</div>
           <div class="pv2-party-detail">${esc(detail)}</div>
         </div>
         ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}

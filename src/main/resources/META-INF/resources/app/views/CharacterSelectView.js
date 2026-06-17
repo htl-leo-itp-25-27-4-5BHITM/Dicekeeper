@@ -3,7 +3,7 @@
  */
 import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
-import { esc } from '../services/utils.js';
+import { esc, playerLoginName } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 
 export default async function CharacterSelectView({ campaignId }) {
@@ -44,7 +44,7 @@ export default async function CharacterSelectView({ campaignId }) {
     let dmName = 'Unknown';
     if (campaign.playerId) {
       const dmRes = await fetch(`/api/player/id/${campaign.playerId}`, { cache: 'no-store' });
-      if (dmRes.ok) { const dm = await dmRes.json(); dmName = dm.username || dm.name; }
+      if (dmRes.ok) { const dm = await dmRes.json(); dmName = playerLoginName(dm, 'Unknown'); }
     }
 
     const charsRes = await fetch('/api/character/all', { cache: 'no-store' });
@@ -112,4 +112,3 @@ export default async function CharacterSelectView({ campaignId }) {
 
   return () => { destroyHeader(); };
 }
-

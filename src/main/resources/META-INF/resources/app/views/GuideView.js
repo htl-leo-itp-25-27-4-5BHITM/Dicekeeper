@@ -21,23 +21,6 @@ function renderList(items, className) {
   return `<ul class="${className}">${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`;
 }
 
-function renderSources(section) {
-  if (!section.sources || section.sources.length === 0) return '';
-  return `
-    <details class="guide-sources">
-      <summary>Aus der Anwendung abgeleitet</summary>
-      <div class="guide-source-grid">
-        ${section.sources.map(source => `
-          <div class="guide-source-item">
-            <strong>${esc(source.title)}</strong>
-            <span>${esc(source.route)}</span>
-          </div>
-        `).join('')}
-      </div>
-    </details>
-  `;
-}
-
 function renderSection(section, index) {
   return `
     <article class="guide-section" id="guide-${esc(section.id)}">
@@ -48,12 +31,6 @@ function renderSection(section, index) {
         ${section.summary ? `<p class="guide-section-summary">${esc(section.summary)}</p>` : ''}
         ${renderList(section.steps, 'guide-steps-list')}
         <div class="guide-section-meta">
-          ${section.labels && section.labels.length ? `
-            <div>
-              <span class="guide-meta-label">Wichtige UI-Texte</span>
-              <div class="guide-chip-row">${section.labels.map(label => `<span>${esc(label)}</span>`).join('')}</div>
-            </div>
-          ` : ''}
           ${section.capabilities && section.capabilities.length ? `
             <div>
               <span class="guide-meta-label">Funktionen</span>
@@ -61,7 +38,6 @@ function renderSection(section, index) {
             </div>
           ` : ''}
         </div>
-        ${renderSources(section)}
       </div>
     </article>
   `;
