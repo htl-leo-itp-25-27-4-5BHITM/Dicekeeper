@@ -219,15 +219,15 @@ jobs:
       - name: Wait for production rollout
         if: ${{ steps.deploy-target.outputs.environment == 'production' }}
         run: |
-          kubectl -n "$NAMESPACE" rollout status deployment/keycloak --timeout=180s
-          kubectl -n "$NAMESPACE" rollout status deployment/imagor --timeout=120s
-          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper --timeout=120s
+          kubectl -n "$NAMESPACE" rollout status deployment/keycloak --timeout=300s
+          kubectl -n "$NAMESPACE" rollout status deployment/imagor --timeout=180s
+          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper --timeout=300s
 
       - name: Wait for development rollout
         if: ${{ steps.deploy-target.outputs.environment == 'development' }}
         run: |
-          kubectl -n "$NAMESPACE" rollout status deployment/imagor-dev --timeout=120s
-          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper-dev --timeout=120s
+          kubectl -n "$NAMESPACE" rollout status deployment/imagor-dev --timeout=180s
+          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper-dev --timeout=300s
 
       - name: Purge Cloudflare cache
         env:
