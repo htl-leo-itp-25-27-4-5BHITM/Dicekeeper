@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dicekeeper-dev
+  namespace: student-it200233
+  labels:
+    app: dicekeeper-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dicekeeper-dev
+  template:
+    metadata:
+      labels:
+        app: dicekeeper-dev
+    spec:
+      containers:
+        - name: dicekeeper
+          image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-db-secret
+                  key: password
+            - name: DB_JDBC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-db-secret
+                  key: jdbc-url
+            - name: KEYCLOAK_AUTH_SERVER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: KEYCLOAK_AUTH_SERVER_URL
+            - name: KEYCLOAK_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: KEYCLOAK_CLIENT_ID
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: KEYCLOAK_CLIENT_SECRET
+            - name: KEYCLOAK_STATE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: KEYCLOAK_STATE_SECRET
+            - name: KEYCLOAK_ADMIN_ENABLED
+              value: "false"
+            - name: IMAGOR_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: IMAGOR_SECRET
+            - name: IMAGOR_SIGNER_TYPE
+              value: sha256
+            - name: IMAGOR_SIGNER_TRUNCATE
+              value: "40"
+            - name: QUARKUS_OIDC_AUTHENTICATION_USER_INFO_REQUIRED
+              value: "false"
+            - name: QUARKUS_OIDC_TOKEN_STATE_MANAGER_STRATEGY
+              value: id-token
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: dicekeeper-dev-uploads
+      imagePullSecrets:
+        - name: ghcr-pull-secret

@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dicekeeper-dev
+  namespace: student-it200233
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  labels:
+    app: dicekeeper-dev
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dev.dicekeeper.net
+      http:
+        paths:
+          - path: /imagor
+            pathType: Prefix
+            backend:
+              service:
+                name: imagor-dev
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dicekeeper-dev
+                port:
+                  number: 80
+  # No cert-manager available - TLS is handled by Cloudflare proxy.
