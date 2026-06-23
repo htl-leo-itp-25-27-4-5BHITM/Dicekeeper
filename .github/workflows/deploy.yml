@@ -2,7 +2,7 @@ name: Deploy to Kubernetes
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 
 env:
@@ -22,6 +22,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Select deployment target
+        id: deploy-target
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+            echo "image_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "app_host=dicekeeper.net" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF_NAME" = "develop" ]; then
+            echo "environment=development" >> "$GITHUB_OUTPUT"
+            echo "image_tag=dev" >> "$GITHUB_OUTPUT"
+            echo "app_host=dev.dicekeeper.net" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Unsupported deployment branch: $GITHUB_REF_NAME"
+            exit 1
+          fi
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -66,13 +82,13 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ steps.deploy-target.outputs.image_tag }}
             ${{ env.IMAGE }}:${{ github.sha }}
           cache-from: type=gha,scope=dicekeeper
           cache-to: type=gha,mode=max,scope=dicekeeper
 
       - name: Build and push Keycloak image
-        if: steps.keycloak-changes.outputs.changed == 'true'
+        if: ${{ steps.keycloak-changes.outputs.changed == 'true' && steps.deploy-target.outputs.environment == 'production' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -87,49 +103,144 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
 
-      - name: Apply Kubernetes manifests
+      - name: Apply production Kubernetes manifests
+        if: ${{ steps.deploy-target.outputs.environment == 'production' }}
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          KEYCLOAK_AUTH_SERVER_URL: ${{ secrets.KEYCLOAK_AUTH_SERVER_URL }}
+          KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+          KEYCLOAK_STATE_SECRET: ${{ secrets.KEYCLOAK_STATE_SECRET }}
+          IMAGOR_SECRET: ${{ secrets.IMAGOR_SECRET }}
         run: |
-          kubectl -n $NAMESPACE delete secret dicekeeper-db-secret --ignore-not-found
-          kubectl -n $NAMESPACE create secret generic dicekeeper-db-secret \
-            --from-literal=username=${{ secrets.DB_USERNAME }} \
-            --from-literal=password=${{ secrets.DB_PASSWORD }}
-          kubectl -n $NAMESPACE delete secret dicekeeper-secret --ignore-not-found
-          kubectl -n $NAMESPACE create secret generic dicekeeper-secret \
-            --from-literal=KEYCLOAK_AUTH_SERVER_URL=${{ secrets.KEYCLOAK_AUTH_SERVER_URL }} \
-            --from-literal=KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }} \
-            --from-literal=KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }} \
-            --from-literal=KEYCLOAK_STATE_SECRET=${{ secrets.KEYCLOAK_STATE_SECRET }} \
-            --from-literal=IMAGOR_SECRET=${{ secrets.IMAGOR_SECRET }}
-          kubectl -n $NAMESPACE apply -f k8s/keycloak-service.yaml
-          kubectl -n $NAMESPACE apply -f k8s/keycloak-deployment.yaml
-          if [ "${{ steps.keycloak-changes.outputs.changed }}" = "true" ]; then
-            kubectl -n $NAMESPACE rollout restart deployment/keycloak
+          required=(
+            DB_USERNAME
+            DB_PASSWORD
+            KEYCLOAK_AUTH_SERVER_URL
+            KEYCLOAK_CLIENT_ID
+            KEYCLOAK_CLIENT_SECRET
+            KEYCLOAK_STATE_SECRET
+            IMAGOR_SECRET
+          )
+          missing=0
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub secret $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
           fi
-          kubectl -n $NAMESPACE apply -f k8s/pvc.yaml
-          kubectl -n $NAMESPACE apply -f k8s/imagor-service.yaml
-          kubectl -n $NAMESPACE apply -f k8s/imagor-deployment.yaml
-          kubectl -n $NAMESPACE apply -f k8s/service.yaml
-          sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:latest|image: $IMAGE:${{ github.sha }}|" k8s/deployment.yaml | kubectl -n $NAMESPACE apply -f -
-          kubectl -n $NAMESPACE apply -f k8s/ingress.yaml
 
-      - name: Wait for rollout
+          kubectl -n "$NAMESPACE" delete secret dicekeeper-db-secret --ignore-not-found
+          kubectl -n "$NAMESPACE" create secret generic dicekeeper-db-secret \
+            --from-literal=username="$DB_USERNAME" \
+            --from-literal=password="$DB_PASSWORD"
+          kubectl -n "$NAMESPACE" delete secret dicekeeper-secret --ignore-not-found
+          kubectl -n "$NAMESPACE" create secret generic dicekeeper-secret \
+            --from-literal=KEYCLOAK_AUTH_SERVER_URL="$KEYCLOAK_AUTH_SERVER_URL" \
+            --from-literal=KEYCLOAK_CLIENT_ID="$KEYCLOAK_CLIENT_ID" \
+            --from-literal=KEYCLOAK_CLIENT_SECRET="$KEYCLOAK_CLIENT_SECRET" \
+            --from-literal=KEYCLOAK_STATE_SECRET="$KEYCLOAK_STATE_SECRET" \
+            --from-literal=IMAGOR_SECRET="$IMAGOR_SECRET"
+          kubectl -n "$NAMESPACE" apply -f k8s/keycloak-service.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/keycloak-deployment.yaml
+          if [ "${{ steps.keycloak-changes.outputs.changed }}" = "true" ]; then
+            kubectl -n "$NAMESPACE" rollout restart deployment/keycloak
+          fi
+          kubectl -n "$NAMESPACE" apply -f k8s/pvc.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/imagor-service.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/imagor-deployment.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/service.yaml
+          sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:latest|image: $IMAGE:${GITHUB_SHA}|" k8s/deployment.yaml | kubectl -n "$NAMESPACE" apply -f -
+          kubectl -n "$NAMESPACE" apply -f k8s/ingress.yaml
+
+      - name: Apply development Kubernetes manifests
+        if: ${{ steps.deploy-target.outputs.environment == 'development' }}
+        env:
+          DEV_DB_USERNAME: ${{ secrets.DEV_DB_USERNAME }}
+          DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+          DEV_DB_JDBC_URL: ${{ secrets.DEV_DB_JDBC_URL }}
+          DEV_KEYCLOAK_AUTH_SERVER_URL: ${{ secrets.DEV_KEYCLOAK_AUTH_SERVER_URL }}
+          DEV_KEYCLOAK_CLIENT_ID: ${{ secrets.DEV_KEYCLOAK_CLIENT_ID }}
+          DEV_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DEV_KEYCLOAK_CLIENT_SECRET }}
+          DEV_KEYCLOAK_STATE_SECRET: ${{ secrets.DEV_KEYCLOAK_STATE_SECRET }}
+          DEV_IMAGOR_SECRET: ${{ secrets.DEV_IMAGOR_SECRET }}
+          IMAGOR_SECRET: ${{ secrets.IMAGOR_SECRET }}
         run: |
-          kubectl -n $NAMESPACE rollout status deployment/keycloak --timeout=180s
-          kubectl -n $NAMESPACE rollout status deployment/imagor --timeout=120s
-          kubectl -n $NAMESPACE rollout status deployment/dicekeeper --timeout=120s
+          DEV_DB_USERNAME="${DEV_DB_USERNAME:-dicekeeper_dev}"
+          DEV_DB_JDBC_URL="${DEV_DB_JDBC_URL:-jdbc:postgresql://postgres:5432/dicekeeper_dev}"
+          DEV_KEYCLOAK_AUTH_SERVER_URL="${DEV_KEYCLOAK_AUTH_SERVER_URL:-http://keycloak:8080/realms/dicekeeper}"
+          DEV_KEYCLOAK_CLIENT_ID="${DEV_KEYCLOAK_CLIENT_ID:-dicekeeper-dev-web}"
+          DEV_IMAGOR_SECRET="${DEV_IMAGOR_SECRET:-$IMAGOR_SECRET}"
+
+          required=(
+            DEV_DB_PASSWORD
+            DEV_KEYCLOAK_CLIENT_SECRET
+            DEV_KEYCLOAK_STATE_SECRET
+            DEV_IMAGOR_SECRET
+          )
+          missing=0
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub secret $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          kubectl -n "$NAMESPACE" delete secret dicekeeper-dev-db-secret --ignore-not-found
+          kubectl -n "$NAMESPACE" create secret generic dicekeeper-dev-db-secret \
+            --from-literal=username="$DEV_DB_USERNAME" \
+            --from-literal=password="$DEV_DB_PASSWORD" \
+            --from-literal=jdbc-url="$DEV_DB_JDBC_URL"
+          kubectl -n "$NAMESPACE" delete secret dicekeeper-dev-secret --ignore-not-found
+          kubectl -n "$NAMESPACE" create secret generic dicekeeper-dev-secret \
+            --from-literal=KEYCLOAK_AUTH_SERVER_URL="$DEV_KEYCLOAK_AUTH_SERVER_URL" \
+            --from-literal=KEYCLOAK_CLIENT_ID="$DEV_KEYCLOAK_CLIENT_ID" \
+            --from-literal=KEYCLOAK_CLIENT_SECRET="$DEV_KEYCLOAK_CLIENT_SECRET" \
+            --from-literal=KEYCLOAK_STATE_SECRET="$DEV_KEYCLOAK_STATE_SECRET" \
+            --from-literal=IMAGOR_SECRET="$DEV_IMAGOR_SECRET"
+          kubectl -n "$NAMESPACE" apply -f k8s/dev/pvc.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/dev/imagor-service.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/dev/imagor-deployment.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/dev/service.yaml
+          sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:dev|image: $IMAGE:${GITHUB_SHA}|" k8s/dev/deployment.yaml | kubectl -n "$NAMESPACE" apply -f -
+          kubectl -n "$NAMESPACE" apply -f k8s/dev/ingress.yaml
+
+      - name: Wait for production rollout
+        if: ${{ steps.deploy-target.outputs.environment == 'production' }}
+        run: |
+          kubectl -n "$NAMESPACE" rollout status deployment/keycloak --timeout=180s
+          kubectl -n "$NAMESPACE" rollout status deployment/imagor --timeout=120s
+          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper --timeout=120s
+
+      - name: Wait for development rollout
+        if: ${{ steps.deploy-target.outputs.environment == 'development' }}
+        run: |
+          kubectl -n "$NAMESPACE" rollout status deployment/imagor-dev --timeout=120s
+          kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper-dev --timeout=120s
 
       - name: Purge Cloudflare cache
+        env:
+          APP_HOST: ${{ steps.deploy-target.outputs.app_host }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
-          curl --fail-with-body -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+          if [ -z "$CF_ZONE_ID" ] || [ -z "$CF_API_TOKEN" ]; then
+            echo "Cloudflare credentials are not configured; skipping cache purge."
+            exit 0
+          fi
+
+          curl --fail-with-body -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data '{
-              "files": [
-                "https://dicekeeper.net/",
-                "https://dicekeeper.net/index.html"
-              ]
-            }'
+            --data "{\"files\":[\"https://${APP_HOST}/\",\"https://${APP_HOST}/index.html\"]}"

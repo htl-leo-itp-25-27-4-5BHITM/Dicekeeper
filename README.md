@@ -170,6 +170,62 @@ Dicekeeper verwendet bewusst einen festen OIDC-Callback statt dynamischer Redire
 4. Auf Login klicken.
 5. Nach erfolgreichem Keycloak-Login wirst du zurück zu Dicekeeper geleitet und der Player wird automatisch synchronisiert.
 
+## Development Deployment auf dev.dicekeeper.net
+
+Neben Production auf `dicekeeper.net` gibt es eine getrennte Kubernetes-Umgebung fuer den Branch `develop`.
+
+- `main` deployed Production mit den bisherigen Manifests unter [k8s](/Users/blauregen/School/SEW/Dicekeeper/k8s)
+- `develop` deployed Development mit den Manifests unter [k8s/dev](/Users/blauregen/School/SEW/Dicekeeper/k8s/dev)
+- Development nutzt eigene Kubernetes-Objekte: `dicekeeper-dev`, `imagor-dev`, `dicekeeper-dev-uploads`
+- Keycloak bleibt im gemeinsamen Realm `dicekeeper`, aber Development nutzt einen eigenen Client, standardmaessig `dicekeeper-dev-web`
+
+### Cloudflare DNS
+
+Lege in Cloudflare einen DNS-Eintrag fuer `dev.dicekeeper.net` an, der auf dieselbe Infrastruktur zeigt wie `dicekeeper.net`.
+Wenn `dicekeeper.net` ueber den Cloudflare Proxy laeuft, sollte `dev.dicekeeper.net` gleich konfiguriert werden.
+
+### GitHub Secrets fuer develop
+
+Diese Secrets werden nur fuer den `develop`-Deploy gebraucht:
+
+```text
+DEV_DB_PASSWORD
+DEV_KEYCLOAK_CLIENT_SECRET
+DEV_KEYCLOAK_STATE_SECRET
+```
+
+Optional koennen diese Werte ueberschrieben werden; sonst nutzt die Action die Defaults:
+
+```text
+DEV_DB_USERNAME=dicekeeper_dev
+DEV_DB_JDBC_URL=jdbc:postgresql://postgres:5432/dicekeeper_dev
+DEV_KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080/realms/dicekeeper
+DEV_KEYCLOAK_CLIENT_ID=dicekeeper-dev-web
+DEV_IMAGOR_SECRET=<faellt auf IMAGOR_SECRET zurueck>
+```
+
+Die Dev-Datenbank muss einmalig in PostgreSQL existieren:
+
+```sql
+CREATE USER dicekeeper_dev WITH PASSWORD '...';
+CREATE DATABASE dicekeeper_dev WITH OWNER dicekeeper_dev ENCODING 'UTF8' CONNECTION LIMIT -1;
+```
+
+### Keycloak Client fuer Development
+
+Im Realm `dicekeeper` sollte ein eigener confidential Client fuer Development angelegt werden:
+
+- Client ID: `dicekeeper-dev-web`
+- Valid redirect URIs: `https://dev.dicekeeper.net/api/auth/callback`
+- Valid post logout redirect URIs: `https://dev.dicekeeper.net/*`
+- Web origins: `https://dev.dicekeeper.net`
+- Standard flow: enabled
+- Client authentication: enabled
+- Service accounts roles: disabled or no roles assigned
+
+Das erzeugte Client Secret wird als GitHub Secret `DEV_KEYCLOAK_CLIENT_SECRET` hinterlegt.
+Die Keycloak Admin API ist im Dev-Deployment deaktiviert, damit der Dev-Client keine Benutzer aus dem gemeinsamen Realm loeschen kann.
+
 ## Imagor auf Kubernetes
 
 Für Bild-Resizing und WebP-Ausgabe läuft `imagor` im Cluster als eigener Service statt im Dicekeeper-Container.
