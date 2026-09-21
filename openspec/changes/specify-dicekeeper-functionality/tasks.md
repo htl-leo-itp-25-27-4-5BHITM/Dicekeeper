@@ -24,9 +24,9 @@ Depends on section 1.
 
 Depends on section 2.
 
-- [ ] 3.1 Trace character CRUD, ability-score operations, reference data, and creation/selection views; record the missing owner model and resolve the intended character access rules, verifying the decision states which behavior is observed and which would require a correction.
-- [ ] 3.2 Write `character-library` requirements for creation, unfinished drafts, editing, selection, validation, and deletion; verify scenarios cover owner/unrelated-user/DM access, invalid reference values, and characters referenced by campaigns, with future progression separately identified.
-- [ ] 3.3 Record agreed ownership corrections in a separate planning change or an explicitly unresolved decision entry, validate the accepted baseline draft, and update coverage/handoff; verify the baseline does not claim an unimplemented ownership fix is delivered.
+- [x] 3.1 Trace character CRUD, ability-score operations, reference data, and creation/selection views; record the missing owner model and resolve the intended character access rules, verifying the decision states which behavior is observed and which would require a correction.
+- [x] 3.2 Write `character-library` requirements for creation, unfinished drafts, editing, selection, validation, and deletion; verify scenarios cover owner/unrelated-user/DM access, invalid reference values, and characters referenced by campaigns, with future progression separately identified.
+- [x] 3.3 Record agreed ownership corrections in a separate planning change or an explicitly unresolved decision entry, validate the accepted baseline draft, and update coverage/handoff; verify the baseline does not claim an unimplemented ownership fix is delivered.
 
 ## 4. Specify campaigns and participation
 

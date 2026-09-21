@@ -12,7 +12,7 @@ Definitions are organizational unless a capability spec makes them normative. `C
 | Public player summary | — | confirmed | The contextual identity fields another authenticated participant may see in an authorized workflow: player ID, username, display name, and avatar reference. Email and account settings are excluded. |
 | Dungeon Master (DM) | `Dungeon Master`, `Spielleiter` | confirmed | The campaign-specific controlling role assigned to the campaign creator in observed source. Do not assume a global identity-provider role. |
 | Campaign member | `Kampagnenspieler` / `Spieler in Kampagne` | confirmed | A player associated with a campaign. Exact admitted/started/review-state permissions remain capability decisions. |
-| Character owner | `Charakterbesitzer` | unresolved | The player allowed to manage a character. Historical owner-only intent conflicts with the observed data model, which has no owner field. |
+| Character owner | `Charakterbesitzer` | confirmed | The single player who owns and may directly manage a character. Campaign DM status permits only contextual read access to a referenced character and never transfers ownership. The observed model still lacks this field, which is tracked as a correction. |
 | Unrelated authenticated user | — | confirmed | An authenticated player who is neither the resource owner nor a member/DM of the relevant campaign. Used for denial scenarios. |
 | Table screen / display client | `Tischbildschirm`, `Tischansicht` | unresolved | A shared presentation client for the room. Whether it authenticates as DM/member, uses a scoped token, or has another model is task 7's decision. |
 | Shared view | `Tischbildschirm / Online-Gruppe`, `Tisch- oder Online-Übersicht` | proposed | Future generalization of the table view to local or online audiences. |
@@ -31,8 +31,8 @@ Definitions are organizational unless a capability spec makes them normative. `C
 | Session | unresolved/future | A bounded play occurrence within a campaign. No separate persistent current entity was found; task 9 decides future lifecycle/history. Do not use “session” as a synonym for login session. |
 | Encounter | unresolved/future | A bounded challenge/combat within a session, potentially with initiative, conditions, effects, and boss behavior. Task 10 owns the model. |
 | Authentication session | confirmed | Browser/server state establishing the current external identity. Use the full phrase to avoid confusion with a play session. |
-| Character | confirmed | A player-facing RPG record containing identity/background/class/ability information and used in campaign submission/review. Ownership is unresolved. |
-| Character draft | proposed current contract | In-progress character-creation input stored in browser session state in the observed frontend. Exact lifetime and recovery promises need task 3. |
+| Character | confirmed | A player-owned RPG record containing name, class, background, optional descriptive fields, level, and ability scores. Only a complete character is part of the owner's selectable library. |
+| Character draft | confirmed current contract | In-progress creation input recoverable only for the same player, browser session, and standalone/campaign context. It is not a server-side character and is cleared on completion or explicit discard. |
 | Character review state | confirmed implementation vocabulary | `NONE`, `PENDING`, `APPROVED`, or `REJECTED` in observed source. Allowed actor/state transitions are not yet accepted. |
 | Campaign membership | confirmed | The association of a player with a campaign, including campaign-specific role and character review fields. |
 | Public campaign | confirmed implementation vocabulary | A campaign discoverable/admissible through the public path in observed source, subject to capacity and other rules. |

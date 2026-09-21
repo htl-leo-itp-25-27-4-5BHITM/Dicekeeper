@@ -2,11 +2,11 @@
 
 ## Status
 
-This directory is the shared entry point for the Dicekeeper functional specification. The foundation and task-2 accounts/profiles/permissions stage were completed on 2026-09-21. Product requirements have not yet been published as main OpenSpec specifications.
+This directory is the shared entry point for the Dicekeeper functional specification. The foundation, task-2 accounts/profiles/permissions stage, and task-3 character-library stage were completed on 2026-09-21. Product requirements have not yet been published as main OpenSpec specifications.
 
 The confirmed documentation scope is the current application plus a separately identified future scope. The current application will be documented through the active [`document-dicekeeper-baseline`](../../openspec/changes/document-dicekeeper-baseline/) change. Future behavior remains proposed until its owning task records a product decision and creates a bounded follow-on change.
 
-The active baseline now contains draft deltas for [`account-access`](../../openspec/changes/document-dicekeeper-baseline/specs/account-access/spec.md) and [`player-profiles`](../../openspec/changes/document-dicekeeper-baseline/specs/player-profiles/spec.md). The remaining 12 capability deltas still belong to tasks 3–7, and publication remains task 8. Creating documentation or planning artifacts does not mean that application behavior has been implemented or exercised; accepted contracts that differ from source are recorded as deviations in [`evidence.md`](evidence.md).
+The active baseline now contains draft deltas for [`account-access`](../../openspec/changes/document-dicekeeper-baseline/specs/account-access/spec.md), [`player-profiles`](../../openspec/changes/document-dicekeeper-baseline/specs/player-profiles/spec.md), and [`character-library`](../../openspec/changes/document-dicekeeper-baseline/specs/character-library/spec.md). The remaining 11 capability deltas belong to tasks 4–7, and publication remains task 8. Character-library implementation gaps are recorded in [`correct-character-library-boundaries`](../../openspec/changes/correct-character-library-boundaries/); that proposal does not implement them. Creating documentation or planning artifacts does not mean that application behavior has been implemented or exercised; accepted contracts that differ from source are recorded as deviations in [`evidence.md`](evidence.md).
 
 ## How to read this specification
 
@@ -39,7 +39,7 @@ Normative behavior will live in OpenSpec capability specifications. These shared
 | 7 | `session-views` | DM, player, and table/display views, including supported screen/device behavior. |
 | 7 | `live-synchronization` | Live event propagation, heartbeat, reconnect, stale clients, access revocation, and restart behavior. |
 
-The capability names above are confirmed as the flat organization for the baseline planning change. Task 2 has authored and reconciled `account-access` and `player-profiles`; the behavior inside the remaining capabilities still requires evidence review and product decisions in tasks 3–7.
+The capability names above are confirmed as the flat organization for the baseline planning change. Tasks 2 and 3 have authored and reconciled `account-access`, `player-profiles`, and `character-library`; the behavior inside the remaining capabilities still requires evidence review and product decisions in tasks 4–7.
 
 ## Separately identified future scope
 
