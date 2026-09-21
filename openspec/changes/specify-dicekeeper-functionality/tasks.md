@@ -6,19 +6,19 @@ Documentation paths are relative to the repository root. Current capability draf
 
 ## 1. Establish the foundation
 
-- [ ] 1.1 Create `docs/specification/runbook.md`, `evidence.md`, `decisions.md`, `glossary.md`, `permissions.md`, `coverage.md`, `handoff.md`, and `overview.md` from this design's researched material; verify all eight files exist, distinguish confirmed scope from proposed defaults, and preserve the source-review limitations.
-- [ ] 1.2 Extract the use-case aliases and actor relationships from both `.puml` files into the coverage matrix, prefixing aliases with CUR/FUT; verify 33 current and 22 future use cases have unique IDs and an owning task, and treat the Markdown/DOT/SVG renderings as duplicate representations.
-- [ ] 1.3 Reconcile remaining source inventory entries: inspect unreviewed Notion links only for relevant missing requirements, mark inaccessible/unreviewed/excluded material explicitly, and add code/README requirements absent from the diagrams; verify each added candidate has a source reference and a disposition or decision owner.
-- [ ] 1.4 Finalize the glossary and flat capability boundaries, check the baseline name against existing changes, and scaffold `document-dicekeeper-baseline` through the CLI; write its proposal from returned instructions and verify its capability list matches the task ownership in `coverage.md`.
-- [ ] 1.5 Record the next task, relevant source paths, known decision gates, and generated baseline change path in `handoff.md`; verify a fresh task can start section 2 using repository artifacts alone.
+- [x] 1.1 Create `docs/specification/runbook.md`, `evidence.md`, `decisions.md`, `glossary.md`, `permissions.md`, `coverage.md`, `handoff.md`, and `overview.md` from this design's researched material; verify all eight files exist, distinguish confirmed scope from proposed defaults, and preserve the source-review limitations.
+- [x] 1.2 Extract the use-case aliases and actor relationships from both `.puml` files into the coverage matrix, prefixing aliases with CUR/FUT; verify 33 current and 22 future use cases have unique IDs and an owning task, and treat the Markdown/DOT/SVG renderings as duplicate representations.
+- [x] 1.3 Reconcile remaining source inventory entries: inspect unreviewed Notion links only for relevant missing requirements, mark inaccessible/unreviewed/excluded material explicitly, and add code/README requirements absent from the diagrams; verify each added candidate has a source reference and a disposition or decision owner.
+- [x] 1.4 Finalize the glossary and flat capability boundaries, check the baseline name against existing changes, and scaffold `document-dicekeeper-baseline` through the CLI; write its proposal from returned instructions and verify its capability list matches the task ownership in `coverage.md`.
+- [x] 1.5 Record the next task, relevant source paths, known decision gates, and generated baseline change path in `handoff.md`; verify a fresh task can start section 2 using repository artifacts alone.
 
 ## 2. Specify accounts, profiles, and permissions
 
 Depends on section 1.
 
-- [ ] 2.1 Trace `AuthResource`, `SecurityIdentityService`, `PlayerResource`, and frontend auth handling; write `account-access` requirements for login/logout, identity sync, registration boundary, and expired/failed authentication, verifying each requirement has source evidence and acceptance scenarios.
-- [ ] 2.2 Resolve public profile fields and account data boundaries; write `player-profiles` requirements for profile/avatar and account deletion, and update the permission matrix, verifying coverage of own-account, unrelated-account, missing-account, external deletion failure, and dependent-data cases.
-- [ ] 2.3 Validate the authored baseline capability files using the available OpenSpec spec validation path, record any change-level incompleteness from remaining capabilities separately, and update coverage/handoff; verify permission conflicts and deletion dependencies have explicit owners rather than implicit assumptions.
+- [x] 2.1 Trace `AuthResource`, `SecurityIdentityService`, `PlayerResource`, and frontend auth handling; write `account-access` requirements for login/logout, identity sync, registration boundary, and expired/failed authentication, verifying each requirement has source evidence and acceptance scenarios.
+- [x] 2.2 Resolve public profile fields and account data boundaries; write `player-profiles` requirements for profile/avatar and account deletion, and update the permission matrix, verifying coverage of own-account, unrelated-account, missing-account, external deletion failure, and dependent-data cases.
+- [x] 2.3 Validate the authored baseline capability files using the available OpenSpec spec validation path, record any change-level incompleteness from remaining capabilities separately, and update coverage/handoff; verify permission conflicts and deletion dependencies have explicit owners rather than implicit assumptions.
 
 ## 3. Specify characters
 

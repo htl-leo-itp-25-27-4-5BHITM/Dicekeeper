@@ -1,0 +1,61 @@
+# Glossary
+
+Definitions are organizational unless a capability spec makes them normative. `Confirmed` terms are safe for consistent documentation use; `proposed` or `unresolved` meanings require their owning decision before behavior is finalized.
+
+## Actors and identities
+
+| Term | Original/source label | Status | Working definition |
+| --- | --- | --- | --- |
+| Guest | `Gast` | confirmed | A person without an authenticated Dicekeeper session. The current diagram connects the guest to login/registration. |
+| Account | `Account`, Keycloak user | confirmed | The external identity used to authenticate and, where enabled, register. It is distinct from the local player record even when synchronized one-to-one; Dicekeeper stores no local password. |
+| Player | `Spieler` | confirmed | The local Dicekeeper user/profile synchronized after authentication. A player may be a campaign member and may be DM for a campaign, but those roles do not grant access to account-private fields. |
+| Public player summary | — | confirmed | The contextual identity fields another authenticated participant may see in an authorized workflow: player ID, username, display name, and avatar reference. Email and account settings are excluded. |
+| Dungeon Master (DM) | `Dungeon Master`, `Spielleiter` | confirmed | The campaign-specific controlling role assigned to the campaign creator in observed source. Do not assume a global identity-provider role. |
+| Campaign member | `Kampagnenspieler` / `Spieler in Kampagne` | confirmed | A player associated with a campaign. Exact admitted/started/review-state permissions remain capability decisions. |
+| Character owner | `Charakterbesitzer` | unresolved | The player allowed to manage a character. Historical owner-only intent conflicts with the observed data model, which has no owner field. |
+| Unrelated authenticated user | — | confirmed | An authenticated player who is neither the resource owner nor a member/DM of the relevant campaign. Used for denial scenarios. |
+| Table screen / display client | `Tischbildschirm`, `Tischansicht` | unresolved | A shared presentation client for the room. Whether it authenticates as DM/member, uses a scoped token, or has another model is task 7's decision. |
+| Shared view | `Tischbildschirm / Online-Gruppe`, `Tisch- oder Online-Übersicht` | proposed | Future generalization of the table view to local or online audiences. |
+| Keycloak | `Keycloak` | confirmed | External identity provider used by the observed authentication flow. It owns authentication/registration and external-account deletion; Dicekeeper owns its synchronized local profile and dependent data. |
+| OpenAI API | `OpenAI API` | future/proposed | External actor shown for AI story, NPC, encounter, rules, and recap candidates; the local chat UI is not evidence of this integration. |
+| Speech-to-text service | `Speech-to-Text Service` | future/proposed | External transcription provider; provider, languages, retention, and failure behavior are unresolved. |
+| Discord | `Discord Server / Discord Bot` | future/proposed | External platform actor for a future online-play integration. |
+| Rules database | `Regelwerk-Datenbank` | future/proposed | Candidate rule corpus/service; source, edition, license/access, and citation behavior are unresolved. |
+
+## Domain terms
+
+| Term | Status | Working definition and boundary |
+| --- | --- | --- |
+| Campaign | confirmed | The persisted top-level game container observed in current source: metadata, creator/DM membership, members, story visibility, maps, and a started flag. It is not automatically a durable session history. |
+| Game / live play | confirmed | The active campaign interaction currently represented by turn, HP, active flags, dice, markers, fog, and decisions. Several state elements are in memory; lifetime is unresolved. |
+| Session | unresolved/future | A bounded play occurrence within a campaign. No separate persistent current entity was found; task 9 decides future lifecycle/history. Do not use “session” as a synonym for login session. |
+| Encounter | unresolved/future | A bounded challenge/combat within a session, potentially with initiative, conditions, effects, and boss behavior. Task 10 owns the model. |
+| Authentication session | confirmed | Browser/server state establishing the current external identity. Use the full phrase to avoid confusion with a play session. |
+| Character | confirmed | A player-facing RPG record containing identity/background/class/ability information and used in campaign submission/review. Ownership is unresolved. |
+| Character draft | proposed current contract | In-progress character-creation input stored in browser session state in the observed frontend. Exact lifetime and recovery promises need task 3. |
+| Character review state | confirmed implementation vocabulary | `NONE`, `PENDING`, `APPROVED`, or `REJECTED` in observed source. Allowed actor/state transitions are not yet accepted. |
+| Campaign membership | confirmed | The association of a player with a campaign, including campaign-specific role and character review fields. |
+| Public campaign | confirmed implementation vocabulary | A campaign discoverable/admissible through the public path in observed source, subject to capacity and other rules. |
+| Private campaign | confirmed implementation vocabulary | A campaign the observed public join endpoint rejects. Invitation/admission behavior is unresolved. |
+| Campaign story | unresolved visibility | DM-oriented story/background data. Detail and list paths currently differ in exposure; task 4 owns the contract. |
+| Map | confirmed | Campaign media presented in cockpit/live/table views and used by markers/fog. Count, shape, switching, replacement, and cleanup rules need task 5. |
+| Marker / group | confirmed implementation vocabulary | Position/group state over a campaign map used to represent players or party positions. Exact ownership and visibility need task 5. |
+| Fog of War | confirmed implementation vocabulary | Hidden/revealed map state. Authority, per-map scope, persistence, undo, and reset are unresolved. |
+| Group decision | confirmed | A question/choice with eligible voters and completion behavior. Current overlapping APIs and tie/quorum semantics need task 6. |
+| Notification | confirmed | A persisted user-facing event/reference with read state in observed source. Recipients, lifecycle, deletion, and navigation need task 4. |
+| Player note | confirmed implementation vocabulary | Private text currently stored in the browser's local storage for player/campaign context. Server/device persistence is not implied. |
+| Live synchronization | confirmed capability boundary | Observable propagation and recovery behavior for campaign updates, including SSE heartbeat/reconnect/revocation concerns. “Real-time” has no unconfirmed latency value. |
+| Media asset | confirmed capability boundary | Uploaded avatar or map content plus derived variants, delivery, validation, access, replacement, and cleanup. |
+| Capability | confirmed process term | A stable OpenSpec path owning one coherent set of normative requirements and scenarios. |
+
+## Status terms
+
+| Term | Meaning |
+| --- | --- |
+| Current | Within the present-application documentation horizon; not proof that every stated contract is implemented or accepted. |
+| Future | Separately identified target behavior that must stay outside the current baseline until accepted. |
+| Observed | Found in static source. It may be incomplete, defective, or unintended. |
+| Accepted / confirmed | Explicitly chosen as controlling behavior or process scope. |
+| Proposed | Candidate/default awaiting acceptance where behavior is consequential. |
+| Implementation gap / deviation | Observed implementation differs from an accepted target; it belongs in a separate corrective change. |
+| Deferred | Accounted for but intentionally not implementation-ready in the current roadmap. |

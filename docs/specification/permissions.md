@@ -1,0 +1,44 @@
+# Permission and Visibility Matrix
+
+## Reading this matrix
+
+This is a cross-capability reconciliation aid, not a replacement for normative capability specifications. “Observed” summarizes static source only. Accepted requirement references control when they differ from observed behavior; unresolved rows remain owned by their later tasks.
+
+| Action / data | Guest | Own account / resource owner | Unrelated authenticated user | Campaign member | Campaign DM | Display client | Observed evidence | Decision owner / requirement |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Start login / provider registration | Allowed to initiate; credentials stay with provider | n/a | n/a | n/a | n/a | n/a | OIDC endpoints and login view; ACC-E01 | `account-access` ACC-001 |
+| Logout / recover expired or failed authentication | No protected access | Own session only; fresh login required after expiry | Same own-session rule | Same own-session rule | Same own-session rule | No account session unless task 7 defines one | Auth service and views; ACC-E01/03 | `account-access` ACC-003–ACC-005 |
+| View private account profile/email | No | Allowed for current player | Denied | No additional access | No additional access | Denied | Full ID endpoint currently overexposes email; PRO-E01 | `player-profiles` PRO-001; DEV-ACC-002 |
+| View contextual public player summary | No | Allowed | Only in an authorized shared workflow | Allowed for relevant campaign participants | Allowed for relevant campaign participants; no email | Receives only separately authorized view data | Campaign views need names/avatars; current endpoint returns too much; PRO-E01 | `player-profiles` PRO-002; consumers tasks 4 and 7 |
+| Edit profile / avatar | No | Username/display name and own avatar only | Denied | No additional access | No additional access | Denied | Current-player checks exist; validation/path mutation gaps; PRO-E02 | `player-profiles` PRO-003/PRO-004; media details task 5 |
+| Delete account and dependents | No | Explicitly confirmed own account only | Denied | Own membership removed | Own campaigns removed through campaign deletion | No | External-first deletion and local cascades; PRO-E03/04 | `player-profiles` PRO-005–PRO-007; character ownership task 3; corrective review task 8 |
+| Create/edit/delete/select character | No | Intended ownership unresolved because model lacks owner field | Authenticated CRUD appears insufficiently scoped | Selection/submission exists | DM access/edit authority unresolved | No | Character resources/views; SRC-05, SRC-10 | Task 3 / `character-library` pending |
+| Create campaign | No | Any authenticated player can become campaign owner/DM | Same | n/a | Creator becomes DM member | No | Campaign resource; SRC-05 | Task 4 / `campaign-management` pending |
+| List/view campaign metadata | Public exposure not established | Allowed through authenticated UI | Raw list/detail exposure differs | Allowed subject to visibility | Allowed | Limited presentation | Campaign resource/DTO; SRC-05 | Task 4 / `campaign-management` pending |
+| View/edit campaign story | No | If campaign DM, edit path exists | Must not see private story; list leak risk | Detail hides story, list exposure differs | Expected read/write | Should not expose private story unless explicitly accepted | Campaign resource/DTO; SRC-05 | Task 4 / `campaign-management` pending |
+| Join public campaign | No | n/a | Authenticated join checks duplicate/capacity | Already-member outcome exists | DM is already a member | No | Membership resource; SRC-05 | Task 4 / `campaign-membership` pending |
+| Join private campaign / invitation | No | n/a | Public join rejects private | No implemented admission contract established | Invitation authority unresolved | No | SRC-05 versus SRC-09/SRC-24 | Task 4 / `campaign-membership` pending |
+| Leave campaign | No | n/a | n/a | UI/use case exists; started/character effects unresolved | Owner/DM leave behavior unresolved | No | SRC-02, membership UI/source | Task 4 / `campaign-membership` pending |
+| List/kick campaign players | No | n/a | No | Cannot manage others unless role says so | Management path exists | Read-only audience unresolved | Campaign member resource/cockpit; SRC-05 | Task 4 / `campaign-membership` pending |
+| Submit/resubmit character | No | Character owner relationship unresolved | Must not submit another player's character | Submission path exists | Reviews rather than submits | No | Membership resource; resubmit authorization differs; SRC-05 | Task 4 / `character-review` pending |
+| Approve/reject character | No | No unless campaign DM | No | No | Review path exists | No | Review resource/view; SRC-05 | Task 4 / `character-review` pending |
+| Read/mark/delete notifications | No | Current-user notifications/read state observed | Must not access another user's notifications | Role-dependent recipients | Role-dependent recipients | No | Notification resource/header; SRC-05 | Task 4 / `notifications` pending |
+| Upload/select/delete campaign maps | No | Resource ownership not independently defined | Must not mutate unrelated campaign | Upload/editor authority inconsistent or incomplete | DM/editor path exists | View only | Campaign/media resources and views; SRC-05 | Task 5 / `media-assets`, `campaign-maps` pending |
+| Fetch original/derived media | Public delivery/listing exists in reviewed source | Allowed but visibility scope unresolved | May currently access public paths | Same ambiguity | Same ambiguity | Needs presentation access | Upload and Imagor resources; SRC-05/SRC-23 | Task 5 / `media-assets` pending |
+| Edit markers/groups/fog | No | n/a | No | Fog save appears member-accessible; other mutations vary | GM UI exposes edit controls | View only by intent | Game action resource/views; SRC-05 | Task 5 / `campaign-maps` pending |
+| View map/fog/markers | No | n/a | Must be denied absent membership | Player view | DM view | Table/shared view | View and SSE sources; SRC-02/SRC-05 | Tasks 5 and 7 / pending |
+| Set turn/HP/active state | No | n/a | No | Authority unclear per endpoint | GM UI exposes controls | View only | Game state/action source; SRC-05 | Task 6 / `live-play` pending |
+| Roll or set dice result | No | Player client submits result | No campaign access | Player rolls; result trust is client-side | DM rolls/manual set path | Displays outcome | Game action/views; SRC-05 | Task 6 / `live-play` pending |
+| Create/close group decision | No | n/a | No | Vote only by intended role | Create/close path intended | Display only | Two APIs and views; SRC-05 | Task 6 / `group-decisions` pending |
+| Vote | No | n/a | No | Duplicate voters rejected in observed persistence | Eligibility as member/DM unresolved | No | Group decision source; SRC-05 | Task 6 / `group-decisions` pending |
+| Read/write player notes | No | Browser-local notes for current player/context | Must remain isolated; key semantics to verify | Own notes only by intent | DM access not established | No | Player view `localStorage`; SRC-05 | Task 6 / `player-notes` pending |
+| Open DM/player/table views | No confirmed public route contract | Depends on campaign role | Must be denied absent membership | Player view | DM/cockpit/table entry | Access model unresolved | Router/views; SRC-05 | Task 7 / `session-views` pending |
+| Subscribe to live events | No | n/a | Membership check should deny | Membership checked at subscription | Membership checked | Access model unresolved | SSE resource/broadcaster; SRC-05 | Task 7 / `live-synchronization` pending |
+
+## Cross-capability checks for later tasks
+
+- Account, campaign, character, map/media, notification, and live-state deletion effects must agree.
+- Campaign list, detail, media delivery, SSE, and table views must enforce the same accepted visibility boundaries.
+- Character-review transitions must agree with character ownership/edit/delete rules and notification recipients.
+- Joining, leaving, kicking, starting, and access revocation must agree with active views and live subscriptions.
+- Browser-local drafts, notes, theme, in-memory game state, and persisted votes must not be described as sharing one lifetime.
