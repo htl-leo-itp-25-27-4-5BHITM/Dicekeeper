@@ -4,112 +4,91 @@
 
 - Coordination change: `specify-dicekeeper-functionality`
 - Schema: `spec-driven`
-- Last completed work package: section 3, **Specify characters** (items 3.1–3.3)
-- Overall coordination progress after this handoff: 11/50 checklist items complete
-- Next work package: section 4, **Specify campaigns and participation**
+- Last completed work package: section 4, **Specify campaigns and participation** (items 4.1–4.4)
+- Overall coordination progress after this handoff: 15/50 checklist items complete
+- Next work package: section 5, **Specify maps and media**
 - Baseline change: [`openspec/changes/document-dicekeeper-baseline/`](../../openspec/changes/document-dicekeeper-baseline/)
-- Baseline state: proposal and specs artifacts are syntactically complete; `account-access`, `player-profiles`, and `character-library` contain the first 3 of 14 capability deltas; design is ready and tasks remain blocked on design, as expected until task 8
-- Character correction change: [`openspec/changes/correct-character-library-boundaries/`](../../openspec/changes/correct-character-library-boundaries/) has a completed proposal and `skip_specs: true`; design/tasks remain intentionally uncreated and no correction is implemented
-- Main specs: still empty; baseline publication and archive remain task 8
+- Baseline state: proposal and specs artifacts are syntactically complete; 7 of 14 capability deltas now exist; design is ready and tasks remain blocked on design as intentionally planned until section 8
+- Character correction change: [`openspec/changes/correct-character-library-boundaries/`](../../openspec/changes/correct-character-library-boundaries/) remains exactly at its prior proposal-only state; section 4 did not edit, advance, or implement it
+- Main specs: still empty; baseline review/publication remains section 8
 - Application code changed: no
-- Blocking issue for starting section 4: none; section 4 must reconcile its character-review transitions with DEC-015–017 and `CHAR-005`–`CHAR-007`
+- Blocking issue for starting section 5: none; section 5 must preserve CAM-003/004's metadata/story boundary and settle media paths, processing, access, replacement, and cleanup before task 8 plans corrections
 
-## Completed in section 3
+## Completed in section 4
 
-- Traced character persistence and DTOs, all authenticated CRUD/read paths, ability-score mutation, class/background/ability catalogs, the creation and selection views, browser-session drafts, campaign submission/review references, direct character deletion, and account-deletion cleanup.
-- Confirmed DEC-015 through DEC-017: one player owner per character, owner-only direct management, campaign-DM contextual read-only access, isolated browser-session drafts, validated level-one completion, review-state edit locks, reference-safe deletion, and separation of future progression.
-- Authored [`character-library`](../../openspec/changes/document-dicekeeper-baseline/specs/character-library/spec.md) with 8 requirements and 39 scenarios covering owner/unrelated-user/guest/DM access, catalogs and invalid references, ability allocation, completion failure, draft recovery/isolation, editing, campaign selection, deletion references, account cleanup, and the level boundary.
-- Reconciled `coverage.md`, `permissions.md`, `decisions.md`, `evidence.md`, `glossary.md`, and `overview.md` with exact requirement references and decision/deviation owners.
-- Recorded seven source-versus-contract deviations as DEV-CHAR-001 through DEV-CHAR-007 and resolved DEV-ACC-005's ownership dependency without changing the accepted task-2 account boundary.
-- Scaffolded [`correct-character-library-boundaries`](../../openspec/changes/correct-character-library-boundaries/) through the CLI and wrote its proposal as an implementation-alignment change. It has no duplicate spec delta because the normative behavior belongs to the baseline.
-- Marked only section 3 checklist items complete and stopped before section 4. No application feature, baseline design/tasks artifact, or campaign/participation capability was authored.
+- Traced campaign persistence/DTOs, CRUD/list/detail/story paths, capacity validation, create/edit/detail/cockpit views, membership/role/join/leave/removal paths, character selection/review transitions, notification persistence/APIs/header navigation, account/campaign cleanup, and the generated workflow guide.
+- Authored [`campaign-management`](../../openspec/changes/document-dicekeeper-baseline/specs/campaign-management/spec.md) with 7 requirements and 37 scenarios.
+- Authored [`campaign-membership`](../../openspec/changes/document-dicekeeper-baseline/specs/campaign-membership/spec.md) with 7 requirements and 31 scenarios.
+- Authored [`character-review`](../../openspec/changes/document-dicekeeper-baseline/specs/character-review/spec.md) with 7 requirements and 33 scenarios, including the closed `NONE`/`PENDING`/`APPROVED`/`REJECTED` transition table.
+- Authored [`notifications`](../../openspec/changes/document-dicekeeper-baseline/specs/notifications/spec.md) with 6 requirements and 27 scenarios.
+- Reconciled campaign/participation decisions, evidence, glossary, permissions, overview, and every task-4 coverage row. All current campaign/participation diagram aliases and ADD-006–009 now have requirement links or explicit disposition.
+- Recorded DEV-CAM-001–004, DEV-MEM-001–003, DEV-REV-001–003, and DEV-NOT-001 for task-8 corrective planning. No corrective change was created or advanced in this section.
+- Marked only section 4 checklist items complete and stopped before section 5.
 
-## Files created or updated in section 3
+## Confirmed section-4 contract
 
-- [`openspec/changes/document-dicekeeper-baseline/specs/character-library/spec.md`](../../openspec/changes/document-dicekeeper-baseline/specs/character-library/spec.md)
-- [`openspec/changes/correct-character-library-boundaries/.openspec.yaml`](../../openspec/changes/correct-character-library-boundaries/.openspec.yaml)
-- [`openspec/changes/correct-character-library-boundaries/proposal.md`](../../openspec/changes/correct-character-library-boundaries/proposal.md)
-- [`docs/specification/decisions.md`](decisions.md)
-- [`docs/specification/evidence.md`](evidence.md)
-- [`docs/specification/glossary.md`](glossary.md)
-- [`docs/specification/permissions.md`](permissions.md)
-- [`docs/specification/coverage.md`](coverage.md)
-- [`docs/specification/overview.md`](overview.md)
-- `docs/specification/handoff.md`
-- [`openspec/changes/specify-dicekeeper-functionality/tasks.md`](../../openspec/changes/specify-dicekeeper-functionality/tasks.md) — section 3 checkboxes only
+- An authenticated creator becomes the campaign's sole owner/DM. Creation is atomic with the DM membership, new campaigns are not started, and the create draft is isolated by player/browser session.
+- Authenticated players may discover sanitized public campaign metadata. Private campaigns are member-only. Story is manually authored, DM-only data and never belongs in public/member list paths or notifications.
+- Capacity counts `PLAYER` memberships and excludes the DM. Public join is available only before start and must enforce the final place atomically. Private self-service admission and invitation codes are not in the current baseline; historical invitations are explicitly deferred.
+- Players may leave and the DM may remove `PLAYER` members before or after start, with confirmation, reference cleanup, and immediate access revocation. The owner-DM cannot leave or be removed.
+- Start is a one-way DM transition requiring at least one player and an existing complete approved character for every player. Maps and story are optional. Started campaigns accept no new members and do not imply persistent session/encounter history.
+- Review permits only `NONE -> PENDING -> APPROVED`, or `NONE -> PENDING -> REJECTED -> PENDING`. The affected player submits/resubmits; the same-campaign DM approves/rejects. Rejected players may correct or replace their owned character; approved references are terminal until membership removal.
+- One owned complete character may be reviewed independently in multiple campaigns. Any pending/approved reference locks editing, any review reference blocks deletion, and removal recalculates locks without deleting the character.
+- Submission/resubmission notifies the DM; approval/rejection notifies the affected player. Notifications are recipient-owned, use authorization-checked destinations, and are cleaned up with their recipient or campaign/membership references.
 
-Foundation and task-2 artifacts remain part of the shared documentation set. No application source, test, runtime configuration, deployment file, baseline design/tasks artifact, or task-4 capability file changed in section 3.
+## Deferred or later-owned boundaries
 
-## Confirmed character-library contract
+- Historical private invitation/access-code behavior is explicitly deferred; it is neither current implementation nor implementation-ready scope.
+- Story presets are not a current capability. AI story generation remains task 11.
+- Persistent sessions/encounters remain task 9; current campaign start is only a one-way campaign flag.
+- Map visibility, original/derived media access, map limits, file validation, Imagor behavior, replacement/deletion cleanup, and display delivery remain section 5.
+- Live-state reset/start propagation remains sections 6–7.
+- Implementation alignment for all recorded deviations remains section 8; `correct-character-library-boundaries` stays untouched.
 
-- Every complete character has exactly one player owner. The owner alone may list, directly read, create, edit, select, or delete it.
-- A campaign DM may read a character only when a membership in that DM's campaign references it. DM status grants no edit, selection, or deletion authority; unrelated users and guests receive no direct character-library data.
-- The class, background, and ability catalogs are authenticated reference data. A complete character requires valid class/background identifiers, exactly one score per available ability, a trimmed 1–100-character name, and an 8–15 allocation costing no more than 27 points.
-- Character completion is all-or-nothing and starts at level one. A failed completion does not expose a partial record as a complete character.
-- An unfinished draft is recoverable only for the same player, browser session, and standalone/campaign context. Completion or explicit discard clears it; corrupt/unavailable draft storage cannot create a partial character.
-- Owners may atomically edit unreferenced or rejected characters. Any pending or approved campaign reference locks editing. Task 4 must use matching review transitions.
-- Campaign selection offers only the current player's complete characters. Selection alone does not mutate the character or review state; task 4 owns submission/resubmission and reuse rules.
-- Any campaign membership reference blocks deletion. Once references are removed, confirmed owner deletion removes the character's ability/skill dependents. Account cleanup deletes only established owned characters after removing references; it never infers ownership from membership alone.
-- The library displays stored level but does not provide progression. Advancement remains separately identified future task-10 scope.
-
-## Deviations and explicit owners
-
-| ID | Remaining discrepancy | Owner before baseline publication |
-| --- | --- | --- |
-| DEV-CHAR-001 | The model has no owner and authenticated character list/read/mutation/deletion is globally scoped; contextual DM read is not distinguished. | `correct-character-library-boundaries`; task 8 corrective review. |
-| DEV-CHAR-002 | Server-side character/reference/ability validation does not enforce the accepted catalog, range, or point-budget contract. | `correct-character-library-boundaries`. |
-| DEV-CHAR-003 | Multi-request creation can leave a partial row, and the edit route starts a creation flow instead of loading the target character. | `correct-character-library-boundaries`. |
-| DEV-CHAR-004 | Draft keys separate standalone/campaign contexts but not authenticated players, and there is no explicit discard action. | `correct-character-library-boundaries`. |
-| DEV-CHAR-005 | Character selection lists every character, and submission checks existence but not ownership or completeness. | `correct-character-library-boundaries`; task 4 owns review transitions. |
-| DEV-CHAR-006 | Direct deletion ignores ownership and campaign references; account cleanup infers character candidates from memberships. | `correct-character-library-boundaries`; task 8 cross-capability deletion review; resolves DEV-ACC-005's task-3 dependency. |
-| DEV-CHAR-007 | Generic patch accepts level changes and does not enforce pending/approved edit locks. | `correct-character-library-boundaries`; task 4 aligns review states; task 10 owns future progression. |
-
-Task-2 deviations DEV-ACC-001 through DEV-ACC-004 remain owned by task 8. DEV-ACC-005 now has the accepted owner-based resolution above, but its implementation correction remains open as DEV-CHAR-006.
-
-## Relevant paths for section 4
+## Relevant paths for section 5
 
 Planning and shared context:
 
 - `openspec/changes/specify-dicekeeper-functionality/{proposal.md,design.md,tasks.md}`
-- `openspec/changes/document-dicekeeper-baseline/{.openspec.yaml,proposal.md,specs/account-access/spec.md,specs/player-profiles/spec.md,specs/character-library/spec.md}`
-- `openspec/changes/correct-character-library-boundaries/{.openspec.yaml,proposal.md}`
+- `openspec/changes/document-dicekeeper-baseline/{.openspec.yaml,proposal.md,specs/**/spec.md}`
 - `docs/specification/{runbook.md,evidence.md,decisions.md,coverage.md,glossary.md,permissions.md,handoff.md,overview.md}`
 
-Campaign, membership, review, and notification evidence to inspect:
+Map and media evidence to inspect:
 
 - `src/main/java/campaign/Campaign.java`
 - `src/main/java/campaign/CampaignDTO.java`
 - `src/main/java/campaign/CampaignResource.java`
 - `src/main/java/campaign/CampaignDeletionService.java`
-- `src/main/java/campaign/CampaignPlayer.java`
-- `src/main/java/campaign/CampaignPlayerResource.java`
-- `src/main/java/campaign/CharacterSubmitDTO.java`
-- `src/main/java/campaign/CharacterRejectDTO.java`
-- `src/main/java/notification/Notification.java`
-- `src/main/java/notification/NotificationResource.java`
-- `src/main/resources/META-INF/resources/app/views/CampaignsView.js`
+- `src/main/java/campaign/GameActionResource.java`
+- `src/main/java/campaign/GameState.java`
+- `src/main/java/tool/UploadServeResource.java`
+- `src/main/java/tool/ImagorSignedImageResource.java`
+- `src/main/java/tool/UploadPermissionUtil.java`
+- `src/main/java/player/PlayerResource.java`
+- `src/main/resources/META-INF/resources/app/components/mapCanvas.js`
+- `src/main/resources/META-INF/resources/app/components/mapCropModal.js`
+- `src/main/resources/META-INF/resources/app/services/utils.js`
 - `src/main/resources/META-INF/resources/app/views/CampaignCreateView.js`
 - `src/main/resources/META-INF/resources/app/views/CampaignDetailView.js`
-- `src/main/resources/META-INF/resources/app/views/CharacterSelectView.js`
-- `src/main/resources/META-INF/resources/app/views/CharacterReviewView.js`
-- `src/main/resources/META-INF/resources/app/components/header.js`
+- `src/main/resources/META-INF/resources/app/views/CockpitView.js`
+- `src/main/resources/META-INF/resources/app/views/GMView.js`
+- `src/main/resources/META-INF/resources/app/views/PlayerView.js`
+- `src/main/resources/META-INF/resources/app/views/TableView.js`
 
-Section 4 owns `campaign-management`, `campaign-membership`, `character-review`, and `notifications`. It must preserve `CHAR-001`/`CHAR-006` owner checks; align `NONE`/`PENDING`/`APPROVED`/`REJECTED` transitions with `CHAR-005` edit locks and `CHAR-007` reference deletion; and decide how leaving, kicking, resubmission, replacement, or campaign deletion removes a character reference.
+Section 5 owns only `media-assets` and `campaign-maps`. It must preserve the sanitized campaign boundary in CAM-003, the DM-only story rule in CAM-004, campaign deletion linkage in CAM-007, and the member/nonmember access rules in MEM-001/004–007.
 
 ## Verification performed
 
 | Check / command | Result |
 | --- | --- |
-| `git diff --check` | Passed; no whitespace errors. |
-| `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive` | Passed with all three authored baseline capability deltas. This validates the current deltas, not semantic completeness of the remaining 11 proposal capabilities. |
-| `openspec show document-dicekeeper-baseline --json --deltas-only` | Parsed 20 requirements total: 5 account-access/14 scenarios, 7 player-profiles/25 scenarios, and 8 character-library/39 scenarios. Every parsed requirement contains scenarios. |
-| `openspec validate correct-character-library-boundaries --type change --strict --no-interactive` | Passed; `skip_specs: true` correctly records that it aligns implementation to the baseline rather than changing product requirements. |
-| `openspec validate specify-dicekeeper-functionality --type change --strict --no-interactive` | Passed; the coordination-only change still validly uses `skip_specs`. |
-| `openspec status --change document-dicekeeper-baseline --json` | Proposal/specs `done`; design `ready`; tasks blocked only on design. The baseline remains intentionally incomplete: 11 capability files, design, and tasks are outstanding for tasks 4–8. |
-| `openspec status --change correct-character-library-boundaries --json` | Proposal `done`, specs `skipped`, design `ready`, tasks blocked on design. No implementation work is authorized or complete. |
-| Permission/validation/deletion semantic review | Owner, unrelated-user, guest, contextual-DM, invalid reference/allocation, draft failure/isolation, review lock, referenced deletion, missing character, dependent cleanup, and account cleanup cases have requirements or explicit task-4 owners. |
-| Application tests/runtime | Not run; section 3 is documentation-only and all implementation evidence remains static/source-observed. |
+| `./mvnw -Dtest=CampaignValidationTest test` | Passed: 3 tests, 0 failures/errors/skips. This supports only positive/null versus non-positive capacity validation, not campaign workflows. |
+| `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive` | Passed with all seven authored baseline capability deltas. This validates their schema, not semantic completeness of the remaining seven proposal capabilities. |
+| `openspec show document-dicekeeper-baseline --json --deltas-only` | Parsed 47 requirements and 206 scenarios total. Section 4 contributes 27 requirements and 128 scenarios: CAM 7/37, MEM 7/31, REV 7/33, NOT 6/27. |
+| `openspec instructions apply --change specify-dicekeeper-functionality --json` | Ready; 15/50 complete, 35 remaining; next incomplete item is 5.1. |
+| Campaign/participation semantic review | Create/edit/delete, public/private list/detail/story, capacity, join/leave/kick/start, all allowed and forbidden review transitions, reuse/locks, recipient/read/delete/navigation, invitations, and dependent cleanup have requirements or explicit deferral. |
+| Application runtime | Not run. Apart from the targeted unit test above, implementation evidence remains static/source-observed. |
+| Application implementation | None. No source, runtime configuration, deployment, baseline design/tasks, main spec, or corrective-change artifact was changed. |
 
 ## Exact next instruction
 
-> Execute task 4 of `specify-dicekeeper-functionality`. Read the shared decisions, coverage, permissions, evidence, glossary, runbook, and this handoff, plus the three existing baseline capability specs and the character correction proposal. Run the OpenSpec status/instructions workflow before writing. Trace only campaign CRUD/list/detail, membership/admission/capacity/start behavior, character-review transitions, notifications, and the listed views/resources. Resolve story/list visibility, private admission/invitations, start prerequisites, admission after start, and the `NONE`/`PENDING`/`APPROVED`/`REJECTED` transition table. Preserve character owner-only selection, contextual DM read-only access, pending/approved edit locks, and reference-safe deletion from `CHAR-001`/`CHAR-005`–`CHAR-007`. Author only `campaign-management`, `campaign-membership`, `character-review`, and `notifications` in `document-dicekeeper-baseline`, update the shared matrices and this handoff, validate the touched artifacts, mark only section 4 items complete, and stop before section 5. Do not implement application features or advance `correct-character-library-boundaries`.
+> `$openspec-apply-change specify-dicekeeper-functionality` — Execute only section 5, **Specify maps and media** (items 5.1–5.3). Read the shared documentation and all seven existing baseline capability specs, run the OpenSpec status/instructions workflow, trace only map/media sources, author only `media-assets` and `campaign-maps`, update shared documentation and this handoff, validate, mark only section 5 complete, and stop before section 6. Do not implement application features or advance `correct-character-library-boundaries`.

@@ -32,10 +32,10 @@ Depends on section 2.
 
 Depends on section 3.
 
-- [ ] 4.1 Trace `CampaignResource`, `CampaignDTO`, membership APIs, and campaign views; resolve listing/detail/story visibility, capacity, private admission, and start prerequisites, then write `campaign-management` and `campaign-membership` requirements, verifying create/edit/delete/join/leave/kick/start and denied-access scenarios.
-- [ ] 4.2 Write `character-review` requirements using a transition table for NONE/PENDING/APPROVED/REJECTED; resolve resubmission authorization and edits/deletion after approval, verifying each allowed transition and each forbidden actor/state combination has a scenario or documented gap.
-- [ ] 4.3 Write `notifications` requirements for recipients, triggering events, read/unread/delete, references, and navigation; verify submission/rejection/approval scenarios agree with the review transitions and account permissions.
-- [ ] 4.4 Validate the four capability drafts and reconcile deletion, invitations, and start behavior with earlier decisions; update coverage/handoff and verify every campaign/participation use case has a requirement reference or explicit disposition.
+- [x] 4.1 Trace `CampaignResource`, `CampaignDTO`, membership APIs, and campaign views; resolve listing/detail/story visibility, capacity, private admission, and start prerequisites, then write `campaign-management` and `campaign-membership` requirements, verifying create/edit/delete/join/leave/kick/start and denied-access scenarios.
+- [x] 4.2 Write `character-review` requirements using a transition table for NONE/PENDING/APPROVED/REJECTED; resolve resubmission authorization and edits/deletion after approval, verifying each allowed transition and each forbidden actor/state combination has a scenario or documented gap.
+- [x] 4.3 Write `notifications` requirements for recipients, triggering events, read/unread/delete, references, and navigation; verify submission/rejection/approval scenarios agree with the review transitions and account permissions.
+- [x] 4.4 Validate the four capability drafts and reconcile deletion, invitations, and start behavior with earlier decisions; update coverage/handoff and verify every campaign/participation use case has a requirement reference or explicit disposition.
 
 ## 5. Specify maps and media
 
