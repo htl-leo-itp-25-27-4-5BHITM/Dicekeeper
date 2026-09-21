@@ -41,9 +41,9 @@ Depends on section 3.
 
 Depends on section 4.
 
-- [ ] 5.1 Trace map upload/select/delete, browser cropping, upload serving, and Imagor behavior; write `media-assets` requirements, verifying file validation, access, processing failure, fallback, and cleanup scenarios against observed code and confirmed target decisions.
-- [ ] 5.2 Resolve map limits, marker/group operations, fog authority, and exploration-versus-tactical scope; write `campaign-maps` requirements, verifying map-switch, reveal/hide, unauthorized-edit, undo/reset, and deletion scenarios.
-- [ ] 5.3 Validate map/media drafts and review the visibility matrix against all asset delivery paths; update evidence/coverage/handoff and verify historical backlog reports are labeled as verified, contradicted, unresolved, or superseded.
+- [x] 5.1 Trace map upload/select/delete, browser cropping, upload serving, and Imagor behavior; write `media-assets` requirements, verifying file validation, access, processing failure, fallback, and cleanup scenarios against observed code and confirmed target decisions.
+- [x] 5.2 Resolve map limits, marker/group operations, fog authority, and exploration-versus-tactical scope; write `campaign-maps` requirements, verifying map-switch, reveal/hide, unauthorized-edit, undo/reset, and deletion scenarios.
+- [x] 5.3 Validate map/media drafts and review the visibility matrix against all asset delivery paths; update evidence/coverage/handoff and verify historical backlog reports are labeled as verified, contradicted, unresolved, or superseded.
 
 ## 6. Specify live play
 

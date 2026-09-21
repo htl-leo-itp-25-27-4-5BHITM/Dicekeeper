@@ -40,14 +40,15 @@ Definitions are organizational unless a capability spec makes them normative. `C
 | Public campaign | confirmed | An authenticated-discoverable campaign that accepts self-service join only while not started and below its `PLAYER` capacity. Public visibility never exposes story or raw review data. |
 | Private campaign | confirmed | A campaign visible only to existing members. The current baseline has no self-service, invitation-code, or manual-add admission path; historical invitations are deferred. |
 | Campaign story | confirmed | Manually authored DM-only story/background text. It is excluded from public/member reads and notifications; AI assistance is future task-11 scope. |
-| Map | confirmed | Campaign media presented in cockpit/live/table views and used by markers/fog. Count, shape, switching, replacement, and cleanup rules need task 5. |
-| Marker / group | confirmed implementation vocabulary | Position/group state over a campaign map used to represent players or party positions. Exact ownership and visibility need task 5. |
-| Fog of War | confirmed implementation vocabulary | Hidden/revealed map state. Authority, per-map scope, persistence, undo, and reset are unresolved. |
+| Map | confirmed current contract | One of at most five optional images owned by a campaign. The DM selects the active map; each map anchors its own markers, fog, and undo history. Positive square, wide, and custom crops are accepted without tactical-grid semantics. |
+| Marker / group | confirmed current contract | A DM-managed normalized position on one map. Player markers may be grouped or split without losing or duplicating current campaign players; structure, quest, and checkpoint markers are not player groups. |
+| Fog of War | confirmed current contract | DM-controlled per-map hidden/revealed presentation. Non-DM viewers receive only the fog-respecting presentation; setup movement does not reveal areas, and confirmed fog reset is undoable. |
+| Map viewport | confirmed | One client's local pan and zoom. Resetting the viewport does not mutate shared markers, fog, active-map selection, or undo state. |
 | Group decision | confirmed | A question/choice with eligible voters and completion behavior. Current overlapping APIs and tie/quorum semantics need task 6. |
 | Notification | confirmed | A persisted recipient-owned review event with unread/read state and authorization-checked navigation. Submission/resubmission targets the DM; approval/rejection targets the affected player. |
 | Player note | confirmed implementation vocabulary | Private text currently stored in the browser's local storage for player/campaign context. Server/device persistence is not implied. |
 | Live synchronization | confirmed capability boundary | Observable propagation and recovery behavior for campaign updates, including SSE heartbeat/reconnect/revocation concerns. “Real-time” has no unconfirmed latency value. |
-| Media asset | confirmed capability boundary | Uploaded avatar or map content plus derived variants, delivery, validation, access, replacement, and cleanup. |
+| Media asset | confirmed current contract | A validated JPEG/PNG original owned by one profile or campaign, together with its authorization-equivalent derived variants, opaque reference, fallback, replacement, and cleanup obligations. |
 | Capability | confirmed process term | A stable OpenSpec path owning one coherent set of normative requirements and scenarios. |
 
 ## Status terms
