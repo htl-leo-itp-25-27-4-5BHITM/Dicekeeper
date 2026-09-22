@@ -49,10 +49,10 @@ Depends on section 4.
 
 Depends on section 5.
 
-- [ ] 6.1 Trace `GameState`, live action endpoints, and GM/player views; resolve dice trust and state/reset behavior, then write `live-play` requirements for turns, HP, active players, and dice, verifying authority, invalid values, repeated initialization, and reset scenarios.
-- [ ] 6.2 Reconcile the two decision APIs and resolve vote eligibility, duplicate handling, ties, quorum, late joins/leaves, and manual closure; write `group-decisions` requirements and verify persisted-state and actor/state-transition scenarios.
-- [ ] 6.3 Write `player-notes` requirements from the localStorage behavior and confirmed persistence intent; verify per-player/campaign isolation and refresh/device expectations, recording any server-persistence requirement as a separate proposed change.
-- [ ] 6.4 Validate the live-play, decision, and notes drafts; update coverage/handoff and verify each state field has an explicit lifetime and each known implementation deviation has a disposition.
+- [x] 6.1 Trace `GameState`, live action endpoints, and GM/player views; resolve dice trust and state/reset behavior, then write `live-play` requirements for turns, HP, active players, and dice, verifying authority, invalid values, repeated initialization, and reset scenarios.
+- [x] 6.2 Reconcile the two decision APIs and resolve vote eligibility, duplicate handling, ties, quorum, late joins/leaves, and manual closure; write `group-decisions` requirements and verify persisted-state and actor/state-transition scenarios.
+- [x] 6.3 Write `player-notes` requirements from the localStorage behavior and confirmed persistence intent; verify per-player/campaign isolation and refresh/device expectations, recording any server-persistence requirement as a separate proposed change.
+- [x] 6.4 Validate the live-play, decision, and notes drafts; update coverage/handoff and verify each state field has an explicit lifetime and each known implementation deviation has a disposition.
 
 ## 7. Specify views and synchronization
 
