@@ -58,9 +58,9 @@ Depends on section 5.
 
 Depends on section 6.
 
-- [ ] 7.1 Write `session-views` requirements and the DM/player/table visibility matrix, resolving the display client's access model and supported desktop/tablet/mobile behavior; verify displayed data and available actions agree with upstream capability permissions.
-- [ ] 7.2 Trace SSE subscriptions/events and frontend recovery paths; write `live-synchronization` requirements for update propagation, reconnect, stale clients, revoked membership, and restart, verifying each outcome is observable and distinguishes source evidence from proposed reliability improvements.
-- [ ] 7.3 Resolve measurable usability/accessibility and performance/recovery criteria without inventing values; validate the two drafts, update coverage/handoff, and verify unresolved criteria prevent the affected change from being labeled implementation-ready.
+- [x] 7.1 Write `session-views` requirements and the DM/player/table visibility matrix, resolving the display client's access model and supported desktop/tablet/mobile behavior; verify displayed data and available actions agree with upstream capability permissions.
+- [x] 7.2 Trace SSE subscriptions/events and frontend recovery paths; write `live-synchronization` requirements for update propagation, reconnect, stale clients, revoked membership, and restart, verifying each outcome is observable and distinguishes source evidence from proposed reliability improvements.
+- [x] 7.3 Resolve measurable usability/accessibility and performance/recovery criteria without inventing values; validate the two drafts, update coverage/handoff, and verify unresolved criteria prevent the affected change from being labeled implementation-ready.
 
 ## 8. Review and publish the current baseline
 
