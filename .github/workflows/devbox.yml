@@ -1,0 +1,83 @@
+name: Build and Deploy Development Box
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - devbox/**
+      - k8s/devbox/**
+      - scripts/devbox.sh
+      - docs/development-box.md
+      - .github/workflows/devbox.yml
+
+env:
+  IMAGE: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper-devbox
+  NAMESPACE: student-it200233
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish development image
+        uses: docker/build-push-action@v6
+        with:
+          context: devbox
+          file: devbox/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:development
+          cache-from: type=gha,scope=dicekeeper-devbox
+          cache-to: type=gha,mode=max,scope=dicekeeper-devbox
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Render immutable Deployment
+        run: |
+          sed "s|${IMAGE}:development|${IMAGE}:${GITHUB_SHA}|g" \
+            k8s/devbox/deployment.yaml > "$RUNNER_TEMP/devbox-deployment.yaml"
+
+      - name: Validate workspace manifests
+        run: |
+          kubectl -n "$NAMESPACE" apply --dry-run=client -f k8s/devbox/pvc.yaml
+          kubectl -n "$NAMESPACE" apply --dry-run=client -f k8s/devbox/service.yaml
+          kubectl -n "$NAMESPACE" apply --dry-run=client -f "$RUNNER_TEMP/devbox-deployment.yaml"
+          kubectl -n "$NAMESPACE" apply --dry-run=server -f k8s/devbox/pvc.yaml
+          kubectl -n "$NAMESPACE" apply --dry-run=server -f k8s/devbox/service.yaml
+          kubectl -n "$NAMESPACE" apply --dry-run=server -f "$RUNNER_TEMP/devbox-deployment.yaml"
+
+      - name: Apply workspace manifests
+        run: |
+          kubectl -n "$NAMESPACE" apply -f k8s/devbox/pvc.yaml
+          kubectl -n "$NAMESPACE" apply -f k8s/devbox/service.yaml
+          kubectl -n "$NAMESPACE" apply -f "$RUNNER_TEMP/devbox-deployment.yaml"
+
+      - name: Wait for workspace rollout
+        run: kubectl -n "$NAMESPACE" rollout status deployment/dicekeeper-devbox --timeout=600s
+
+      - name: Verify installed toolchain
+        run: kubectl -n "$NAMESPACE" exec deployment/dicekeeper-devbox -- verify-devbox-toolchain

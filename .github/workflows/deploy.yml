@@ -3,6 +3,13 @@ name: Deploy to Kubernetes
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - devbox/**
+      - k8s/devbox/**
+      - scripts/devbox.sh
+      - docs/development-box.md
+      - .github/workflows/devbox.yml
+      - openspec/changes/add-kubernetes-development-box/**
   workflow_dispatch:
 
 env:

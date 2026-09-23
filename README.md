@@ -172,6 +172,9 @@ Dicekeeper verwendet bewusst einen festen OIDC-Callback statt dynamischer Redire
 
 ## Development Deployment auf dev.dicekeeper.net
 
+Die persistente Kubernetes-Entwicklungsbox fuer Build, Test und Quarkus Dev Mode ist in
+[docs/development-box.md](docs/development-box.md) dokumentiert.
+
 Neben Production auf `dicekeeper.net` gibt es eine getrennte Kubernetes-Umgebung fuer den Branch `develop`.
 
 - `main` deployed Production mit den bisherigen Manifests unter [k8s](/Users/blauregen/School/SEW/Dicekeeper/k8s)
