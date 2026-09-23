@@ -91,9 +91,9 @@ Depends on section 8 and section 9 where shared entities are required.
 
 Depends on section 9 and on section 10 for encounter recommendations.
 
-- [ ] 11.1 Resolve accepted story/quest/NPC/encounter-assistance and recap workflows, context sources, lore authority, DM acceptance/editing, audience, and usage limits; verify the decision log identifies every external input and who may see the resulting content.
-- [ ] 11.2 Create future planning artifacts for `ai-campaign-assistance` and `session-recaps`; verify scenarios include accepted/rejected suggestions, missing context, contradictory lore, provider failure, and unavailable capacity, without assuming existing local chat is an AI integration.
-- [ ] 11.3 Validate the future change(s), update coverage/dependencies/handoff, and verify proposed AI behavior stays separate from current main specs and any deferred features have explicit dispositions.
+- [x] 11.1 Resolve accepted story/quest/NPC/encounter-assistance and recap workflows, context sources, lore authority, DM acceptance/editing, audience, and usage limits; verify the decision log identifies every external input and who may see the resulting content.
+- [x] 11.2 Create future planning artifacts for `ai-campaign-assistance` and `session-recaps`; verify scenarios include accepted/rejected suggestions, missing context, contradictory lore, provider failure, and unavailable capacity, without assuming existing local chat is an AI integration.
+- [x] 11.3 Validate the future change(s), update coverage/dependencies/handoff, and verify proposed AI behavior stays separate from current main specs and any deferred features have explicit dispositions.
 
 ## 12. Specify rule assistance
 

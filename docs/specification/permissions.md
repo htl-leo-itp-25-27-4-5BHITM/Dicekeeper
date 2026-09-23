@@ -51,7 +51,7 @@ These rows describe the validated but unimplemented [`add-campaign-content-and-s
 | Create/update/activate/complete/archive/delete sessions or encounters | Denied | Denied | Read-only; no mutation | Sole lifecycle authority; hard delete only for never-used planned records | Denied | `session-records` SES-001–SES-004 |
 | Read session, encounter, and event history | Denied | Denied after membership loss | `MEMBERS` records/events only, with private fields omitted | Full authorized history and DM-only fields | Denied | `session-records` SES-005–SES-008 |
 | Add manual events or correct/redact history | Denied | Denied | Denied | May append narrative events and immutable amendments; cannot forge source outcomes | Denied | `session-records` SES-006, SES-007 |
-| Obtain recap-input projection | Denied | Denied | Member-safe projection for shared completed/archived sessions | DM-authorized projection | Denied | `session-records` SES-009; generation and external transmission remain task 11 |
+| Obtain recap-input projection | Denied | Denied | Member-safe projection for shared completed/archived sessions | DM-authorized projection | Denied | `session-records` SES-009; generation and external transmission are separately governed by `session-recaps` and remain unimplemented |
 
 ## Accepted future combat and progression matrix
 
@@ -69,6 +69,20 @@ These rows describe the validated but unimplemented [`add-combat-automation-and-
 | Advance character level | Denied | Denied | Character owner only; one confirmed level at a time, pending review blocks | Read-only for a referenced character; no mutation authority | Denied | `character-progression` PRG-001–PRG-004 |
 | Read level and progression history | Denied | Denied after reference/membership loss | Owner receives own full history; other current participants receive current shared level only | Read-only level/history through an authorized campaign character reference | Presented player display name and current level only | `character-progression` PRG-005, PRG-006 |
 
+## Accepted future AI assistance and recap matrix
+
+These rows describe the validated but unimplemented [`add-ai-campaign-assistance-and-session-recaps`](../../openspec/changes/add-ai-campaign-assistance-and-session-recaps/) plan. They consume only authorized section-9/10 projections and do not broaden the published current baseline.
+
+| Action / data | Guest | Unrelated authenticated user / former member | Current campaign member | Campaign DM | Display client | Future requirement |
+| --- | --- | --- | --- | --- | --- | --- |
+| Request story/quest/NPC/place/encounter/boss assistance | Denied | Denied | Denied | Sole authority; explicitly selects and confirms the bounded external-provider context manifest | Denied | `ai-campaign-assistance` AIA-001–AIA-003 |
+| Read/edit/reject/accept AI suggestion | Denied | Denied | Denied, including accepted preparation drafts | Sole authority over DM-only draft lifecycle and provenance | Denied | `ai-campaign-assistance` AIA-004–AIA-007 |
+| Commit accepted story/NPC/place/quest suggestion | Denied | Denied | Denied | Separate explicit validated commit through the owning capability; acceptance alone mutates nothing | Denied | `ai-campaign-assistance` AIA-006 |
+| Apply encounter/boss advice to deterministic state | Unsupported | Unsupported | Unsupported | No direct apply path; DM must use separately authorized session/combat commands | Unsupported | `ai-campaign-assistance` AIA-006/AIA-009; `combat-automation` remains authoritative |
+| Request/review a session recap | Denied | Denied | Denied | Sole authority for one completed/archived session using the selected DM-only or member-safe projection | Denied | `session-recaps` REC-001–REC-005 |
+| Read accepted session recap | Denied | Denied after membership loss | Only an accepted, explicitly published `MEMBERS` recap generated from member-safe inputs | May read DM-only and member versions plus authorized provenance | Denied | `session-recaps` REC-006/REC-007 |
+| Execute recap next steps or generated rule/item/progression content | Unsupported | Unsupported | Unsupported | Unsupported; reviewed prose creates no product-state mutation | Unsupported | `session-recaps` REC-005/REC-009; DEC-049 |
+
 ## Cross-capability checks for later tasks
 
 - Account, campaign, character, map/media, notification, decision, live-state, and subscription deletion effects agree in the published baseline; later changes must preserve or explicitly modify those linked contracts.
@@ -79,4 +93,6 @@ These rows describe the validated but unimplemented [`add-combat-automation-and-
 - Future campaign content and session records add durable DM/member projections without changing current player-note privacy, display-client fields, or ephemeral live-state recovery. Event snapshots never grant broader access to their referenced records.
 - Future combat state is durable only inside its active encounter aggregate, is written to section-9 history exactly once per accepted command, and never reconstructs or silently replaces current campaign-wide `live-play`. The DM controls combat; players submit only their own initiative and otherwise consume the bounded shared projection.
 - Future tracked-level progression remains character-owner controlled. Campaign DMs read referenced history only; other players/table receive current level only; the transition never implies skill/class/HP/item/reward mechanics.
+- Future AI context leaves Dicekeeper only after a DM reviews an explicit manifest. Provider output remains a DM-only untrusted draft until acceptance; only story/NPC/place/quest suggestions have a separate ordinary-domain commit, while encounter/boss advice never mutates deterministic state directly.
+- Future member recaps are generated only from the member-safe section-9 projection. A DM-only draft cannot be relabeled or post-filtered for members, and membership revocation removes later access.
 - These reconciliations are accepted documentation, not evidence that the source already conforms; correction remains separate from the baseline.
