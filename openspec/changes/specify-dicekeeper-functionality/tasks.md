@@ -83,9 +83,9 @@ Depends on section 8.
 
 Depends on section 8 and section 9 where shared entities are required.
 
-- [ ] 10.1 Resolve rules edition, supported advancement and conditions/effects, initiative ties/groups, boss mechanics, and expected encounter scale; verify every historical combat/progression candidate has an accepted, excluded, or deferred disposition.
-- [ ] 10.2 Create bounded future planning artifacts for accepted `combat-automation` and `character-progression` scope; verify scenarios describe deterministic outcomes, manual overrides, validation, and view visibility, with AI encounter suggestions owned by section 11.
-- [ ] 10.3 Validate the relevant change(s), update coverage/dependencies/handoff, and verify neither undocumented rules nor unresolved behavior is hidden inside implementation tasks; record explicit deferrals where applicable.
+- [x] 10.1 Resolve rules edition, supported advancement and conditions/effects, initiative ties/groups, boss mechanics, and expected encounter scale; verify every historical combat/progression candidate has an accepted, excluded, or deferred disposition.
+- [x] 10.2 Create bounded future planning artifacts for accepted `combat-automation` and `character-progression` scope; verify scenarios describe deterministic outcomes, manual overrides, validation, and view visibility, with AI encounter suggestions owned by section 11.
+- [x] 10.3 Validate the relevant change(s), update coverage/dependencies/handoff, and verify neither undocumented rules nor unresolved behavior is hidden inside implementation tasks; record explicit deferrals where applicable.
 
 ## 11. Specify AI preparation and recaps
 
@@ -99,7 +99,7 @@ Depends on section 9 and on section 10 for encounter recommendations.
 
 Depends on section 8 and the rules-edition decision from section 10.
 
-- [ ] 12.1 Resolve the rule source corpus, access, edition selection, citation format, and handling of uncertain/conflicting answers; verify these choices are recorded before any dependent implementation tasks are authored.
+- [ ] 12.1 Resolve the D&D 5e (2024) rule source corpus, license/access, citation format, and handling of uncertain/conflicting answers; verify these choices are recorded before any dependent implementation tasks are authored.
 - [ ] 12.2 Create the accepted `rule-assistance` planning change; verify scenarios cover supported queries, source references, missing evidence, wrong-edition material, and failures, then run strict change validation and update coverage/handoff or record explicit deferral.
 
 ## 13. Specify audio and decide voice-command scope

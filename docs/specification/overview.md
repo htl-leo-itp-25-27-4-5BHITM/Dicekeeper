@@ -2,7 +2,7 @@
 
 ## Status
 
-This directory is the shared entry point for the Dicekeeper functional specification. Sections 1–9 of the documentation runbook are complete. On 2026-09-22 the accepted current baseline passed semantic review and strict validation, and its 14 capabilities were published as main OpenSpec specifications with 102 requirements and 447 scenarios. On 2026-09-23 section 9 added a separately validated future plan for campaign content and durable session records; none of its 15 implementation tasks was executed.
+This directory is the shared entry point for the Dicekeeper functional specification. Sections 1–10 of the documentation runbook are complete. On 2026-09-22 the accepted current baseline passed semantic review and strict validation, and its 14 capabilities were published as main OpenSpec specifications with 102 requirements and 447 scenarios. On 2026-09-23 sections 9 and 10 added separately validated future plans for campaign content/session records and bounded combat/tracked-level progression; none of their 15 or 20 implementation tasks was executed.
 
 The confirmed documentation scope is the accepted current contract plus a separately identified future scope. The publication record is archived under [`2026-09-22-document-dicekeeper-baseline`](../../openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/). Accepted future behavior remains outside the main specs and is not delivered merely because its owning section has produced a bounded follow-on change.
 
@@ -45,6 +45,7 @@ The capability names above are the confirmed flat organization of the published 
 
 - [`correct-character-library-boundaries`](../../openspec/changes/correct-character-library-boundaries/) remains an open proposal for `DEV-CHAR-001`–`DEV-CHAR-007` and the character-ownership part of `DEV-ACC-005`. It has no design or implementation tasks and was not advanced by section 8.
 - [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) is a complete, strictly valid future plan for two new capabilities, with 18 requirements, 75 scenarios, and 0/15 implementation tasks complete. It has not been applied, archived, or promoted into the current baseline.
+- [`add-combat-automation-and-character-progression`](../../openspec/changes/add-combat-automation-and-character-progression/) is a complete, strictly valid future plan for two new capabilities, with 17 requirements, 88 scenarios, and 0/20 implementation tasks complete. It has not been applied, archived, or promoted into the current baseline; unanswered conditions/effects and full-sheet progression remain explicit deferrals.
 - The remaining accepted-contract implementation gaps are grouped and linked in the [implementation deviation index](coverage.md#implementation-deviation-index). They remain outside the normative baseline and require separately scoped corrective planning before implementation.
 - The quantitative view/synchronization target gate and all future product decisions remain listed in [`decisions.md`](decisions.md#open-decision-gates). Current, missing, and future behavior therefore remain distinguishable without relying on the publication conversation.
 
@@ -53,9 +54,9 @@ The capability names above are the confirmed flat organization of the published 
 | Owning task | Candidate capability | Status |
 | --- | --- | --- |
 | 9 | [`campaign-content`](../../openspec/changes/add-campaign-content-and-session-records/specs/campaign-content/spec.md), [`session-records`](../../openspec/changes/add-campaign-content-and-session-records/specs/session-records/spec.md) | Future plan accepted and strictly valid; DM-owned NPC/place/quest/lore plus durable session/encounter history are specified, items/loot are deferred, and implementation remains 0/15. |
-| 10 | `combat-automation`, `character-progression` | Future; rules edition and supported mechanics unresolved. |
+| 10 | [`combat-automation`](../../openspec/changes/add-combat-automation-and-character-progression/specs/combat-automation/spec.md), [`character-progression`](../../openspec/changes/add-combat-automation-and-character-progression/specs/character-progression/spec.md) | Future plan accepted and strictly valid; D&D 5e (2024) encounter combat, reference scale, groups/ties, manual HP/boss state, views/history, and owner-controlled one-level tracking are specified, explicit mechanics are deferred, and implementation remains 0/20. |
 | 11 | `ai-campaign-assistance`, `session-recaps` | Future; context, authority, review, audience, failure, and limits unresolved. |
-| 12 | `rule-assistance` | Future; rule corpus, edition, citation, and uncertainty behavior unresolved. |
+| 12 | `rule-assistance` | Future; the edition is fixed to D&D 5e (2024), while rule-corpus access, citation, and uncertainty behavior remain unresolved. |
 | 13 | `audio-transcription`; conditional `voice-commands` | Future; transcription is distinct from executable commands and both require decisions. |
 | 14 | `discord-integration` | Future; first workflows, association model, audience, and optional audio unresolved. |
 
@@ -67,3 +68,4 @@ The capability names above are the confirmed flat organization of the published 
 - Historical Notion notes and sprint backlogs are candidates, not accepted requirements.
 - The Markdown, DOT, and SVG use-case renderings are duplicate representations of the two PlantUML sources and are not independent corroboration.
 - Main specifications contain the accepted current baseline. Their presence establishes an approved contract, not implementation conformance or runtime verification.
+- Future combat/progression planning preserves AI encounter suggestions for section 11, rule-corpus choices for section 12, and the existing item/loot deferral; no implementation task may absorb those boundaries silently.

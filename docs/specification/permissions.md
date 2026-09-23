@@ -53,6 +53,22 @@ These rows describe the validated but unimplemented [`add-campaign-content-and-s
 | Add manual events or correct/redact history | Denied | Denied | Denied | May append narrative events and immutable amendments; cannot forge source outcomes | Denied | `session-records` SES-006, SES-007 |
 | Obtain recap-input projection | Denied | Denied | Member-safe projection for shared completed/archived sessions | DM-authorized projection | Denied | `session-records` SES-009; generation and external transmission remain task 11 |
 
+## Accepted future combat and progression matrix
+
+These rows describe the validated but unimplemented [`add-combat-automation-and-character-progression`](../../openspec/changes/add-combat-automation-and-character-progression/) plan. They depend on the section-9 session/encounter boundary and do not broaden the published current baseline.
+
+| Action / data | Guest | Unrelated authenticated user / former member | Current campaign player | Campaign DM | Display client | Future requirement |
+| --- | --- | --- | --- | --- | --- | --- |
+| Start, complete, or cancel encounter combat | Denied | Denied | Denied | Sole authority for one tracker attached to an active encounter/session | Denied | `combat-automation` COM-001, COM-009 |
+| Manage combat roster and enemies | Denied | Denied | Read shared roster only | Add eligible approved players and encounter-local enemies; no global library or AI creation | Read-only shared roster | `combat-automation` COM-002, COM-008, COM-010 |
+| Submit initiative | Denied | Denied | Own player combatant only, using manual total or supported built-in d20 mode | Submit/replace any combatant total and create enemy-only groups | Read-only | `combat-automation` COM-003 |
+| Resolve ties, advance turns/rounds, or override order | Denied | Denied | Read deterministic order/current slot only | Sole authority; tied slots require explicit order and overrides require confirmation/reason | Read-only shared order | `combat-automation` COM-004 |
+| Change combat HP or boss state | Denied | Denied | Read shared HP/current boss state only | Sole authority over current/maximum/temporary HP and manual main-boss phases/bars/legendary availability/enrage | Read-only shared state | `combat-automation` COM-005, COM-006, COM-008 |
+| Read hidden combat fields | Denied | Denied | Resistance/immunity, DM traits, unrevealed phases/triggers, and other character sheets denied | Full authorized combat projection | Hidden fields denied | `combat-automation` COM-008 |
+| Apply a condition/effect or automatic rule outcome | Denied | Denied | Unsupported | Unsupported even for DM until separately accepted; narrative text has no mechanical authority | Unsupported | `combat-automation` COM-007; DEC-041 |
+| Advance character level | Denied | Denied | Character owner only; one confirmed level at a time, pending review blocks | Read-only for a referenced character; no mutation authority | Denied | `character-progression` PRG-001–PRG-004 |
+| Read level and progression history | Denied | Denied after reference/membership loss | Owner receives own full history; other current participants receive current shared level only | Read-only level/history through an authorized campaign character reference | Presented player display name and current level only | `character-progression` PRG-005, PRG-006 |
+
 ## Cross-capability checks for later tasks
 
 - Account, campaign, character, map/media, notification, decision, live-state, and subscription deletion effects agree in the published baseline; later changes must preserve or explicitly modify those linked contracts.
@@ -61,4 +77,6 @@ These rows describe the validated but unimplemented [`add-campaign-content-and-s
 - Joining, leaving, kicking, starting, and access revocation agree with active views, pending decision electorates, and live subscriptions.
 - Browser-session drafts, browser-profile notes/theme, ephemeral live/map runtime, persisted votes, and external identity state retain distinct lifetimes.
 - Future campaign content and session records add durable DM/member projections without changing current player-note privacy, display-client fields, or ephemeral live-state recovery. Event snapshots never grant broader access to their referenced records.
+- Future combat state is durable only inside its active encounter aggregate, is written to section-9 history exactly once per accepted command, and never reconstructs or silently replaces current campaign-wide `live-play`. The DM controls combat; players submit only their own initiative and otherwise consume the bounded shared projection.
+- Future tracked-level progression remains character-owner controlled. Campaign DMs read referenced history only; other players/table receive current level only; the transition never implies skill/class/HP/item/reward mechanics.
 - These reconciliations are accepted documentation, not evidence that the source already conforms; correction remains separate from the baseline.
