@@ -4,7 +4,7 @@
 
 This runbook coordinates the documentation of Dicekeeper behavior. It does not authorize application implementation. The executable checklist remains [`openspec/changes/specify-dicekeeper-functionality/tasks.md`](../../openspec/changes/specify-dicekeeper-functionality/tasks.md); this file explains how to execute and hand off its sections.
 
-The confirmed scope is the current application plus a separately identified future scope. Current contracts are authored in [`document-dicekeeper-baseline`](../../openspec/changes/document-dicekeeper-baseline/). Corrections and future behavior belong in separate changes after their product decisions are resolved.
+The confirmed scope is the accepted current contract plus a separately identified future scope. Current contracts are published under [`openspec/specs/`](../../openspec/specs/) from the archived [`document-dicekeeper-baseline`](../../openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/) review. Corrections and future behavior belong in separate changes after their product decisions are resolved.
 
 ## Required classification
 
@@ -30,8 +30,8 @@ Stable IDs use `SRC-*` for evidence, `DEC-*` for decisions, `CUR-*`/`FUT-*` for 
 | 6 | Live play | 5 | `live-play`, `group-decisions`, `player-notes` | Authority, state transitions, trust, quorum/ties, and persistence lifetimes are explicit. |
 | 7 | Views and synchronization | 6 | `session-views`, `live-synchronization` | DM/player/table visibility, supported devices, propagation, reconnect, revocation, and restart behavior agree with upstream permissions. |
 | 8 | Baseline review | 2–7 | Publish accepted current specifications | Every current use case is covered; review and strict validation pass; corrective work remains separate. |
-| 9 | Content and session records | 8 | Future `campaign-content`, `session-records` | Accepted future objects and lifecycle have a bounded change, or a reasoned deferral. |
-| 10 | Combat and progression | 8; 9 if shared entities are needed | Future `combat-automation`, `character-progression` | Edition and mechanics are resolved and proposed with deterministic/manual-override scenarios, or deferred. |
+| 9 | Content and session records | 8 | Future [`campaign-content`](../../openspec/changes/add-campaign-content-and-session-records/specs/campaign-content/spec.md), [`session-records`](../../openspec/changes/add-campaign-content-and-session-records/specs/session-records/spec.md) | Completed as the strictly valid planning change [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/); items/loot are explicitly deferred and all 15 implementation tasks remain open. |
+| 10 | Combat and progression | 8; section 9 now supplies the accepted session/encounter and content-reference boundaries | Future `combat-automation`, `character-progression` | Edition and mechanics are resolved and proposed with deterministic/manual-override scenarios, or deferred. |
 | 11 | AI preparation and recaps | 9; 10 for encounter assistance | Future `ai-campaign-assistance`, `session-recaps` | Context, authority, review, audience, limits, and failure behavior are proposed or deferred. |
 | 12 | Rule assistance | 8; edition decision from 10 | Future `rule-assistance` | Corpus/access/citation/uncertainty are resolved before implementation tasks. |
 | 13 | Audio and voice commands | 9; 11 if transcripts feed AI | Future `audio-transcription`; conditional `voice-commands` | Transcription and action execution have separate explicit dispositions. |
@@ -77,4 +77,12 @@ A successful syntax/schema validation does not establish source coverage, produc
 
 ## Foundation outputs
 
-The foundation owns the eight files in this directory plus the proposal at [`openspec/changes/document-dicekeeper-baseline/proposal.md`](../../openspec/changes/document-dicekeeper-baseline/proposal.md). Tasks 2–7 fill the baseline specs. Task 8 completes its remaining planning artifacts, reviews it, archives it, and verifies the resulting main specs.
+The foundation owns the eight files in this directory plus the archived baseline planning record at [`openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/`](../../openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/). Sections 2–7 authored the baseline deltas; section 8 completed their planning artifacts, performed the semantic review, published all 14 main specs, and kept 49 implementation deviations separate.
+
+## Future planning outputs
+
+| Section | Change | Capabilities | Planning validation | Product implementation |
+| --- | --- | --- | --- | --- |
+| 9 | [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) | `campaign-content`, `session-records` | Strict validation passed; 18 requirements and 75 scenarios | 0/15 tasks complete; not archived or published as current behavior |
+
+Continue with section 10 only in a new explicitly requested task. Section 10 may reference the accepted session/encounter hierarchy and same-campaign content references, but it must not implement section 9 or assume deferred item/loot behavior.

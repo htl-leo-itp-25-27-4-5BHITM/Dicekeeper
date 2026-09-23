@@ -4,79 +4,62 @@
 
 - Coordination change: `specify-dicekeeper-functionality`
 - Schema: `spec-driven`
-- Last completed work package: section 7, **Specify views and synchronization** (items 7.1–7.3)
-- Overall coordination progress after this handoff: 25/50 checklist items complete
-- Next work package: section 8, **Review and publish the current baseline**
-- Baseline change: [`openspec/changes/document-dicekeeper-baseline/`](../../openspec/changes/document-dicekeeper-baseline/)
-- Baseline state: proposal and specs artifacts are complete; all 14 capability deltas exist; design is ready and tasks remain intentionally blocked on design until section 8
-- Character correction change: [`openspec/changes/correct-character-library-boundaries/`](../../openspec/changes/correct-character-library-boundaries/) remains at its prior proposal-only state; section 7 did not edit, advance, validate, or implement it
-- Main specs: still empty; baseline review/publication remains section 8
+- Last completed work package: section 9, **Specify future content and session records** (items 9.1–9.3)
+- Overall coordination progress after this handoff: 32/50 checklist items complete
+- Next work package: section 10, **Specify future combat and progression**; it has not been started
+- Published current baseline: 14 main capabilities under [`openspec/specs/`](../../openspec/specs/), containing 102 requirements and 447 scenarios
+- Accepted future plan: [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) contains 18 requirements and 75 scenarios across `campaign-content` and `session-records`; strict validation passes and all 15 implementation tasks remain open
+- Character correction change: [`correct-character-library-boundaries`](../../openspec/changes/correct-character-library-boundaries/) remains proposal-only and unchanged
 - Application code changed: no
-- Blocking issue for starting section 8: none. The required baseline review and archive are section-8 work. Unselected quantitative view/synchronization targets block affected corrective implementation/release readiness, not review of the state-based baseline.
+- Blocking issue for starting section 10: none. Section 10 must still resolve its edition, progression, condition/effect, initiative, boss, and encounter-scale decisions before authoring combat/progression contracts.
 
-## Completed in section 7
+## Completed in section 9
 
-- Traced the SPA routes and DM cockpit, DM live, player live, table, guide, theme, responsive CSS, map-canvas, SSE subscription/broadcaster, frontend event client, reconnect callbacks, and per-view event/reconciliation paths.
-- Authored [`session-views`](../../openspec/changes/document-dicekeeper-baseline/specs/session-views/spec.md) with 10 requirements and 41 scenarios covering role/state entry, exact view projections/actions, a cross-view matrix, display authorization, device classes, keyboard/focus/status behavior, theme/language, and guide alignment.
-- Authored [`live-synchronization`](../../openspec/changes/document-dicekeeper-baseline/specs/live-synchronization/spec.md) with 9 requirements and 35 scenarios covering authorized event projections, after-commit propagation, order/gaps, liveness, full snapshot reconciliation, reconnect without replay assumptions, revocation/deletion, state-specific restart, cross-instance consistency, and state-based acceptance.
-- Confirmed the shared table as a read-only projection opened through and continuously bound to the authenticated campaign DM. It has no anonymous route, reusable share token, or independent application identity.
-- Confirmed player live support for desktop/tablet/phone, DM cockpit/live support for desktop/tablet, and table support for shared desktop/large display and tablet landscape. Phone DM control/table support is not claimed.
-- Recorded DEC-030–DEC-032 and reconciled decisions, evidence, coverage, glossary, permissions, overview, every task-7 diagram/candidate row, and historical reliability/performance dispositions.
-- Recorded DEV-VIEW-001–005 and DEV-SYNC-001–005 for task-8 corrective planning. No corrective change was created or advanced.
-- Marked only section 7 checklist items complete and stopped before section 8.
+- Read the coordination proposal/design/tasks, all 14 published main specs, shared decisions, coverage, dependency runbook, handoff, glossary, permissions, overview, and the relevant evidence.
+- Refreshed the two historical interview sources needed for campaign/session/encounter, core objects, history, recaps, items/loot, and lore; blank follow-up answers were not treated as decisions.
+- Confirmed that a campaign is the durable story/membership container, a session is one durable play occurrence within it, and an encounter is an optional session segment with no implied combat automation.
+- Accepted DM-managed NPC, place, quest, and lore records with DM-only defaults, explicit member audience, durable persistence, same-campaign references, archival, and reference-safe deletion.
+- Deferred items/loot because inventory ownership, transfer, equipment, rewards, character mutation, audience, and deletion rules remain unspecified.
+- Defined append-only ordered event history, immutable amendments/redactions, audience-safe downstream recap inputs, and the boundary that preserves ephemeral live state and browser-local player notes.
+- Created the future change through the OpenSpec CLI and completed its proposal, two spec deltas, design, and implementation checklist. No product task was checked or executed.
+- Updated decisions, evidence, coverage, dependency index, overview, glossary, permissions, handoff, and the section-9 coordination checkboxes. Stopped before section 10.
 
-## Confirmed section-7 contract
+## Section 9 decision outcome
 
-- Campaign views derive access from the authenticated identity, current membership, campaign role, review readiness, and started state. Rendering a route or cached object grants no authority.
-- The DM uses the cockpit before start and DM live controls after start. An approved current player uses player live after start. The table projection is DM-authenticated, read-only, and limited to campaign name, display names, HP/activity/turn, latest dice, and the fog-respecting active map/markers.
-- Player live shows the player's own complete character/HP, authorized map and roster summaries, aggregate decisions plus own-vote state, latest dice, and the exact browser-local note. It excludes story, other character sheets, individual vote choices, notes, review data, DM controls, and raw fog-bypass media.
-- Supported workflows must remain reachable across their accepted device classes; required controls are keyboard-operable and named, focus/status is observable, information is not color/motion-only, the accessible theme persists safely, and current view terminology is consistently German.
-- Only committed mutations propagate. Events and snapshots are role-shaped, duplicates are idempotent, older events cannot regress state, and clients expose connecting/current/stale/reconciling/revoked/unavailable states rather than silently presenting unknown cached data as current.
-- Reconnect, a detected gap, a malformed required event, or stale resume triggers complete authorized snapshot reconciliation. No replay buffer is assumed. A view returns to current only when every required read succeeds.
-- Membership removal revokes an existing stream and clears protected state; campaign deletion terminates subscriptions. Restart recovery respects durable campaign/decision data, ephemeral live/map runtime, and browser-local note lifetimes instead of flattening them into one persistence model.
-- Multi-instance deployments must route a campaign through one authoritative runtime or use shared state/event distribution. A client becomes stale/unavailable rather than diverging.
-- No numeric latency, capacity, viewport, browser-version, availability, contrast, or external accessibility-conformance target was invented. DEC-032 keeps that product/test-environment decision explicit before affected corrective work can be called implementation-ready.
+- `campaign-content` contains only NPC, place, quest, and lore records. It does not become a generic item store, AI generator, or combat rules model.
+- `session-records` owns `PLANNED`, `ACTIVE`, `COMPLETED`, and `ARCHIVED` session/encounter lifecycles, at most one active session per campaign and one active encounter per session, durable event ordering, correction, cleanup, and recap-input projections.
+- Content/session mutation belongs to the campaign owner-DM. Current members see only explicit `MEMBERS` projections. Guests, unrelated/former users, and the current display client receive no future record through these capabilities.
+- Event history may later capture committed map/live/dice/decision outcomes during an active session, but it does not reconstruct their current runtime state and never captures private browser-local notes.
+- Combat automation/progression remains section 10; AI generation/recaps remains section 11; audio/transcription remains section 13. Those later changes may consume stable section-9 records without broadening their audience.
 
-## Observed deviations and later-owned boundaries
+## Corrective and unresolved work
 
-- Current routes and reads do not consistently enforce every role/review/start precondition; an ordinary member can reach the table data path.
-- Current views compose raw campaign, membership, player, character, and media responses. This can overexpose email, other character attributes, review fields, story/media paths, or other data outside the accepted matrix.
-- The current table client receives raw map access and can write exploration/fog through the shared map canvas despite the accepted read-only contract.
-- Responsive thresholds disagree between player JavaScript and CSS, resize/orientation changes are not fully observed, and keyboard/focus/status/reduced-motion/theme-failure/language behavior is incomplete.
-- The public guide exists but its table audience and some workflow claims must be reconciled with the accepted baseline before publication.
-- SSE membership is checked at initial subscribe only; one shared payload is broadcast to campaign sinks; existing removed-member sinks are not explicitly revoked.
-- Event order is process-local, no replay/gap protocol exists, parse/transport failures are mostly console-only, and reconnect reconciliation can partially fail without leaving an observable stale state.
-- Player/table handlers omit some roster/deletion consequences, and current connections, sequence, broadcaster, and live/map state have no cross-instance authority or distribution.
-- Persistent play sessions/encounters remain task 9; combat automation/progression remains task 10. Section 7 did not create either behavior.
-- Application alignment remains section 8 corrective planning. `correct-character-library-boundaries` remains untouched.
-
-## Relevant paths for section 8
-
-Planning and shared context:
-
-- `openspec/changes/specify-dicekeeper-functionality/{proposal.md,design.md,tasks.md}`
-- `openspec/changes/document-dicekeeper-baseline/{.openspec.yaml,proposal.md,specs/**/spec.md}`
-- `docs/specification/{runbook.md,evidence.md,decisions.md,coverage.md,glossary.md,permissions.md,handoff.md,overview.md}`
-- `openspec/changes/correct-character-library-boundaries/proposal.md` is reference-only and must remain open/unadvanced
-
-Section 8 must run the baseline artifact instructions before writing `design.md` or `tasks.md`, review the end-to-end journeys and deletion effects, reconcile all 14 capability deltas and shared matrices, obtain the required review, strictly validate, archive/publish to main specs, and keep implementation corrections separate. It must not interpret documentation completion as delivered application behavior.
+- The published baseline and its 49 indexed `DEV-*` implementation deviations are unchanged. Section 9 did not advance any correction.
+- `add-campaign-content-and-session-records` is planning-complete but product-incomplete at 0/15 tasks. Do not archive or sync it as current behavior before implementation and review.
+- Items/loot are explicitly deferred under DEC-035 and ADD-021. Section 10 and section 11 must not assume an inventory, equipment, transfer, reward, or character-mutation contract.
+- Exact browser/version, viewport, accessibility-conformance/contrast, latency, throughput/capacity, and availability targets remain unresolved from the baseline review.
+- Section 10 still owns D&D edition, advancement, conditions/effects, initiative groups/ties, boss mechanics, and encounter-scale behavior; section 12 depends on its edition decision.
 
 ## Verification performed
 
 | Check / command | Result |
 | --- | --- |
-| Relevant-source revision check | Pre-edit `HEAD` was `7e71fa33ef11d00cb11e920f87a02d8d6b22c3dc`; no relevant application or test file differed from the originally inspected `b7c8fe2d789258efdf2c30286ca630b6888fbd6a`. |
-| `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive` | Passed with all 14 baseline capability deltas. This validates schema; section 8 still owns semantic review and publication. |
-| `openspec validate specify-dicekeeper-functionality --type change --strict --no-interactive` | Passed; the informational `skip_specs` message is expected because the coordination change declares no behavior deltas. |
-| `openspec show document-dicekeeper-baseline --json --deltas-only` | Parsed 102 requirements and 447 scenarios total. Section 7 contributes 19 requirements and 76 scenarios: VIEW 10/41 and SYNC 9/35. |
-| `openspec instructions apply --change specify-dicekeeper-functionality --json` | Ready at 25/50 complete; task 26 (section 8.1) is the next incomplete item. |
-| `openspec status --change document-dicekeeper-baseline --json` | Proposal/specs done; design ready; tasks blocked only on design. This is the intentional pre-section-8 state. |
+| `openspec validate add-campaign-content-and-session-records --type change --strict --no-interactive` | Passed. |
+| `openspec show add-campaign-content-and-session-records --json --deltas-only` | Parsed 2 capabilities, 18 requirements, and 75 scenarios: 8/30 for `campaign-content`, 10/45 for `session-records`. |
+| `openspec instructions apply --change add-campaign-content-and-session-records --json` | Reported `ready`, with 0/15 implementation tasks complete. |
+| `openspec validate --specs --strict --no-interactive` | Passed for the unchanged 14 published main specs. |
+| Coverage audit | 33/33 current aliases, 22/22 future aliases, and 21/21 additional IDs are unique and owned; section-9 rows link to their future requirements. |
+| Markdown/local-link audit | Passed for shared documentation and the new future change. |
 | `git diff --check` | Passed. |
-| View semantic review | Entry roles/states, exact data/actions, cockpit/live/player/table boundaries, display identity, device classes, responsive continuity, keyboard/focus/status, theme/language, and guide alignment have requirements or explicit deviations. |
-| Synchronization semantic review | Subscription projection, after-commit updates, ordering/duplicates/gaps, liveness states, malformed/partial recovery, reconnect, revocation/deletion, restart lifetimes, multi-instance consistency, and state-based acceptance have requirements or explicit deviations. |
-| Application runtime/tests | Not run. Section 7 was documentation-only static/source review; no browser, accessibility, SSE failure, restart, multi-instance, load, or performance workflow was exercised. |
-| Application/corrective implementation | None. No application source, test, runtime configuration, deployment, main spec, baseline design/tasks, or corrective-change artifact was changed. |
+| Application/corrective implementation | None. No application source, test, runtime configuration, deployment file, or `correct-character-library-boundaries` artifact changed. |
+
+## Changed paths in section 9
+
+- `openspec/changes/add-campaign-content-and-session-records/{proposal.md,design.md,tasks.md}`
+- `openspec/changes/add-campaign-content-and-session-records/specs/{campaign-content,session-records}/spec.md`
+- `docs/specification/{runbook.md,evidence.md,decisions.md,coverage.md,glossary.md,permissions.md,handoff.md,overview.md}`
+- `openspec/changes/specify-dicekeeper-functionality/tasks.md` (section 9 checkboxes only)
 
 ## Exact next instruction
 
-> `$openspec-apply-change specify-dicekeeper-functionality` — Execute only section 8, **Review and publish the current baseline** (items 8.1–8.4). Read the shared documentation and all 14 baseline capability specs, follow the baseline change's CLI instructions to complete its design/tasks, perform the end-to-end and cross-capability review, obtain the required review, validate and archive/publish the baseline, update shared documentation and this handoff, and stop before section 9. Do not implement application features or advance `correct-character-library-boundaries`; keep corrective work open and separate.
+> `$openspec-apply-change specify-dicekeeper-functionality` — Execute only section 10, **Specify future combat and progression** (items 10.1–10.3). Read the published main specs, shared decisions, coverage, dependency runbook, this handoff, and the accepted `add-campaign-content-and-session-records` planning artifacts; resolve the rules edition, supported advancement and conditions/effects, initiative ties/groups, boss mechanics, and encounter-scale decisions; create only the bounded future `combat-automation` and `character-progression` planning artifacts authorized by those decisions; validate and update shared documentation; then stop before section 11. Do not implement application features, apply section-9 implementation tasks, assume deferred items/loot behavior, or advance unrelated corrective changes.

@@ -2,7 +2,7 @@
 
 ## Reading this matrix
 
-This is a cross-capability reconciliation aid, not a replacement for normative capability specifications. “Observed” summarizes static source only. Accepted requirement references control when they differ from observed behavior; unresolved rows remain owned by their later tasks.
+This is a cross-capability reconciliation aid, not a replacement for the published normative capability specifications. Section 8 reviewed every row against the main specs, glossary, state transitions, view matrix, and deletion effects. “Observed” summarizes static source only. Accepted requirement references control when they differ from observed behavior; the 49 differences are indexed in [`coverage.md`](coverage.md#implementation-deviation-index), and unresolved rows remain owned by their later sections.
 
 | Action / data | Guest | Own account / resource owner | Unrelated authenticated user | Campaign member | Campaign DM | Display client | Observed evidence | Decision owner / requirement |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,10 +40,25 @@ This is a cross-capability reconciliation aid, not a replacement for normative c
 | Subscribe to live events | Denied | Current identity only through an authorized campaign view | Denied | Current membership plus view-specific field projection | Current owner-DM authorization; table uses the DM authorization | No independent subscription authority | SSE resource/broadcaster and view clients; SYNC-E01–04, with projection/revocation/cross-instance gaps | `live-synchronization` SYNC-001–SYNC-008; `session-views` VIEW-005; DEC-031; DEV-SYNC-001–005 |
 | Lose membership while a view is open | No campaign access | n/a | Remains denied | Existing stream stops, protected projection clears, reconnect is rejected | Campaign deletion terminates every stream; DM cannot leave while owner | Clears with the authorizing DM session or campaign | Initial subscription checks exist but connected sinks are not continuously revalidated; SYNC-E01/03 | `campaign-membership` MEM-005–MEM-007; `live-synchronization` SYNC-006; DEV-SYNC-003 |
 
+## Accepted future content and session-record matrix
+
+These rows describe the validated but unimplemented [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) plan. They do not broaden the published current baseline.
+
+| Action / data | Guest | Unrelated authenticated user / former member | Current campaign member | Campaign DM | Display client | Future requirement |
+| --- | --- | --- | --- | --- | --- | --- |
+| Create/update/archive/restore/delete NPC, place, quest, or lore | Denied | Denied | Read-only; no mutation | Sole mutation authority, with confirmed reference-safe deletion | Denied | `campaign-content` CNT-001, CNT-004, CNT-006, CNT-007 |
+| Read campaign content | Denied | Denied | Active `MEMBERS` projection only; no hidden fields or existence leakage | Full active/archived campaign-owned projection | Denied | `campaign-content` CNT-003, CNT-005, CNT-008 |
+| Create/update/activate/complete/archive/delete sessions or encounters | Denied | Denied | Read-only; no mutation | Sole lifecycle authority; hard delete only for never-used planned records | Denied | `session-records` SES-001–SES-004 |
+| Read session, encounter, and event history | Denied | Denied after membership loss | `MEMBERS` records/events only, with private fields omitted | Full authorized history and DM-only fields | Denied | `session-records` SES-005–SES-008 |
+| Add manual events or correct/redact history | Denied | Denied | Denied | May append narrative events and immutable amendments; cannot forge source outcomes | Denied | `session-records` SES-006, SES-007 |
+| Obtain recap-input projection | Denied | Denied | Member-safe projection for shared completed/archived sessions | DM-authorized projection | Denied | `session-records` SES-009; generation and external transmission remain task 11 |
+
 ## Cross-capability checks for later tasks
 
-- Account, campaign, character, map/media, notification, and live-state deletion effects must agree.
-- Campaign list, detail, media delivery, SSE, and table views must enforce the same accepted visibility boundaries.
-- Character-review transitions must agree with character ownership/edit/delete rules and notification recipients.
-- Joining, leaving, kicking, starting, and access revocation must agree with active views and live subscriptions.
-- Browser-local drafts, notes, theme, in-memory game state, and persisted votes must not be described as sharing one lifetime.
+- Account, campaign, character, map/media, notification, decision, live-state, and subscription deletion effects agree in the published baseline; later changes must preserve or explicitly modify those linked contracts.
+- Campaign list, detail, media delivery, SSE, and table views share the same accepted least-privilege visibility boundary.
+- Character-review transitions agree with character ownership/edit/delete locks and notification recipients.
+- Joining, leaving, kicking, starting, and access revocation agree with active views, pending decision electorates, and live subscriptions.
+- Browser-session drafts, browser-profile notes/theme, ephemeral live/map runtime, persisted votes, and external identity state retain distinct lifetimes.
+- Future campaign content and session records add durable DM/member projections without changing current player-note privacy, display-client fields, or ephemeral live-state recovery. Event snapshots never grant broader access to their referenced records.
+- These reconciliations are accepted documentation, not evidence that the source already conforms; correction remains separate from the baseline.

@@ -1,6 +1,6 @@
 # Glossary
 
-Definitions are organizational unless a capability spec makes them normative. `Confirmed` terms are safe for consistent documentation use; `proposed` or `unresolved` meanings require their owning decision before behavior is finalized.
+Definitions are organizational unless a published capability spec makes them normative. Section 8 reconciled the confirmed terms with all 14 main specs; `proposed` or `unresolved` meanings still require their owning decision before future behavior is finalized.
 
 ## Actors and identities
 
@@ -32,8 +32,8 @@ Definitions are organizational unless a capability spec makes them normative. `C
 | Game / live play | confirmed current contract | The interaction after the campaign's one-way start. Turn, current/maximum HP, active-player flags, and the latest self-reported dice result are campaign-scoped ephemeral runtime state: they survive client refresh while the authoritative runtime remains but are not durable session/encounter history. Map state and persisted decisions have separate owners and lifetimes. |
 | Active player | confirmed current contract | A current `PLAYER` member included in manual turn selection. Only the campaign DM changes the active flag. Inactive means sitting out of turns, not leaving the campaign, losing HP, or becoming ineligible for a group decision. |
 | Self-reported dice result | confirmed current contract | A standard-die value generated or manually entered by a current member and attributed by the server to that authenticated identity. Dicekeeper validates the die/range but does not claim server randomness, fairness, or a durable roll log. |
-| Session | unresolved/future | A bounded play occurrence within a campaign. No separate persistent current entity was found; task 9 decides future lifecycle/history. Do not use “session” as a synonym for login session. |
-| Encounter | unresolved/future | A bounded challenge/combat within a session, potentially with initiative, conditions, effects, and boss behavior. Task 10 owns the model. |
+| Session | confirmed future plan | One durable bounded play occurrence within exactly one campaign. A campaign may contain multiple sessions; future sessions use `PLANNED`, `ACTIVE`, `COMPLETED`, and `ARCHIVED` lifecycle states, with at most one active session per campaign. No current implementation entity was found, and the term is never a synonym for authentication session. |
+| Encounter | confirmed future record boundary | An optional bounded segment within exactly one session. A session may contain zero or more encounters, with at most one active encounter per session. The record may reference campaign content, maps, members, or characters but does not itself define initiative, conditions, damage, boss, or other combat rules owned by task 10. |
 | Authentication session | confirmed | Browser/server state establishing the current external identity. Use the full phrase to avoid confusion with a play session. |
 | Character | confirmed | A player-owned RPG record containing name, class, background, optional descriptive fields, level, and ability scores. Only a complete character is part of the owner's selectable library. |
 | Character draft | confirmed current contract | In-progress creation input recoverable only for the same player, browser session, and standalone/campaign context. It is not a server-side character and is cleared on completion or explicit discard. |
@@ -42,6 +42,13 @@ Definitions are organizational unless a capability spec makes them normative. `C
 | Public campaign | confirmed | An authenticated-discoverable campaign that accepts self-service join only while not started and below its `PLAYER` capacity. Public visibility never exposes story or raw review data. |
 | Private campaign | confirmed | A campaign visible only to existing members. The current baseline has no self-service, invitation-code, or manual-add admission path; historical invitations are deferred. |
 | Campaign story | confirmed | Manually authored DM-only story/background text. It is excluded from public/member reads and notifications; AI assistance is future task-11 scope. |
+| Campaign content | confirmed future plan | Durable campaign-owned NPC, place, quest, or lore material managed only by the campaign DM. Records default to `DM_ONLY`, may be revealed to current members, use same-campaign references, and remain separate from current campaign story and later AI generation. |
+| NPC | confirmed future content kind | A campaign-owned non-player-character description with optional typed relationships to other same-campaign content. Combat statistics and automation are not implied. |
+| Place | confirmed future content kind | A campaign-owned location description that may reference a map owned by the same campaign. |
+| Quest | confirmed future content kind | A campaign-owned objective or storyline with progress `PLANNED`, `ACTIVE`, `COMPLETED`, or `FAILED`; progress does not create rewards, items, advancement, or encounter outcomes. |
+| Lore | confirmed future content kind | DM-authored campaign fact or narrative material with an explicit DM-only or member-visible audience. AI authority and generation remain task-11 decisions. |
+| Session event | confirmed future plan | One immutable, ordered, durable record of a session/encounter lifecycle outcome, DM narrative entry, or later-integrated committed play outcome. Corrections append amendments; an event is not replayed as authoritative current live state. |
+| Item / loot | deferred | Historical candidates without accepted inventory ownership, transfer, equipment, reward, character-mutation, audience, or deletion rules. Section 9 creates no item capability or implementation task. |
 | Map | confirmed current contract | One of at most five optional images owned by a campaign. The DM selects the active map; each map anchors its own markers, fog, and undo history. Positive square, wide, and custom crops are accepted without tactical-grid semantics. |
 | Marker / group | confirmed current contract | A DM-managed normalized position on one map. Player markers may be grouped or split without losing or duplicating current campaign players; structure, quest, and checkpoint markers are not player groups. |
 | Fog of War | confirmed current contract | DM-controlled per-map hidden/revealed presentation. Non-DM viewers receive only the fog-respecting presentation; setup movement does not reveal areas, and confirmed fog reset is undoable. |

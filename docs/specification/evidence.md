@@ -274,4 +274,59 @@ Task 7 refreshed the following evidence on 2026-09-22 against `HEAD` `7e71fa33ef
 
 ## Verification record
 
-Foundation, task 2, and most task-3/task-4 reviews are static. Task 4 additionally ran `./mvnw -Dtest=CampaignValidationTest test` successfully (3 tests, 0 failures/errors/skips), supporting only positive/null versus non-positive capacity validation. Task 5 performed static source and read-only historical-page review and ran no application tests or runtime workflow. Task 6 ran `./mvnw -Dtest=GameStateTest test` successfully on 2026-09-22 (1 test, 0 failures/errors/skips), supporting only that repeated HP initialization does not overwrite live damage/max state. Task 7 performed static source/contract review only and ran no application test, browser workflow, accessibility audit, multi-instance exercise, or performance measurement. Validation results for the coordination change and evolving baseline are recorded in [`handoff.md`](handoff.md). Later tasks must append exact test/runtime commands and outcomes here when they materially change implementation evidence.
+Foundation, task 2, and most task-3/task-4 reviews are static. Task 4 additionally ran `./mvnw -Dtest=CampaignValidationTest test` successfully (3 tests, 0 failures/errors/skips), supporting only positive/null versus non-positive capacity validation. Task 5 performed static source and read-only historical-page review and ran no application tests or runtime workflow. Task 6 ran `./mvnw -Dtest=GameStateTest test` successfully on 2026-09-22 (1 test, 0 failures/errors/skips), supporting only that repeated HP initialization does not overwrite live damage/max state. Task 7 performed static source/contract review only and ran no application test, browser workflow, accessibility audit, multi-instance exercise, or performance measurement. Later tasks must append exact test/runtime commands and outcomes here when they materially change implementation evidence.
+
+## Section 8 baseline publication review
+
+Section 8 reviewed the complete baseline on 2026-09-22 against repository `HEAD` `2589c43f2b35a1e3d323c86b03beb65bf4f618ac` before publication edits. `git diff --name-only b7c8fe2d789258efdf2c30286ca630b6888fbd6a..HEAD -- src/main src/test pom.xml README.md` returned no paths, so the application evidence still describes the originally inspected source. No application service, browser workflow, accessibility test, synchronization failure, restart, multi-instance, media pipeline, or deployment was exercised in section 8.
+
+### Semantic review result
+
+- The proposal and published inventory contain the same 14 flat capability paths.
+- OpenSpec parses 102 requirements and 447 scenarios; every requirement has at least one scenario.
+- All 33 current diagram use cases have unique `CUR-*` identifiers and map to main-spec requirements/scenarios. All 22 future aliases remain separately identified, and each accepted current additional candidate has a main-spec reference.
+- The sign-in, profile, character/campaign creation, public join, submission/rejection/resubmission/approval, notification, live-view, map, turn/HP/dice/vote, reconnect/revocation, leave/removal, and destructive-action journeys have scenario coverage.
+- The glossary, permission/view matrices, campaign start, character-review, membership, and decision transitions agree with the owning requirements.
+- Membership removal, campaign deletion, character deletion, account deletion, media cleanup, notification/decision cleanup, live-state disposal, subscription revocation, and browser-local-note limits have explicit owners and preserved-data outcomes.
+- Persisted application records, ephemeral campaign runtime, browser-session drafts, browser-profile notes/theme, and external identity state retain distinct lifetimes.
+- All 49 `DEV-*` entries remain implementation deviations outside the normative baseline. `correct-character-library-boundaries` remains proposal-only and unchanged; no other corrective or future behavior was presented as delivered.
+
+### Publication verification
+
+| Check / command | Result |
+| --- | --- |
+| `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive` | Passed. |
+| `openspec show document-dicekeeper-baseline --json --deltas-only` | Parsed 14 capabilities, 102 requirements, and 447 scenarios. |
+| Delta-to-main comparison after synchronization | All 14 main specs exactly matched the expected merge of each delta's purpose and `ADDED` requirements; no delta-operation header remained in a main spec. |
+| `openspec validate --specs --strict --no-interactive` | Passed for all 14 main specs with informational long-requirement notices only. |
+| Current/future/additional coverage counts | 33/33 current aliases, 22/22 future aliases, and 19/19 additional candidate IDs were unique. |
+| Application and corrective implementation | None. No application source, test, runtime configuration, or deployment file was edited, and `correct-character-library-boundaries` was not advanced. |
+
+The publication establishes an accepted specification, not runtime verification or application conformance. The archived review artifacts are under [`openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/`](../../openspec/changes/archive/2026-09-22-document-dicekeeper-baseline/), and the current correction/future indexes remain in [`coverage.md`](coverage.md#implementation-deviation-index) and [`decisions.md`](decisions.md#open-decision-gates).
+
+## Section 9 content and session-record planning review
+
+Section 9 refreshed only the historical and repository evidence needed to resolve future content and session records on 2026-09-23. The two public requirement-interview pages were read again in a browser because text search did not expose their content. No application service, test, runtime workflow, data migration, or corrective change was executed.
+
+| ID | Source evidence | Observation | Decision / planning consequence |
+| --- | --- | --- | --- |
+| SES-E01 | SRC-10, question “Was ist der Unterschied zwischen Game, Kampagne und Session?” | The recorded answer says game and campaign are the same concept; a session is one meeting to play, and a campaign is a story composed of multiple sessions. | DEC-034; `session-records` SES-001/SES-002. Campaign remains the container, sessions are separate durable occurrences, and authentication session remains a different term. |
+| SES-E02 | SRC-09, campaign/session-structure questions | The historical answer selects all listed core objects (campaign, session, encounter, NPC, place/map, quest, item, notes, etc.), accepts the flow “select campaign -> start session -> load encounter,” requests automatic session notes/recaps, and requests a timeline/log such as HP changes, spells, and rolls. | DEC-034–DEC-036; `campaign-content` and `session-records` are accepted as future planning scope. Automatic AI recap remains task 11, audio remains task 13, and unsupported fictional events may be recorded manually without mutating rules state. |
+| SES-E03 | SRC-10, session/encounter/NPC/quest/item/lore follow-ups | Required fields for sessions and encounters, NPC relationship form, quest states, item/loot V1 priority, and lore storage/editing answers are blank. Blank answers are not decisions. | Section 9 selects a bounded generic lifecycle/audience/reference model for the accepted objects and explicitly defers item/loot under DEC-035 instead of inventing inventory/equipment/reward semantics. |
+| SES-E04 | SRC-05 domain inventory; CAM-E04; LIVE-E01–03; MAP-E01–05; DICE-E01; GRP-E01/02; NOTE-E01 | The application has a persistent campaign and decisions, ephemeral in-memory live/map/dice fields, and browser-local notes, but no separate persistent session or encounter entity. | The future plan adds durable records without changing current state lifetimes, backfilling ephemeral values, or transmitting player-local notes. Implementation evidence for both new capabilities is absent. |
+| SES-E05 | SRC-03 `FUT-UCPrepare` and `FUT-UCSessionLog` | The target diagram identifies campaign preparation and automatic session logging, with separate included AI, transcription, and recap use cases. | Section 9 owns the manual content and durable-record substrate only. Tasks 11 and 13 retain generation and transcription ownership. |
+
+### Section 9 semantic and validation result
+
+- [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) contains exactly the accepted new `campaign-content` and `session-records` capabilities.
+- OpenSpec parses 18 requirements and 75 scenarios: 8/30 for campaign content and 10/45 for session records. The scenarios cover create, update, archive, restore/delete, audience, cross-campaign denial, lifecycle, event ordering/idempotency, amendment/redaction, restart, campaign cleanup, and recap-input projections.
+- Every one of the 15 implementation tasks remains unchecked. The future change was not applied, archived, synchronized to main specs, or represented as delivered.
+- Items/loot, combat automation/progression, AI generation/recaps, audio/transcription, rules assistance, Discord, and generalized shared-view behavior remain outside the change or explicitly deferred.
+- No application source, test, runtime configuration, deployment file, or `correct-character-library-boundaries` artifact changed in section 9.
+
+| Check / command | Result |
+| --- | --- |
+| `openspec validate add-campaign-content-and-session-records --type change --strict --no-interactive` | Passed. |
+| `openspec show add-campaign-content-and-session-records --json --deltas-only` | Parsed 2 capabilities, 18 requirements, and 75 scenarios. |
+| `openspec instructions apply --change add-campaign-content-and-session-records --json` | Reported `ready` with 0/15 implementation tasks complete. |
+| `openspec validate --specs --strict --no-interactive` | The 14 published current specs remain valid; the future deltas were not promoted. |

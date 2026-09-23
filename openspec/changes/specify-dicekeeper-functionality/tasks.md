@@ -66,18 +66,18 @@ Depends on section 6.
 
 Depends on sections 2-7.
 
-- [ ] 8.1 Review the end-to-end journeys in the design and cross-capability deletion effects; verify every current use case and additional accepted current requirement maps to scenarios, and record any implementation limitation or deviation outside the normative baseline unless explicitly accepted.
-- [ ] 8.2 Reconcile glossary, permission matrix, state transitions, and the baseline proposal's capability inventory; complete its remaining documentation/design/task artifacts according to CLI instructions and verify each completed baseline checklist item corresponds to delivered documentation, not an assumed product implementation.
-- [ ] 8.3 Run `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive`, obtain review of the accepted baseline, and archive it through the archive workflow; verify resulting main specs with `openspec validate --specs --strict --no-interactive` and keep corrective changes open.
-- [ ] 8.4 Update `overview.md`, coverage, and handoff with links to every accepted main capability and every unresolved/corrective item; verify current, missing, and future behavior are distinguishable without reading this conversation.
+- [x] 8.1 Review the end-to-end journeys in the design and cross-capability deletion effects; verify every current use case and additional accepted current requirement maps to scenarios, and record any implementation limitation or deviation outside the normative baseline unless explicitly accepted.
+- [x] 8.2 Reconcile glossary, permission matrix, state transitions, and the baseline proposal's capability inventory; complete its remaining documentation/design/task artifacts according to CLI instructions and verify each completed baseline checklist item corresponds to delivered documentation, not an assumed product implementation.
+- [x] 8.3 Run `openspec validate document-dicekeeper-baseline --type change --strict --no-interactive`, obtain review of the accepted baseline, and archive it through the archive workflow; verify resulting main specs with `openspec validate --specs --strict --no-interactive` and keep corrective changes open.
+- [x] 8.4 Update `overview.md`, coverage, and handoff with links to every accepted main capability and every unresolved/corrective item; verify current, missing, and future behavior are distinguishable without reading this conversation.
 
 ## 9. Specify future content and session records
 
 Depends on section 8.
 
-- [ ] 9.1 Resolve the campaign/session/encounter distinction and the included NPC/place/quest/lore/history objects, including the disposition of historical items/loot candidates; verify decisions define lifecycle, ownership, persistence, and references or explicitly defer the relevant scope.
-- [ ] 9.2 For accepted scope, create a bounded planning change for `campaign-content` and `session-records` using the proposal workflow; verify its scenarios cover create/update/archive/delete, audience, event history, and downstream recap inputs, and its implementation tasks remain unexecuted.
-- [ ] 9.3 Validate the future change and update coverage, the dependency index, and handoff; if scope is deferred, verify the decision identifies what is deferred, why, and which dependent tasks are affected before marking the documentation work complete.
+- [x] 9.1 Resolve the campaign/session/encounter distinction and the included NPC/place/quest/lore/history objects, including the disposition of historical items/loot candidates; verify decisions define lifecycle, ownership, persistence, and references or explicitly defer the relevant scope.
+- [x] 9.2 For accepted scope, create a bounded planning change for `campaign-content` and `session-records` using the proposal workflow; verify its scenarios cover create/update/archive/delete, audience, event history, and downstream recap inputs, and its implementation tasks remain unexecuted.
+- [x] 9.3 Validate the future change and update coverage, the dependency index, and handoff; if scope is deferred, verify the decision identifies what is deferred, why, and which dependent tasks are affected before marking the documentation work complete.
 
 ## 10. Specify future combat and progression
 
