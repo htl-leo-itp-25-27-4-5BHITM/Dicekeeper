@@ -83,6 +83,18 @@ These rows describe the validated but unimplemented [`add-ai-campaign-assistance
 | Read accepted session recap | Denied | Denied after membership loss | Only an accepted, explicitly published `MEMBERS` recap generated from member-safe inputs | May read DM-only and member versions plus authorized provenance | Denied | `session-recaps` REC-006/REC-007 |
 | Execute recap next steps or generated rule/item/progression content | Unsupported | Unsupported | Unsupported | Unsupported; reviewed prose creates no product-state mutation | Unsupported | `session-recaps` REC-005/REC-009; DEC-049 |
 
+## Accepted future rule-assistance matrix
+
+These rows describe the validated but unimplemented [`add-rule-assistance`](../../openspec/changes/add-rule-assistance/) plan. Rule queries are account-scoped and do not require or infer campaign membership, role, or gameplay context.
+
+| Action / data | Guest | Authenticated player without campaign context | Current campaign member | Campaign DM | Display client | External explanation provider | Future requirement |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Ask an English or German D&D 5e (2024) rule question | Denied | Allowed | Same account-scoped access; no campaign data is inferred | Same account-scoped access; DM role grants no additional corpus authority | Denied | Receives nothing unless optional explanation is configured and the player confirms the displayed transfer | `rule-assistance` RUL-001, RUL-008 |
+| Read verified passages, citations, attribution, or an extract-only answer | Denied | Allowed for the current query | Same as any authenticated player | Same as any authenticated player | Denied | Not required; local corpus retrieval remains available when the provider is disabled or unavailable | `rule-assistance` RUL-002–RUL-004, RUL-008 |
+| Receive a generated explanation | Denied | Allowed only from minimum verified passages after transfer confirmation and claim verification | Same as any authenticated player | Same as any authenticated player | Denied | May draft a labeled paraphrase only; it cannot add authority, uncited claims, or unsupported sources | `rule-assistance` RUL-003, RUL-004, RUL-008 |
+| Resolve ambiguity, missing/uncertain evidence, conflict, or wrong-edition material | Denied | Receives an explicit clarification or non-answer state with applicable citations | Same as any authenticated player | Same as any authenticated player; DM role cannot override source precedence | Denied | Cannot guess, choose a winner, merge editions, or replace the fail-closed outcome | `rule-assistance` RUL-005–RUL-008 |
+| Save a ruling or mutate campaign, character, session, combat, content, progression, item, condition/effect, AI, audio, or Discord state | Unsupported | Unsupported | Unsupported | Unsupported | Unsupported | Unsupported | `rule-assistance` RUL-009; DEC-055 |
+
 ## Cross-capability checks for later tasks
 
 - Account, campaign, character, map/media, notification, decision, live-state, and subscription deletion effects agree in the published baseline; later changes must preserve or explicitly modify those linked contracts.
@@ -95,4 +107,5 @@ These rows describe the validated but unimplemented [`add-ai-campaign-assistance
 - Future tracked-level progression remains character-owner controlled. Campaign DMs read referenced history only; other players/table receive current level only; the transition never implies skill/class/HP/item/reward mechanics.
 - Future AI context leaves Dicekeeper only after a DM reviews an explicit manifest. Provider output remains a DM-only untrusted draft until acceptance; only story/NPC/place/quest suggestions have a separate ordinary-domain commit, while encounter/boss advice never mutates deterministic state directly.
 - Future member recaps are generated only from the member-safe section-9 projection. A DM-only draft cannot be relabeled or post-filtered for members, and membership revocation removes later access.
+- Future rule assistance is independent of campaign roles and uses only the pinned local SRD corpus unless the player explicitly confirms minimum verified passages for optional explanation. It stores no product-facing question history, imports no product context, and creates no gameplay mutation or executable ruling.
 - These reconciliations are accepted documentation, not evidence that the source already conforms; correction remains separate from the baseline.

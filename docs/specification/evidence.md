@@ -54,8 +54,11 @@
 | SRC-22 | [UML](https://regenblau.notion.site/UML-3026a24f98f280669ed9d8584e429b87) | Contains general coursework questions about UML and AI, not Dicekeeper functionality. Excluded from product requirements. |
 | SRC-23 | [Imagor](https://regenblau.notion.site/Imagor-3436a24f98f2805a95f9cd8c61acf55b) | Shows original and resized avatar/map URL examples for small, large, preview, table, and phone variants. This supports task 5 investigation; it does not decide access control or required sizes. |
 | SRC-24 | [Team notes](https://regenblau.notion.site/Dani-s-und-aller-anderer-Notitzen-3206a24f98f2808ab7fefb42628a197e) | Historical candidates and bug reports: onboarding, invitations, waiting-for-DM, per-map fog, multi-map switching, validation/readability/update issues, and experimental physical/mobile dice or AI portraits. Routed by capability in coverage; bugs require reproduction and ideas remain proposed. |
+| SRC-25 | [Official D&D SRD page](https://www.dndbeyond.com/srd), [English SRD 5.2.1 PDF](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf), and [German SRD 5.2.1 PDF](https://media.dndbeyond.com/compendium-images/srd/5.2/DE_SRD_CC_v5.2.1.pdf) | Primary section-12 corpus/license evidence. The official page lists English SRD 5.2.1 (2025-05-01) and German SRD 5.2.1 (2025-12-08). Both PDFs state CC BY 4.0 terms and supply the attribution Dicekeeper must retain. |
+| SRC-26 | [Official D&D Creator FAQ](https://www.dndbeyond.com/creator-faq) | Primary section-12 access boundary. Wizards states SRD 5.2.1 is available under Creative Commons for content creation and separately says D&D Beyond Basic Rules are not released under that license for content creation. |
+| SRC-27 | [Creative Commons Attribution 4.0 deed](https://creativecommons.org/licenses/by/4.0/) and [legal code](https://creativecommons.org/licenses/by/4.0/legalcode) | Primary license-condition evidence. CC BY 4.0 permits sharing/adaptation, including commercially, subject to appropriate credit, license link, modification indication, supplied notices, and no implied endorsement or added downstream restrictions. |
 
-The index and every visible child link were assigned one of: previously reviewed (SRC-08–14), newly reviewed/routed (SRC-15–19, SRC-23–24), inaccessible/insufficient public content (SRC-20–21), or excluded as unrelated (SRC-14, SRC-22).
+The Notion index and every visible child link were assigned one of: previously reviewed (SRC-08–14), newly reviewed/routed (SRC-15–19, SRC-23–24), inaccessible/insufficient public content (SRC-20–21), or excluded as unrelated (SRC-14, SRC-22). SRC-25–SRC-27 are later primary-source additions for the section-12 corpus and license decision, not Notion children.
 
 ## Static implementation findings to preserve
 
@@ -390,3 +393,32 @@ Section 11 refreshed only repository evidence and accepted planning contracts ne
 | `openspec validate add-campaign-content-and-session-records --type change --strict --no-interactive` | Passed for the unchanged section-9 future plan. |
 | `openspec validate add-combat-automation-and-character-progression --type change --strict --no-interactive` | Passed for the unchanged section-10 future plan. |
 | `openspec validate --specs --strict --no-interactive` | The 14 published current specs remain valid; future deltas were not promoted. |
+
+## Section 12 rule-assistance planning review
+
+Section 12 reviewed the official D&D SRD publication page, the official English and German SRD 5.2.1 PDFs, the official creator FAQ, and the CC BY 4.0 license materials on 2026-09-23. This was a planning and source-boundary review only: no corpus was downloaded or vendored, no external explanation provider was contacted, and no application service, test, runtime configuration, migration, prior future-change task, corrective change, or deployment file was executed or changed.
+
+| ID | Source evidence | Observation | Decision / planning consequence |
+| --- | --- | --- | --- |
+| RUL-E01 | SRC-25 official SRD page and English/German PDFs | The official page publishes English SRD 5.2.1 dated 2025-05-01 and German SRD 5.2.1 dated 2025-12-08. The documents identify the same SRD version and provide publisher attribution text. | DEC-051 pins an immutable bilingual corpus to those two sources for `DND_5E_2024`; English has semantic precedence and German is the localized companion. Later revisions require an explicit corpus change rather than silent replacement. |
+| RUL-E02 | SRC-25 PDF license pages; SRC-27 CC BY 4.0 deed/legal code | The accepted source material is licensed for sharing and adaptation under CC BY 4.0 when attribution, the license link, modification indication, notices, and non-endorsement boundaries are preserved. | DEC-052 and RUL-004 require the publisher-supplied attribution, CC BY 4.0 link, Dicekeeper adaptation indication, and independently checkable claim-level citations. |
+| RUL-E03 | SRC-26 official Creator FAQ | Wizards distinguishes SRD 5.2.1 released under Creative Commons from D&D Beyond Basic Rules, which the FAQ says are not released under that license for content creation. | Basic Rules, non-SRD books, SRD 5.1/2014, user uploads, and live web search are excluded instead of being blended into an answer. |
+| RUL-E04 | SRC-03 `FUT-UCRuleQuestion` / `FUT-UCRuleAnswer`; SRC-01 AI risk; current repository inventory | The future diagram permits direct DM/player questions and depicts both a rules database and external OpenAI for explanation. It defines no authority for generated prose, no saved-ruling contract, and no application implementation was found. | DEC-053/054 make local verified retrieval authoritative, keep provider prose optional and non-authoritative, and require extract-only or explicit non-answer fallback. DEC-055 keeps the capability read-only and history-free. |
+| RUL-E05 | DEC-038–DEC-043 and the accepted section-10 deltas | Section 10 fixes D&D 5e (2024) but deliberately defers conditions/effects, item/reward mechanics, full character advancement, tactical rules, libraries, and automatic boss behavior. | Rule assistance may explain verified SRD passages about those subjects but cannot accept, implement, or execute their product mechanics. Wrong-edition evidence cannot alter section-10 behavior. |
+| RUL-E06 | DEC-045–DEC-050 and the accepted section-11 deltas | Section-11 provider output is untrusted, reviewed prose with finite configuration gates and no rule authority. Its provider configuration and campaign context are not automatically shared with rule assistance. | RUL-008 uses a separate disclosure/confirmation and finite-configuration gate. Provider or claim-verification failure falls back to verified extracts or an explicit non-answer. |
+
+### Section 12 semantic and validation result
+
+- [`add-rule-assistance`](../../openspec/changes/add-rule-assistance/) contains exactly one accepted new `rule-assistance` capability.
+- OpenSpec parses 9 requirements and 47 scenarios. They cover authentication, English/German queries, corpus integrity and availability, claim grounding, citation/attribution, ambiguity, missing/uncertain evidence, conflict and language precedence, wrong-edition/non-corpus material, optional provider disclosure/verification/failure, and read-only boundaries.
+- Every one of the 23 implementation tasks remains unchecked. The future change was not applied, archived, synchronized to main specs, or represented as delivered.
+- D&D Beyond Basic Rules, non-SRD books, SRD 5.1/2014, user uploads, live web results, generated prose as authority, saved rulings/history, automatic product context, state mutation, audio/voice commands, Discord, and implicit item/condition/progression automation are excluded.
+- Exact explanation provider/model, finite numeric request/context/output/time/usage/cost limits, accounting scope, and provider-retention terms remain an explicit external-explanation enablement gate; they do not block local source lookup, citations, or `SOURCE_EXTRACTS_ONLY` behavior.
+
+| Check / command | Result |
+| --- | --- |
+| `openspec validate add-rule-assistance --type change --strict --no-interactive` | Passed. |
+| `openspec show add-rule-assistance --json --deltas-only` | Parsed 1 capability, 9 requirements, and 47 scenarios. |
+| `openspec instructions apply --change add-rule-assistance --json` | Reported `ready` with 0/23 implementation tasks complete. |
+| `openspec validate specify-dicekeeper-functionality --type change --strict --no-interactive` | Passed with the expected `skip_specs` informational result. |
+| `openspec validate --specs --strict --no-interactive` | All 15 published main specs pass (the 14-capability functional baseline plus the separate `development-workspace` spec); the future delta was not promoted. |

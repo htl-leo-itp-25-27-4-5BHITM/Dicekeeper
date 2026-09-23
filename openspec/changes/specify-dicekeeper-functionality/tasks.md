@@ -99,8 +99,8 @@ Depends on section 9 and on section 10 for encounter recommendations.
 
 Depends on section 8 and the rules-edition decision from section 10.
 
-- [ ] 12.1 Resolve the D&D 5e (2024) rule source corpus, license/access, citation format, and handling of uncertain/conflicting answers; verify these choices are recorded before any dependent implementation tasks are authored.
-- [ ] 12.2 Create the accepted `rule-assistance` planning change; verify scenarios cover supported queries, source references, missing evidence, wrong-edition material, and failures, then run strict change validation and update coverage/handoff or record explicit deferral.
+- [x] 12.1 Resolve the D&D 5e (2024) rule source corpus, license/access, citation format, and handling of uncertain/conflicting answers; verify these choices are recorded before any dependent implementation tasks are authored.
+- [x] 12.2 Create the accepted `rule-assistance` planning change; verify scenarios cover supported queries, source references, missing evidence, wrong-edition material, and failures, then run strict change validation and update coverage/handoff or record explicit deferral.
 
 ## 13. Specify audio and decide voice-command scope
 
