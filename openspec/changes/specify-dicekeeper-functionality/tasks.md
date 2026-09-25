@@ -114,8 +114,8 @@ Depends on section 9 and section 11 if transcripts supply AI context.
 
 Depends on section 8 and the relevant web contracts; section 13 is required only for accepted Discord audio scope.
 
-- [ ] 14.1 Resolve first-release Discord workflows, account/campaign/channel association, audience, status/roll sharing, and optional audio; verify the decisions identify dependencies and map Discord participants onto the existing permission model.
-- [ ] 14.2 Create the accepted `discord-integration` planning change; verify scenarios include linking/unlinking, unauthorized channels/users, disconnect/reconnect, duplicate events, and any accepted audio behavior, then validate and update coverage/handoff or record explicit deferral.
+- [x] 14.1 Resolve first-release Discord workflows, account/campaign/channel association, audience, status/roll sharing, and optional audio; verify the decisions identify dependencies and map Discord participants onto the existing permission model.
+- [x] 14.2 Create the accepted `discord-integration` planning change; verify scenarios include linking/unlinking, unauthorized channels/users, disconnect/reconnect, duplicate events, and any accepted audio behavior, then validate and update coverage/handoff or record explicit deferral.
 
 ## 15. Audit the complete specification and hand off implementation
 
