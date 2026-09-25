@@ -106,9 +106,9 @@ Depends on section 8 and the rules-edition decision from section 10.
 
 Depends on section 9 and section 11 if transcripts supply AI context.
 
-- [ ] 13.1 Reconcile the target diagram's voice commands with Notion's transcription-only answer; verify the user decision explicitly accepts, excludes, or defers action execution separately from transcription.
-- [ ] 13.2 Resolve audio source, capture controls, speaker attribution, languages, retention/access, correction, and downstream use; create `audio-transcription` planning artifacts and verify scenarios include poor/absent input, transcription failure, correction, stop/delete, and audience boundaries.
-- [ ] 13.3 If commands are accepted, create `voice-commands` planning artifacts with the allowed actions, identity/permissions, ambiguity handling, and execution/confirmation rules; otherwise verify every command use case has an explicit excluded/deferred disposition, then validate accepted artifacts and update coverage/handoff.
+- [x] 13.1 Reconcile the target diagram's voice commands with Notion's transcription-only answer; verify the user decision explicitly accepts, excludes, or defers action execution separately from transcription.
+- [x] 13.2 Resolve audio source, capture controls, speaker attribution, languages, retention/access, correction, and downstream use; create `audio-transcription` planning artifacts and verify scenarios include poor/absent input, transcription failure, correction, stop/delete, and audience boundaries.
+- [x] 13.3 If commands are accepted, create `voice-commands` planning artifacts with the allowed actions, identity/permissions, ambiguity handling, and execution/confirmation rules; otherwise verify every command use case has an explicit excluded/deferred disposition, then validate accepted artifacts and update coverage/handoff.
 
 ## 14. Specify Discord integration
 
