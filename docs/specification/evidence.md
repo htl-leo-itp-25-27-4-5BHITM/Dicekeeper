@@ -480,3 +480,31 @@ Section 14 reconciled the README and future-diagram ambition with the accepted c
 | `openspec instructions apply --change add-discord-integration --json` | Reported `ready` with 0/32 implementation tasks complete. |
 | `openspec validate specify-dicekeeper-functionality --type change --strict --no-interactive` | Passed with the expected `skip_specs` informational result. |
 | `openspec validate --specs --strict --no-interactive` | All 15 unchanged published main specs pass (the 14-capability functional baseline plus the separate `development-workspace` spec); the future delta was not promoted. |
+
+## Section 15 complete-specification audit
+
+Section 15 performed a repository-wide documentation audit on 2026-09-28. It reread the two canonical diagrams, README, all eight shared specification documents, all 15 published main specs, the archived 14-capability baseline record, the proposal-only corrective change, every active future proposal/design/spec/task set, and the complete coordination checklist. This remained static documentation review: no application feature, migration, runtime/provider configuration, deployment, corrective implementation, or future implementation task was executed.
+
+### Coverage and semantic result
+
+- The canonical diagrams contain 33 current and 22 future use-case aliases. All 55 aliases are unique and have exactly one prefixed coverage row and owning task. All 25 `ADD-*` candidates and all 49 `DEV-*` findings retain an explicit disposition or correction owner; all 27 `SRC-*` records and 67 `DEC-*` decisions remain accounted for.
+- The 14 functional main specs contain 102 requirements and 447 scenarios. Including `development-workspace`, all 15 main specs contain 108 requirements and 464 scenarios. The six accepted future changes contain nine delta specs, 82 requirements, and 395 scenarios.
+- Requirement/scenario structure passed for every main and future spec: requirement identifiers are unique within each audited set, every requirement has at least one scenario, and every scenario contains explicit `WHEN` and `THEN` steps. The archived baseline's 14 deltas exactly match the 14 published functional main specs after normalizing only OpenSpec's delta/main headings.
+- Cross-artifact review found no unresolved contradiction in role authority, state ownership, audience projection, persistence, deletion, or failure semantics. Dicekeeper authentication and owner/member roles remain authoritative; display clients and external providers never acquire product authority; current and future state owners remain distinct; member-safe projections never derive from broader private projections; and browser-local, runtime, durable, transient-audio, provider, and external-message lifetimes stay explicit.
+- The final README audit found five stale absolute Markdown targets that referenced the repository's former `School/SEW` location. They were changed to repository-relative links. The repeated local-link and capability-path audit then passed.
+- Placeholder scanning found only deliberate domain uses such as media placeholders and normal prose/code ellipses; no capability has a missing or placeholder purpose. Open decision gates and deferrals remain explicit rather than being filled with invented defaults.
+
+### Readiness and validation result
+
+| Check / command | Result |
+| --- | --- |
+| `openspec validate --specs --strict --no-interactive` | Passed for all 15 main specs. Long-requirement messages are informational notices only; no warning or failure was suppressed. |
+| Strict validation of `specify-dicekeeper-functionality` and `correct-character-library-boundaries` | Passed. Their `skip_specs` results are expected because the coordination change owns shared documentation and the corrective change is proposal-only; neither result claims product implementation readiness. |
+| Strict validation of all six `add-*` future changes | Passed for all nine delta capabilities. Validation establishes artifact/schema consistency, not implementation or production enablement. |
+| Requirement/scenario and identifier audit | Passed: main 108/464, including functional baseline 102/447; future 82/395; every requirement has scenarios with `WHEN`/`THEN`. |
+| Coverage/source/decision/deviation audit | Passed: 33/33 current aliases, 22/22 future aliases, 25/25 additional candidates, 27 source IDs, 67 decision IDs, and 49 deviation IDs. |
+| Archived-baseline parity audit | Passed: 14/14 archived deltas match their published main specs after delta/main heading normalization. |
+| Future-checklist audit | Passed: implementation remains 0/15, 0/20, 0/27, 0/23, 0/32, and 0/32; no future task was marked complete. |
+| Markdown/local-link, capability-path, purpose/placeholder, whitespace, and scope audit | Passed after correcting the five stale README targets. |
+
+Only [`add-campaign-content-and-session-records`](../../openspec/changes/add-campaign-content-and-session-records/) is recommended as a complete implementation starting point with no unresolved behavior/configuration gate; it provides the shared future foundation. The local corpus/retrieval/extract-only portion of [`add-rule-assistance`](../../openspec/changes/add-rule-assistance/) is independently startable, but external explanations remain configuration-gated. Combat/progression, AI/recaps, audio transcription, and Discord have the upstream and/or production-enablement gates recorded in [`overview.md`](overview.md#ordered-implementation-roadmap) and [`decisions.md`](decisions.md#open-decision-gates). Proposal-only and unplanned corrective work is not classified as implementation-ready.

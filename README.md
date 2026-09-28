@@ -116,7 +116,7 @@ Für die lokale Entwicklung läuft der Browser-Login standardmäßig über `http
 
 ### Port-Forward starten
 
-Das Skript [scripts/port-forward-start.sh](/Users/blauregen/School/SEW/Dicekeeper/scripts/port-forward-start.sh) startet standardmäßig:
+Das Skript [scripts/port-forward-start.sh](scripts/port-forward-start.sh) startet standardmäßig:
 
 - `svc/postgres` auf `5432`
 - einen lokalen Keycloak-Proxy auf `localhost:8000`
@@ -177,8 +177,8 @@ Die persistente Kubernetes-Entwicklungsbox fuer Build, Test und Quarkus Dev Mode
 
 Neben Production auf `dicekeeper.net` gibt es eine getrennte Kubernetes-Umgebung fuer den Branch `develop`.
 
-- `main` deployed Production mit den bisherigen Manifests unter [k8s](/Users/blauregen/School/SEW/Dicekeeper/k8s)
-- `develop` deployed Development mit den Manifests unter [k8s/dev](/Users/blauregen/School/SEW/Dicekeeper/k8s/dev)
+- `main` deployed Production mit den bisherigen Manifests unter [k8s](k8s/)
+- `develop` deployed Development mit den Manifests unter [k8s/dev](k8s/dev/)
 - Development nutzt eigene Kubernetes-Objekte: `dicekeeper-dev`, `imagor-dev`, `dicekeeper-dev-uploads`
 - Keycloak bleibt im gemeinsamen Realm `dicekeeper`, aber Development nutzt einen eigenen Client, standardmaessig `dicekeeper-dev-web`
 
@@ -233,7 +233,7 @@ Die Keycloak Admin API ist im Dev-Deployment deaktiviert, damit der Dev-Client k
 
 Für Bild-Resizing und WebP-Ausgabe läuft `imagor` im Cluster als eigener Service statt im Dicekeeper-Container.
 
-- Manifest-Dateien: [k8s/imagor-deployment.yaml](/Users/blauregen/School/SEW/Dicekeeper/k8s/imagor-deployment.yaml) und [k8s/imagor-service.yaml](/Users/blauregen/School/SEW/Dicekeeper/k8s/imagor-service.yaml)
+- Manifest-Dateien: [k8s/imagor-deployment.yaml](k8s/imagor-deployment.yaml) und [k8s/imagor-service.yaml](k8s/imagor-service.yaml)
 - Ingress-Pfad: `https://dicekeeper.net/imagor/...`
 - Originale Uploads kommen weiterhin aus dem gemeinsamen PVC `dicekeeper-uploads`
 - Verarbeitete Varianten werden im `imagor`-Pod in einem `emptyDir` zwischengespeichert
