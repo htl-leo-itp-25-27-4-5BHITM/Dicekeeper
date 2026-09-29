@@ -166,6 +166,8 @@ jobs:
           kubectl -n "$NAMESPACE" apply -f k8s/imagor-deployment.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/service.yaml
           sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:latest|image: $IMAGE:${GITHUB_SHA}|" k8s/deployment.yaml | kubectl -n "$NAMESPACE" apply -f -
+          scripts/validate-edge-routing.sh
+          kubectl -n "$NAMESPACE" apply --dry-run=server -f k8s/ingress.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/ingress.yaml
 
       - name: Apply development Kubernetes manifests
@@ -221,6 +223,8 @@ jobs:
           kubectl -n "$NAMESPACE" apply -f k8s/dev/imagor-deployment.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/dev/service.yaml
           sed "s|image: ghcr.io/htl-leo-itp-25-27-4-5bhitm/dicekeeper:dev|image: $IMAGE:${GITHUB_SHA}|" k8s/dev/deployment.yaml | kubectl -n "$NAMESPACE" apply -f -
+          scripts/validate-edge-routing.sh
+          kubectl -n "$NAMESPACE" apply --dry-run=server -f k8s/dev/ingress.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/dev/ingress.yaml
 
       - name: Wait for production rollout
