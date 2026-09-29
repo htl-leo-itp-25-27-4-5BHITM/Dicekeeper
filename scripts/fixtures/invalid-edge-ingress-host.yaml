@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: invalid-external-host
+  namespace: student-it200233
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dicekeeper.net
+      http:
+        paths:
+          - path: /_dicekeeper/prod/app(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dicekeeper
+                port:
+                  number: 80
