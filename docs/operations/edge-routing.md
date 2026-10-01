@@ -13,16 +13,24 @@ or Cloudflare rollback values in this repository.
 
 New production resources:
 
-- ConfigMaps `dicekeeper-edge-production-headers` and
-  `dicekeeper-edge-auth-headers`
 - Ingresses `dicekeeper-edge-app`, `dicekeeper-edge-imagor`, and
   `dicekeeper-edge-auth`
 
 New development resources:
 
-- ConfigMap `dicekeeper-edge-development-headers`
 - Ingresses `dicekeeper-dev-edge-app` and
   `dicekeeper-dev-edge-imagor`
+
+Deployments `dicekeeper` and `dicekeeper-dev` set
+`QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=false`. This makes Quarkus use the
+canonical backend `Host` pinned by each Ingress's `upstream-vhost` annotation
+instead of ingress-nginx's normalized `X-Forwarded-Host`. The three former
+`dicekeeper-edge-*-headers` ConfigMaps are obsolete and must not be recreated.
+Each VPS virtual host also has fixed `proxy_redirect` rules that map only the
+assigned LeoCloud hostname back to that virtual host's public origin and strip
+the matching private prefix when present. This response-only fallback covers
+redirect code paths that still derive an absolute `Location` from the
+normalized forwarded host; it does not trust a client-supplied host.
 
 The retained rollback Ingresses are `dicekeeper` and `dicekeeper-dev`.
 Ingress `dashboard` continues to own `/` on the assigned LeoCloud hostname.
@@ -62,32 +70,47 @@ In the operator record, explicitly confirm that the rollback Ingress names are
 the three public hostnames. Do not infer an origin from `dig` while a record is
 proxied; capture it from Cloudflare as described in section 6.
 
-## 2. Validate and create only the parallel LeoCloud resources
+## 2. Deploy the proxy setting and parallel LeoCloud resources
 
-Run all four checks before applying either manifest:
+Run all checks before applying any manifest:
 
 ```bash
 scripts/validate-edge-routing.sh
+kubectl -n student-it200233 set env deployment/dicekeeper QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=false --dry-run=server -o yaml > /dev/null
+kubectl -n student-it200233 set env deployment/dicekeeper-dev QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=false --dry-run=server -o yaml > /dev/null
 kubectl -n student-it200233 apply --dry-run=client -f k8s/ingress.yaml
 kubectl -n student-it200233 apply --dry-run=server -f k8s/ingress.yaml
 kubectl -n student-it200233 apply --dry-run=client -f k8s/dev/ingress.yaml
 kubectl -n student-it200233 apply --dry-run=server -f k8s/dev/ingress.yaml
 ```
 
-Apply the two multi-resource files. They contain only the eight new resources
-listed above and do not update the retained rollback Ingresses.
+Set the variable directly on the two existing Dicekeeper Deployments and wait
+for both rollouts before applying the five Ingress resources. `kubectl set env`
+preserves each currently pinned image instead of replacing it with a floating
+tag from a local manifest. The repository Deployment manifests carry the same
+setting for future normal deployments. The setting only disables
+forwarded-host consumption; the retained legacy Ingresses already pass their
+public hostname as `Host`, so their public behavior remains unchanged. Delete
+only the three obsolete edge-header ConfigMaps from the superseded strategy.
+The Ingress files do not update the retained rollback Ingresses.
 
 ```bash
+kubectl -n student-it200233 set env deployment/dicekeeper QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=false
+kubectl -n student-it200233 rollout status deployment/dicekeeper --timeout=5m
+kubectl -n student-it200233 set env deployment/dicekeeper-dev QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST=false
+kubectl -n student-it200233 rollout status deployment/dicekeeper-dev --timeout=5m
 kubectl -n student-it200233 apply -f k8s/ingress.yaml
 kubectl -n student-it200233 apply -f k8s/dev/ingress.yaml
-kubectl -n student-it200233 get configmap dicekeeper-edge-production-headers dicekeeper-edge-auth-headers dicekeeper-edge-development-headers -o wide
+kubectl -n student-it200233 delete configmap dicekeeper-edge-production-headers dicekeeper-edge-auth-headers dicekeeper-edge-development-headers --ignore-not-found
 kubectl -n student-it200233 get ingress dicekeeper-edge-app dicekeeper-edge-imagor dicekeeper-edge-auth dicekeeper-dev-edge-app dicekeeper-dev-edge-imagor -o wide
 kubectl -n student-it200233 get ingress -o yaml > "$EDGE_RECORD_DIR/ingresses-after-parallel-create.yaml"
 kubectl -n student-it200233 get ingress -o jsonpath='{range .items[?(@.metadata.name=="dashboard")].spec.rules[*]}{.host}{" "}{range .http.paths[*]}{.path}{"\n"}{end}{end}' > "$EDGE_RECORD_DIR/dashboard-route-after-parallel-create.txt"
 ```
 
 Compare the before/after records. The dashboard must still own `/`, and the
-two retained rollback Ingresses must be byte-for-byte unchanged.
+two retained rollback Ingresses must be byte-for-byte unchanged. Repeat the
+three public response checks from section 1 to confirm the deployment setting
+did not change the retained public route.
 
 ## 3. Test the private LeoCloud routes directly
 
@@ -99,10 +122,10 @@ front of it.
 export PROD_IMAGOR_PATH=/imagor/REPLACE_WITH_A_VALID_PRODUCTION_IMAGE_PATH
 export DEV_IMAGOR_PATH=/imagor/REPLACE_WITH_A_VALID_DEVELOPMENT_IMAGE_PATH
 curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-prod-app.headers" --output "$EDGE_RECORD_DIR/upstream-prod-app.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/prod/app/"
-curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-prod-imagor.headers" --output "$EDGE_RECORD_DIR/upstream-prod-imagor.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/prod/imagor${PROD_IMAGOR_PATH}"
+curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-prod-imagor.headers" --output "$EDGE_RECORD_DIR/upstream-prod-imagor.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/prod${PROD_IMAGOR_PATH}"
 curl --fail-with-body --silent --show-error --output "$EDGE_RECORD_DIR/upstream-keycloak.json" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/auth/realms/dicekeeper/.well-known/openid-configuration"
 curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-dev-app.headers" --output "$EDGE_RECORD_DIR/upstream-dev-app.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/dev/app/"
-curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-dev-imagor.headers" --output "$EDGE_RECORD_DIR/upstream-dev-imagor.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/dev/imagor${DEV_IMAGOR_PATH}"
+curl --fail-with-body --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-dev-imagor.headers" --output "$EDGE_RECORD_DIR/upstream-dev-imagor.body" "https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/dev${DEV_IMAGOR_PATH}"
 ```
 
 Inspect the saved headers and Keycloak discovery JSON. Redirects, cookies,
@@ -114,42 +137,58 @@ development Service and are not cross-routed.
 
 ## 4. Install the dedicated VPS certificate and site
 
-The certificate must cover `dicekeeper.net` and `*.dicekeeper.net`. A
-Cloudflare Origin CA certificate is preferred; a publicly trusted ACME
-certificate obtained with DNS-01 is also acceptable. The final VPS paths are:
+The certificate must cover `dicekeeper.net` and `*.dicekeeper.net`. This
+deployment uses a publicly trusted Let's Encrypt certificate obtained through
+Certbot's manual DNS-01 flow. Certbot manages the certificate files, and the
+dedicated Nginx paths are stable symlinks to them:
 
-- Certificate chain: `/etc/nginx/tls/dicekeeper.net/origin.pem`, mode `0644`
-- Private key: `/etc/nginx/tls/dicekeeper.net/origin.key`, mode `0600`
+- Certbot chain: `/etc/letsencrypt/live/dicekeeper.net/fullchain.pem`
+- Certbot key: `/etc/letsencrypt/live/dicekeeper.net/privkey.pem`
+- Nginx certificate link: `/etc/nginx/tls/dicekeeper.net/origin.pem`
+- Nginx private-key link: `/etc/nginx/tls/dicekeeper.net/origin.key`
 - Site: `/etc/nginx/sites-available/dicekeeper.net`, mode `0644`
 - Enabled link: `/etc/nginx/sites-enabled/dicekeeper.net`
 
-The source certificate and key paths below refer to private files outside the
-repository. Never paste their contents into a terminal transcript.
+Run Certbot and add every TXT value it requests as a separate
+`_acme-challenge.dicekeeper.net` record. Keep all requested values present until
+issuance succeeds, then remove the temporary TXT records. Never paste private
+key contents into a terminal transcript.
 
 ```bash
-export ORIGIN_CERT_SOURCE=/absolute/private/path/origin.pem
-export ORIGIN_KEY_SOURCE=/absolute/private/path/origin.key
-ssh root@94.16.109.175 'env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "for site in /etc/nginx/sites-enabled/*; do [ -f \"\$site\" ] && sha256sum \"\$site\"; done | sort"' > "$EDGE_RECORD_DIR/nginx-sites-before.sha256"
-scp "$ORIGIN_CERT_SOURCE" root@94.16.109.175:/tmp/dicekeeper-origin.pem
-scp "$ORIGIN_KEY_SOURCE" root@94.16.109.175:/tmp/dicekeeper-origin.key
+ssh -t root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "/usr/bin/certbot certonly --manual --preferred-challenges dns --cert-name dicekeeper.net -d dicekeeper.net -d \"*.dicekeeper.net\" --agree-tos --no-eff-email"'
+ssh root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "openssl x509 -in /etc/letsencrypt/live/dicekeeper.net/fullchain.pem -noout -subject -issuer -dates -ext subjectAltName"'
+ssh root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "for site in /etc/nginx/sites-enabled/*; do [ -f \"\$site\" ] && sha256sum \"\$site\"; done | sort"' > "$EDGE_RECORD_DIR/nginx-sites-before.sha256"
 scp ops/nginx/dicekeeper.net.conf root@94.16.109.175:/tmp/dicekeeper.net.conf
-ssh root@94.16.109.175 'env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "install -d -m 0700 /etc/nginx/tls/dicekeeper.net && install -m 0644 /tmp/dicekeeper-origin.pem /etc/nginx/tls/dicekeeper.net/origin.pem && install -m 0600 /tmp/dicekeeper-origin.key /etc/nginx/tls/dicekeeper.net/origin.key && install -m 0644 /tmp/dicekeeper.net.conf /etc/nginx/sites-available/dicekeeper.net && ln -s /etc/nginx/sites-available/dicekeeper.net /etc/nginx/sites-enabled/dicekeeper.net && nginx -t && systemctl reload nginx"'
-ssh root@94.16.109.175 'env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "for site in /etc/nginx/sites-enabled/*; do [ \"\$(basename \"\$site\")\" = dicekeeper.net ] && continue; [ -f \"\$site\" ] && sha256sum \"\$site\"; done | sort"' > "$EDGE_RECORD_DIR/nginx-sites-after.sha256"
+ssh root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "install -d -m 0700 /etc/nginx/tls/dicekeeper.net && ln -s /etc/letsencrypt/live/dicekeeper.net/fullchain.pem /etc/nginx/tls/dicekeeper.net/origin.pem && ln -s /etc/letsencrypt/live/dicekeeper.net/privkey.pem /etc/nginx/tls/dicekeeper.net/origin.key && install -m 0644 /tmp/dicekeeper.net.conf /etc/nginx/sites-available/dicekeeper.net && ln -s /etc/nginx/sites-available/dicekeeper.net /etc/nginx/sites-enabled/dicekeeper.net && nginx -t && systemctl reload nginx"'
+ssh root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "for site in /etc/nginx/sites-enabled/*; do [ \"\$(basename \"\$site\")\" = dicekeeper.net ] && continue; [ -f \"\$site\" ] && sha256sum \"\$site\"; done | sort"' > "$EDGE_RECORD_DIR/nginx-sites-after.sha256"
 ```
 
 Compare the two checksum files after excluding the newly enabled site from the
 post-install list. Existing enabled sites must be unchanged. The chained
-remote command reloads Nginx only when `nginx -t` succeeds.
+remote command reloads Nginx only when `nginx -t` succeeds. This manual Certbot
+certificate is not automatically renewable: the named renewal owner must
+repeat the DNS-01 command before expiry, verify the renewed certificate, and
+reload Nginx. Installing a scoped Certbot DNS plugin is the preferred future
+automation path.
 
-For a Cloudflare Origin CA certificate, download the matching Cloudflare
-Origin CA root to a private local file and use it with `--cacert`; never use
-`-k`. A public ACME certificate can use the workstation's default trust store.
+The publicly trusted ACME certificate uses the workstation's default trust
+store; never use `-k`.
 
 ```bash
-export VPS_PREFLIGHT_CA=/absolute/private/path/cloudflare-origin-ca-root.pem
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/vps-prod.headers" --output "$EDGE_RECORD_DIR/vps-prod.body" https://dicekeeper.net/
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve auth.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/vps-keycloak.json" https://auth.dicekeeper.net/realms/dicekeeper/.well-known/openid-configuration
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dev.dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/vps-dev.headers" --output "$EDGE_RECORD_DIR/vps-dev.body" https://dev.dicekeeper.net/
+curl --fail-with-body --silent --show-error --resolve dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/vps-prod.headers" --output "$EDGE_RECORD_DIR/vps-prod.body" https://dicekeeper.net/
+curl --fail-with-body --silent --show-error --resolve auth.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/vps-keycloak.json" https://auth.dicekeeper.net/realms/dicekeeper/.well-known/openid-configuration
+curl --fail-with-body --silent --show-error --resolve dev.dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/vps-dev.headers" --output "$EDGE_RECORD_DIR/vps-dev.body" https://dev.dicekeeper.net/
+curl --silent --show-error --resolve auth.dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/vps-keycloak-root-query.headers" --output /dev/null 'https://auth.dicekeeper.net/?edge_redirect_probe=preserve-me'
+```
+
+The queried Keycloak root may be a redirect, but its `Location` must begin
+with `https://auth.dicekeeper.net/`, retain
+`edge_redirect_probe=preserve-me`, and contain neither the assigned LeoCloud
+hostname nor `/_dicekeeper/`. Compare this with a private-upstream probe to
+confirm that the VPS, rather than Cloudflare, performs the normalization:
+
+```bash
+curl --silent --show-error --dump-header "$EDGE_RECORD_DIR/upstream-keycloak-root-query.headers" --output /dev/null 'https://it200233.cloud.htl-leonding.ac.at/_dicekeeper/auth/?edge_redirect_probe=preserve-me'
 ```
 
 ## 5. Run the complete pre-cutover smoke suite
@@ -163,7 +202,8 @@ Required checks:
 1. Production page and a public API response.
 2. Production Imagor response for a known existing image.
 3. Keycloak discovery with issuer `https://auth.dicekeeper.net/realms/dicekeeper`.
-4. Production login redirect, callback, authenticated page, and logout return.
+4. Canonical queried-root redirect plus production login redirect, callback,
+   authenticated page, and logout return.
 5. Development page/API, Imagor, and the development login/callback/logout.
 6. An authorized multipart upload smaller than 100 MB, followed by retrieval.
 7. An authenticated SSE connection that remains unbuffered and receives an
@@ -172,11 +212,11 @@ Required checks:
 Representative non-authenticated commands:
 
 ```bash
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/precutover-prod-login.headers" --output /dev/null https://dicekeeper.net/api/auth/login
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-prod-imagor.body" "https://dicekeeper.net${PROD_IMAGOR_PATH}"
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve auth.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-keycloak.json" https://auth.dicekeeper.net/realms/dicekeeper/.well-known/openid-configuration
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dev.dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/precutover-dev-login.headers" --output /dev/null https://dev.dicekeeper.net/api/auth/login
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dev.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-dev-imagor.body" "https://dev.dicekeeper.net${DEV_IMAGOR_PATH}"
+curl --fail-with-body --silent --show-error --resolve dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/precutover-prod-login.headers" --output /dev/null https://dicekeeper.net/api/auth/login
+curl --fail-with-body --silent --show-error --resolve dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-prod-imagor.body" "https://dicekeeper.net${PROD_IMAGOR_PATH}"
+curl --fail-with-body --silent --show-error --resolve auth.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-keycloak.json" https://auth.dicekeeper.net/realms/dicekeeper/.well-known/openid-configuration
+curl --fail-with-body --silent --show-error --resolve dev.dicekeeper.net:443:94.16.109.175 --dump-header "$EDGE_RECORD_DIR/precutover-dev-login.headers" --output /dev/null https://dev.dicekeeper.net/api/auth/login
+curl --fail-with-body --silent --show-error --resolve dev.dicekeeper.net:443:94.16.109.175 --output "$EDGE_RECORD_DIR/precutover-dev-imagor.body" "https://dev.dicekeeper.net${DEV_IMAGOR_PATH}"
 ```
 
 For the authenticated checks, set the real test URLs and IDs rather than
@@ -188,8 +228,8 @@ export AUTHORIZED_UPLOAD_URL=https://dicekeeper.net/REPLACE_WITH_AUTHORIZED_UPLO
 export TEST_UPLOAD_FILE=/absolute/private/path/representative-upload.png
 export AUTHENTICATED_SSE_URL=https://dicekeeper.net/REPLACE_WITH_AUTHENTICATED_SSE_ENDPOINT
 install -m 0600 /dev/null "$AUTH_COOKIE_JAR"
-curl --fail-with-body --silent --show-error --cacert "$VPS_PREFLIGHT_CA" --resolve dicekeeper.net:443:94.16.109.175 --cookie "$AUTH_COOKIE_JAR" --form "file=@${TEST_UPLOAD_FILE}" "$AUTHORIZED_UPLOAD_URL"
-curl --fail-with-body --no-buffer --silent --show-error --max-time 3700 --cacert "$VPS_PREFLIGHT_CA" --resolve dicekeeper.net:443:94.16.109.175 --cookie "$AUTH_COOKIE_JAR" "$AUTHENTICATED_SSE_URL" > "$EDGE_RECORD_DIR/precutover-sse.txt"
+curl --fail-with-body --silent --show-error --resolve dicekeeper.net:443:94.16.109.175 --cookie "$AUTH_COOKIE_JAR" --form "file=@${TEST_UPLOAD_FILE}" "$AUTHORIZED_UPLOAD_URL"
+curl --fail-with-body --no-buffer --silent --show-error --max-time 3700 --resolve dicekeeper.net:443:94.16.109.175 --cookie "$AUTH_COOKIE_JAR" "$AUTHENTICATED_SSE_URL" > "$EDGE_RECORD_DIR/precutover-sse.txt"
 ```
 
 Search all saved response headers and bodies for internal routing details:
@@ -245,7 +285,7 @@ kubectl -n student-it200233 describe ingress dicekeeper-edge-app dicekeeper-edge
 kubectl -n student-it200233 logs deployment/dicekeeper --since=30m > "$EDGE_RECORD_DIR/dicekeeper-public-smoke.log"
 kubectl -n student-it200233 logs deployment/dicekeeper-dev --since=30m > "$EDGE_RECORD_DIR/dicekeeper-dev-public-smoke.log"
 kubectl -n student-it200233 logs deployment/keycloak --since=30m > "$EDGE_RECORD_DIR/keycloak-public-smoke.log"
-ssh root@94.16.109.175 'env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "journalctl -u nginx --since=-30min --no-pager"' > "$EDGE_RECORD_DIR/nginx-public-smoke.log"
+ssh root@94.16.109.175 '/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /bin/bash --noprofile --norc -c "journalctl -u nginx --since=-30min --no-pager"' > "$EDGE_RECORD_DIR/nginx-public-smoke.log"
 ```
 
 If any required page, API, Imagor, login redirect/callback/logout, upload, or
@@ -309,7 +349,8 @@ Keep this completed record in `EDGE_RECORD_DIR`, not in Git:
 - Baseline public response status and Cloudflare-facing A/AAAA answers
 - Full live Ingress snapshot, including dashboard `/`
 - Exact rollback Ingress names: `dicekeeper`, `dicekeeper-dev`
-- Client/server dry-run results and eight new deployed resource names
+- Client/server dry-run results, both application rollouts, and five new
+  deployed resource names
 - Direct LeoCloud route results for all five mappings
 - VPS certificate subject/SANs, expiry, and certificate renewal owner
 - Nginx configuration check, reload time, unchanged-site checksums, and direct

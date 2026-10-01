@@ -42,7 +42,6 @@ EXPECTED_ROUTES = {
         80,
         "/$2",
         "dicekeeper.net",
-        "student-it200233/dicekeeper-edge-production-headers",
     ),
     (
         "/_dicekeeper/prod/imagor(/|$)(.*)",
@@ -50,7 +49,6 @@ EXPECTED_ROUTES = {
         8000,
         "/imagor/$2",
         "dicekeeper.net",
-        "student-it200233/dicekeeper-edge-production-headers",
     ),
     (
         "/_dicekeeper/auth(/|$)(.*)",
@@ -58,7 +56,6 @@ EXPECTED_ROUTES = {
         8080,
         "/$2",
         "auth.dicekeeper.net",
-        "student-it200233/dicekeeper-edge-auth-headers",
     ),
     (
         "/_dicekeeper/dev/app(/|$)(.*)",
@@ -66,7 +63,6 @@ EXPECTED_ROUTES = {
         80,
         "/$2",
         "dev.dicekeeper.net",
-        "student-it200233/dicekeeper-edge-development-headers",
     ),
     (
         "/_dicekeeper/dev/imagor(/|$)(.*)",
@@ -74,7 +70,6 @@ EXPECTED_ROUTES = {
         8000,
         "/imagor/$2",
         "dev.dicekeeper.net",
-        "student-it200233/dicekeeper-edge-development-headers",
     ),
 }
 
@@ -119,7 +114,11 @@ for ingress in ingresses:
     annotations = metadata.get("annotations", {})
     rewrite = annotations.get("nginx.ingress.kubernetes.io/rewrite-target")
     upstream_host = annotations.get("nginx.ingress.kubernetes.io/upstream-vhost")
-    header_config = annotations.get("nginx.ingress.kubernetes.io/proxy-set-headers")
+
+    if "nginx.ingress.kubernetes.io/proxy-set-headers" in annotations:
+        errors.append(
+            f"Ingress {name!r} uses unsupported per-Ingress proxy-set-headers"
+        )
 
     if annotations.get("nginx.ingress.kubernetes.io/use-regex") != "true":
         errors.append(f"Ingress {name!r} must enable regex paths")
@@ -135,7 +134,6 @@ for ingress in ingresses:
                     port,
                     rewrite,
                     upstream_host,
-                    header_config,
                 )
             )
 
@@ -146,34 +144,19 @@ for route in sorted(missing):
 for route in sorted(unexpected):
     errors.append(f"unexpected route mapping: {route}")
 
-expected_headers = {
-    "dicekeeper-edge-production-headers": "dicekeeper.net",
-    "dicekeeper-edge-auth-headers": "auth.dicekeeper.net",
-    "dicekeeper-edge-development-headers": "dev.dicekeeper.net",
+obsolete_header_configs = {
+    "dicekeeper-edge-production-headers",
+    "dicekeeper-edge-auth-headers",
+    "dicekeeper-edge-development-headers",
 }
-for config_name, canonical_host in expected_headers.items():
-    config_map = config_maps.get(config_name)
-    if config_map is None:
-        errors.append(f"missing canonical-header ConfigMap {config_name!r}")
-        continue
-
-    data = config_map.get("data", {})
-    expected_data = {
-        "X-Forwarded-Host": canonical_host,
-        "X-Forwarded-Proto": "https",
-        "X-Forwarded-Port": "443",
-    }
-    for key, expected_value in expected_data.items():
-        if data.get(key) != expected_value:
-            errors.append(
-                f"ConfigMap {config_name!r} must set {key} to {expected_value!r}"
-            )
+for config_name in sorted(obsolete_header_configs & config_maps.keys()):
+    errors.append(f"obsolete canonical-header ConfigMap is still rendered: {config_name!r}")
 
 if errors:
     fail(errors)
 
 print(
     f"Validated {len(ingresses)} edge Ingress resources, "
-    f"{len(EXPECTED_ROUTES)} route mappings, and {len(expected_headers)} header ConfigMaps."
+    f"{len(EXPECTED_ROUTES)} route mappings, and their canonical backend hosts."
 )
 PY
