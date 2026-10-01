@@ -37,7 +37,7 @@ Every repository-managed Ingress created or updated for the public edge SHALL de
 - **THEN** Dicekeeper edge routes do not claim that request and the existing dashboard ingress remains responsible for it
 
 ### Requirement: EDGE-003 Canonical proxy context
-The proxy chain SHALL provide each application backend with its canonical public host, HTTPS scheme, port, and forwarding context even though LeoCloud routing uses the assigned hostname. Redirect locations, OIDC callback URLs, logout return URLs, cookie scope, and identity-provider metadata MUST remain on the applicable public hostname and MUST NOT contain the assigned LeoCloud hostname or a private routing prefix.
+The proxy chain SHALL provide each application backend with its canonical public host, HTTPS scheme, port, and forwarding context even though LeoCloud routing uses the assigned hostname. Each route SHALL pin its backend `Host` to the applicable public hostname, and the Dicekeeper applications MUST derive their canonical host from that route-owned value rather than ingress-nginx's assigned-host `X-Forwarded-Host`. The VPS SHALL normalize any absolute upstream `Location` or `Refresh` redirect that still names the assigned LeoCloud hostname to the public origin for the selected virtual host, removing the corresponding private routing prefix if one is present. Redirect locations, OIDC callback URLs, logout return URLs, cookie scope, and identity-provider metadata MUST remain on the applicable public hostname and MUST NOT contain the assigned LeoCloud hostname or a private routing prefix.
 
 #### Scenario: Production login starts through the edge
 - **WHEN** a guest starts sign-in from `https://dicekeeper.net`
@@ -47,9 +47,13 @@ The proxy chain SHALL provide each application backend with its canonical public
 - **WHEN** a guest starts sign-in from `https://dev.dicekeeper.net`
 - **THEN** the identity flow uses the development client's callback under `https://dev.dicekeeper.net`
 
-#### Scenario: Forwarded headers are supplied by the edge
+#### Scenario: Canonical context is supplied by trusted route configuration
 - **WHEN** a public request contains conflicting client-supplied forwarding headers
-- **THEN** the trusted proxy hops replace or normalize the canonical host, scheme, and port used by the backend rather than allowing the client to choose them
+- **THEN** the Ingress pins the backend `Host`, ingress-nginx normalizes forwarding headers, and the application uses the pinned host plus the trusted forwarded HTTPS context rather than allowing the client to choose its canonical origin
+
+#### Scenario: Upstream emits an assigned-host redirect
+- **WHEN** a selected upstream response contains an absolute redirect rooted at `it200233.cloud.htl-leonding.ac.at`
+- **THEN** the VPS rewrites only that redirect authority to the selected route's canonical public origin, strips the route's private prefix if present, and preserves the remaining path and query string
 
 ### Requirement: EDGE-004 Long-lived and large request compatibility
 The edge SHALL accept valid request bodies up to the application's existing 100 MB limit, SHALL avoid response buffering for streaming endpoints, and SHALL keep long-lived responses open for at least the existing 3600-second proxy timeout. The chain SHALL use an HTTP version and connection handling compatible with SSE and HTTP protocol upgrades.
