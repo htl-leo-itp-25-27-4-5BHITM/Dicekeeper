@@ -72,6 +72,8 @@ spec:
               value: "false"
             - name: QUARKUS_OIDC_TOKEN_STATE_MANAGER_STRATEGY
               value: id-token
+            - name: QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST
+              value: "false"
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
