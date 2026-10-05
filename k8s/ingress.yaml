@@ -1,44 +1,92 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: dicekeeper
+  name: dicekeeper-edge-app
   namespace: student-it200233
+  labels:
+    app: dicekeeper
+    app.kubernetes.io/component: public-edge
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-  labels:
-    app: dicekeeper
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/upstream-vhost: dicekeeper.net
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
-  # If this Ingress doesn't get an address, use Cloudflare Tunnel instead
   rules:
-    - host: dicekeeper.net
+    - host: it200233.cloud.htl-leonding.ac.at
       http:
         paths:
-          - path: /imagor
-            pathType: Prefix
-            backend:
-              service:
-                name: imagor
-                port:
-                  number: 8000
-          - path: /
-            pathType: Prefix
+          - path: /_dicekeeper/prod/app(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: dicekeeper
                 port:
                   number: 80
-    - host: auth.dicekeeper.net
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dicekeeper-edge-imagor
+  namespace: student-it200233
+  labels:
+    app: imagor
+    app.kubernetes.io/component: public-edge
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/rewrite-target: /imagor/$2
+    nginx.ingress.kubernetes.io/upstream-vhost: dicekeeper.net
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: it200233.cloud.htl-leonding.ac.at
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: /_dicekeeper/prod/imagor(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: imagor
+                port:
+                  number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dicekeeper-edge-auth
+  namespace: student-it200233
+  labels:
+    app: keycloak
+    app.kubernetes.io/component: public-edge
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/upstream-vhost: auth.dicekeeper.net
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: it200233.cloud.htl-leonding.ac.at
+      http:
+        paths:
+          - path: /_dicekeeper/auth(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: keycloak
                 port:
                   number: 8080
-  # No cert-manager available — TLS is handled by Cloudflare proxy (free SSL)
