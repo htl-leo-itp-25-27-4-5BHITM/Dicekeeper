@@ -47,11 +47,11 @@ export default async function CharacterCreateView() {
           <div class="nav-buttons"><button class="btn btn-secondary" id="ccCancel">Cancel</button><button class="btn btn-primary" id="ccNext1">Next: Choose Class</button></div>
         </div>
         <div id="ccStep2" class="step-content">
-          <div class="section"><div class="section-title">Choose Your Class</div><div class="selection-grid" id="ccClassGrid"><div class="loading">Loading classes...</div></div></div>
+          <div class="section"><div class="section-title">Choose Your Class</div><div class="selection-grid" id="ccClassGrid"><div class="loading">Loading classes...</div></div><div class="selection-details" id="ccClassDetails" hidden></div></div>
           <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack2">Back</button><button class="btn btn-primary" id="ccNext2" disabled>Next: Background</button></div>
         </div>
         <div id="ccStep3" class="step-content">
-          <div class="section"><div class="section-title">Choose Your Background</div><div class="selection-grid" id="ccBgGrid"><div class="loading">Loading backgrounds...</div></div></div>
+          <div class="section"><div class="section-title">Choose Your Background</div><div class="selection-grid" id="ccBgGrid"><div class="loading">Loading backgrounds...</div></div><div class="selection-details" id="ccBgDetails" hidden></div></div>
           <div class="form-group" style="margin-top:20px"><label>Backstory (Optional)</label><textarea id="ccBackstory" placeholder="Your character's backstory..."></textarea></div>
           <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack3">Back</button><button class="btn btn-primary" id="ccNext3" disabled>Next: Ability Scores</button></div>
         </div>
@@ -191,6 +191,31 @@ export default async function CharacterCreateView() {
     el.style.color = rem < 0 ? 'var(--danger)' : 'var(--green-accent)';
   }
 
+  function descriptionParagraphs(description) {
+    return String(description || '')
+      .split(/<br\s*\/?>/i)
+      .map(part => part.trim())
+      .filter(Boolean);
+  }
+
+  function descriptionPreview(description) {
+    return descriptionParagraphs(description)[0] || '';
+  }
+
+  function renderSelectionDetails(containerId, item) {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    if (!item) {
+      box.innerHTML = '<p class="selection-details-hint">Select a card to read the full description.</p>';
+      box.hidden = false;
+      return;
+    }
+    const paragraphs = descriptionParagraphs(item.description);
+    box.innerHTML = `<div class="selection-details-name">${esc(item.name)}</div>`
+      + (paragraphs.length ? paragraphs.map(p => `<p>${esc(p)}</p>`).join('') : '<p>No description available.</p>');
+    box.hidden = false;
+  }
+
   function renderClassGrid() {
     const grid = document.getElementById('ccClassGrid');
     grid.innerHTML = '';
@@ -198,17 +223,19 @@ export default async function CharacterCreateView() {
       const card = document.createElement('div');
       card.className = 'selection-card' + (selectedClassId === cls.id ? ' selected' : '');
       card.innerHTML = `<div class="selection-card-icon">⚔️</div><div class="selection-card-name">${esc(cls.name)}</div>
-        <div class="selection-card-desc">${esc((cls.description || '').substring(0, 50))}${cls.description && cls.description.length > 50 ? '...' : ''}</div>`;
+        <div class="selection-card-desc">${esc(descriptionPreview(cls.description))}</div>`;
       card.addEventListener('click', () => {
         selectedClassId = cls.id;
         grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
+        renderSelectionDetails('ccClassDetails', cls);
         document.getElementById('ccNext2').disabled = false;
         saveDraft();
       });
       grid.appendChild(card);
     });
     document.getElementById('ccNext2').disabled = !selectedClassId;
+    renderSelectionDetails('ccClassDetails', classes.find(c => c.id === selectedClassId));
   }
 
   async function loadClasses() {
@@ -229,17 +256,19 @@ export default async function CharacterCreateView() {
       const card = document.createElement('div');
       card.className = 'selection-card' + (selectedBackgroundId === bg.id ? ' selected' : '');
       card.innerHTML = `<div class="selection-card-icon">📜</div><div class="selection-card-name">${esc(bg.name)}</div>
-        <div class="selection-card-desc">${esc((bg.description || '').substring(0, 50))}${bg.description && bg.description.length > 50 ? '...' : ''}</div>`;
+        <div class="selection-card-desc">${esc(descriptionPreview(bg.description))}</div>`;
       card.addEventListener('click', () => {
         selectedBackgroundId = bg.id;
         grid.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
+        renderSelectionDetails('ccBgDetails', bg);
         document.getElementById('ccNext3').disabled = false;
         saveDraft();
       });
       grid.appendChild(card);
     });
     document.getElementById('ccNext3').disabled = backgrounds.length > 0 && !selectedBackgroundId;
+    renderSelectionDetails('ccBgDetails', backgrounds.find(b => b.id === selectedBackgroundId));
   }
 
   async function loadBackgrounds() {
