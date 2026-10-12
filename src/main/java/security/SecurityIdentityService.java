@@ -1,8 +1,13 @@
 package security;
 
+import account.deletion.AccountDeletionMarker;
+import account.deletion.AccountDeletionMarkerService;
+import account.deletion.AccountDeletionStatusException;
+import account.deletion.SubjectDigest;
 import io.quarkus.oidc.UserInfo;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
@@ -21,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
@@ -28,8 +34,19 @@ public class SecurityIdentityService {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
+    @Inject
+    AccountDeletionMarkerService deletionMarkerService;
+
+    @Inject
+    SubjectDigest subjectDigest;
+
     @Transactional
     public Player getOrCreateCurrentPlayer(SecurityIdentity identity) {
+        AccountDeletionMarker deletionMarker = findDeletionMarker(identity).orElse(null);
+        if (deletionMarker != null) {
+            throw new AccountDeletionStatusException(deletionMarker.state);
+        }
+
         String realEmail = resolveEmail(identity);
         String normalizedRealEmail = isBlank(realEmail) ? null : realEmail.toLowerCase(Locale.ROOT);
         String fallbackEmail = resolveFallbackEmail(identity);
@@ -101,6 +118,28 @@ public class SecurityIdentityService {
         }
 
         return player;
+    }
+
+    @Transactional
+    public Player findCurrentPlayerWithoutCreating(SecurityIdentity identity) {
+        String realEmail = resolveEmail(identity);
+        String normalizedRealEmail = isBlank(realEmail) ? null : realEmail.toLowerCase(Locale.ROOT);
+        String fallbackEmail = resolveFallbackEmail(identity);
+        String lookupEmail = normalizedRealEmail != null ? normalizedRealEmail : fallbackEmail;
+
+        Player player = Player.find("lower(email) = ?1", lookupEmail).firstResult();
+        if (player == null && normalizedRealEmail != null && !normalizedRealEmail.equals(fallbackEmail)) {
+            player = Player.find("lower(email) = ?1", fallbackEmail).firstResult();
+        }
+        return player;
+    }
+
+    public Optional<AccountDeletionMarker> findDeletionMarker(SecurityIdentity identity) {
+        String subject = getCurrentSubject(identity);
+        if (isBlank(subject)) {
+            return Optional.empty();
+        }
+        return deletionMarkerService.find(subjectDigest.digest(subject));
     }
 
     @Transactional

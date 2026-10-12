@@ -7,10 +7,12 @@ import { requirePlayer } from '../services/auth.js';
 import { esc, getActiveCampaignMap, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { createDiceRollTracker } from '../services/diceRolls.js';
+import { createMapCanvas } from '../components/mapCanvas.js';
+import { createLiveStatus } from '../components/liveStatus.js';
+import { loadTableRecoverySnapshot } from '../services/liveSnapshots.js';
 
 // The table only pops up rolls that are still fresh; older ones would be confusing.
 const TABLE_DICE_MAX_AGE_MS = 15000;
-import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function TableView({ id }) {
   const player = requirePlayer();
@@ -29,6 +31,7 @@ export default async function TableView({ id }) {
           <span class="table-sidebar-icon">⚔️</span>
           <h2 class="table-sidebar-title" id="tvCampaignName">Kampagne</h2>
         </div>
+        <div id="tvLiveStatus" class="live-status-slot live-status-slot--table"></div>
         <div class="table-turn-header">
           <span class="table-section-icon">🎯</span>
           <h3>Spieler Reihenfolge</h3>
@@ -61,6 +64,9 @@ export default async function TableView({ id }) {
   let activeMap = null;
   let mapMarkers = [];
   let eventSource = null;
+  const liveStatus = createLiveStatus('tvLiveStatus', {
+    onRetry: () => eventSource?.retry()
+  });
 
   // Load campaign
   try {
@@ -272,38 +278,28 @@ export default async function TableView({ id }) {
   }
 
   // ===== SSE =====
-  async function reconcileLiveState() {
-    const [stateResult, markersResult, campaignResult] = await Promise.allSettled([
-      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' })
-    ]);
+  function applyRecoverySnapshot(snapshot) {
+    const nextTurn = snapshot.state.currentTurnPlayerId;
+    const nextPlayers = players.map(existing => ({
+      ...existing,
+      hp: snapshot.state.playerHp?.[existing.id] ?? existing.hp,
+      maxHp: snapshot.state.playerMaxHp?.[existing.id] ?? existing.maxHp,
+      active: snapshot.state.playerActive?.[existing.id] ?? existing.active
+    }));
+    if (nextTurn !== undefined && nextTurn !== -1) currentTurnPlayerId = nextTurn;
+    players = nextPlayers;
+    mapMarkers = snapshot.markers;
+    campaign = snapshot.campaign;
+    activeMap = getActiveCampaignMap(campaign);
+    mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+    mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
 
-    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
-      const state = await stateResult.value.json();
-      currentTurnPlayerId = state.currentTurnPlayerId !== -1 ? state.currentTurnPlayerId : currentTurnPlayerId;
-      for (const p of players) {
-        if (state.playerHp?.[p.id] !== undefined) p.hp = state.playerHp[p.id];
-        if (state.playerMaxHp?.[p.id] !== undefined) p.maxHp = state.playerMaxHp[p.id];
-        if (state.playerActive?.[p.id] !== undefined) p.active = state.playerActive[p.id];
-      }
-      if (state.lastDiceRoll) handleDiceRoll(state.lastDiceRoll, { onlyIfRecent: true });
-      renderPlayers();
-    }
-
-    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
-      mapMarkers = await markersResult.value.json();
-      syncMap();
-    }
-
-    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
-      campaign = await campaignResult.value.json();
-      document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
-      activeMap = getActiveCampaignMap(campaign);
-      mapImageUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
-      mapFallbackImageUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
-      if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
-    }
+    // Shows a roll that happened while this client was not connected.
+    if (snapshot.state.lastDiceRoll) handleDiceRoll(snapshot.state.lastDiceRoll, { onlyIfRecent: true });
+    renderPlayers();
+    syncMap();
+    document.getElementById('tvCampaignName').textContent = campaign.name || 'Kampagne';
+    if (mapCanvas) mapCanvas.updateMapImage(mapImageUrl, mapFallbackImageUrl);
   }
 
   function connectSSE() {
@@ -375,10 +371,12 @@ export default async function TableView({ id }) {
         if (mapCanvas && d.data) mapCanvas.loadExplorationData(d.data);
       },
 
-      campaign_updated: () => reconcileLiveState(),
-      state_reset: () => reconcileLiveState()
+      campaign_updated: () => eventSource?.reconcile('campaign-updated'),
+      state_reset: () => eventSource?.reconcile('state-reset')
     }, {
-      onConnected: () => reconcileLiveState()
+      loadSnapshot: () => loadTableRecoverySnapshot(campaignId, player.id),
+      applySnapshot: applyRecoverySnapshot,
+      onStateChange: state => liveStatus.setState(state)
     });
   }
 
@@ -390,6 +388,7 @@ export default async function TableView({ id }) {
   // Cleanup
   return () => {
     document.body.classList.remove('table-view-active');
+    liveStatus.destroy();
     if (eventSource) { eventSource.close(); eventSource = null; }
     if (mapCanvas) { mapCanvas.destroy(); mapCanvas = null; }
   };

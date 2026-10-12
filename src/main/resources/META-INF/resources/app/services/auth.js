@@ -1,6 +1,11 @@
+import { parseAccountDeletionError } from './accountDeletion.js';
+
 const PLAYER_KEY = 'player';
+const CONTINUATION_KEY = 'dicekeeper.auth.continuation';
 const FETCH_INTERCEPTOR_FLAG = '__dicekeeperAuthFetchInstalled';
-const SUPPRESS_AUTH_REDIRECT_KEY = 'suppressAuthRedirect';
+const BACKGROUND_AUTH_REQUEST_KEY = '__dicekeeperBackgroundAuthRequest';
+
+let sharedCoordinator = null;
 
 export function getPlayer() {
   try {
@@ -21,39 +26,44 @@ export function clearPlayer() {
 }
 
 export function sanitizeRedirectPath(path, fallback = '/campaigns') {
-  if (!path || typeof path !== 'string') {
-    return fallback;
-  }
-
+  if (!path || typeof path !== 'string') return fallback;
   const trimmed = path.trim();
   if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('://')) {
     return fallback;
   }
-
   return trimmed;
 }
 
-export function getCurrentHashPath() {
-  return sanitizeRedirectPath(window.location.hash.slice(1) || '/', '/campaigns');
+export function getCurrentHashPath(target = window) {
+  return sanitizeRedirectPath(target.location?.hash?.slice(1) || '/', '/campaigns');
+}
+
+function loginDestination(nextPath) {
+  const safeNextPath = sanitizeRedirectPath(nextPath, '/campaigns');
+  const callbackHash = '/#/login?kc=1&next=' + encodeURIComponent(safeNextPath);
+  return '/api/auth/login?redirect=' + encodeURIComponent(callbackHash);
 }
 
 export function startLogin(nextPath = getCurrentHashPath()) {
-  const safeNextPath = sanitizeRedirectPath(nextPath, '/campaigns');
-  const callbackHash = '/#/login?kc=1&next=' + encodeURIComponent(safeNextPath);
-  const authRedirect = '/api/auth/login?redirect=' + encodeURIComponent(callbackHash);
-  window.location.assign(authRedirect);
+  window.location.assign(loginDestination(nextPath));
 }
 
 export async function syncAuthenticatedPlayer() {
   const res = await fetch('/api/auth/me', { cache: 'no-store' });
   if (!res.ok) {
-    let text = '';
-    try {
-      text = await res.text();
-    } catch (e) {
-      text = '';
+    const contentType = res.headers?.get?.('content-type') || '';
+    if (contentType.toLowerCase().includes('json')) {
+      const deletionError = await parseAccountDeletionError(res);
+      if (deletionError.code === 'ACCOUNT_DELETION_PENDING'
+          || deletionError.code === 'ACCOUNT_DELETION_COMPLETED') {
+        const error = new Error(deletionError.message);
+        error.status = res.status;
+        error.code = deletionError.code;
+        error.retryable = deletionError.retryable;
+        throw error;
+      }
     }
-    const error = new Error(text || res.statusText || ('HTTP ' + res.status));
+    const error = new Error('Anmeldung konnte nicht synchronisiert werden.');
     error.status = res.status;
     throw error;
   }
@@ -68,59 +78,169 @@ export function logout() {
   window.location.assign('/api/auth/logout');
 }
 
-export function suppressAuthRedirect(options = {}) {
-  return { ...options, [SUPPRESS_AUTH_REDIRECT_KEY]: true };
+export function backgroundAuthRequest(options = {}) {
+  return { ...options, [BACKGROUND_AUTH_REQUEST_KEY]: true };
 }
 
-export function installAuthFetchInterceptor() {
-  if (window[FETCH_INTERCEPTOR_FLAG]) {
-    return;
+// Compatibility name used by existing background callers.
+export const suppressAuthRedirect = backgroundAuthRequest;
+
+export function createAuthenticationRecoveryCoordinator({
+  storage = sessionStorage,
+  navigation = destination => window.location.assign(destination),
+  clearCachedPlayer = clearPlayer,
+  currentPath = getCurrentHashPath,
+  publish = state => document.dispatchEvent(new CustomEvent('dicekeeper:auth-recovery', {
+    detail: state
+  }))
+} = {}) {
+  let state = Object.freeze({
+    status: 'authenticated',
+    continuationPath: null,
+    loginStarted: false
+  });
+  const listeners = new Set();
+
+  function emit() {
+    publish?.(state);
+    for (const listener of [...listeners]) listener(state);
   }
 
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (input, init = {}) => {
-    const shouldSuppressAuthRedirect = Boolean(init[SUPPRESS_AUTH_REDIRECT_KEY]);
-    let fetchInit = init;
-    if (shouldSuppressAuthRedirect) {
-      const { [SUPPRESS_AUTH_REDIRECT_KEY]: _unused, ...rest } = init;
-      fetchInit = rest;
-    }
+  function update(next) {
+    state = Object.freeze({ ...state, ...next });
+    emit();
+    return state;
+  }
 
-    const requestUrl = typeof input === 'string' ? input : input?.url;
-    const url = requestUrl ? new URL(requestUrl, window.location.origin) : null;
-    const isApiRequest = url
-      && url.origin === window.location.origin
-      && url.pathname.startsWith('/api/');
+  function beginLogin() {
+    if (state.loginStarted) return false;
+    const continuationPath = sanitizeRedirectPath(
+      state.continuationPath || currentPath(),
+      '/campaigns'
+    );
+    update({ status: 'expired', continuationPath, loginStarted: true });
+    navigation(loginDestination(continuationPath));
+    return true;
+  }
+
+  function expired({ interactive = false, continuationPath } = {}) {
+    if (state.status !== 'expired') {
+      const safeContinuation = sanitizeRedirectPath(
+        continuationPath || currentPath(),
+        '/campaigns'
+      );
+      clearCachedPlayer();
+      storage?.setItem?.(CONTINUATION_KEY, safeContinuation);
+      update({
+        status: 'expired',
+        continuationPath: safeContinuation,
+        loginStarted: false
+      });
+    }
+    if (interactive) beginLogin();
+    return state;
+  }
+
+  function authenticated() {
+    storage?.removeItem?.(CONTINUATION_KEY);
+    return update({
+      status: 'authenticated',
+      continuationPath: null,
+      loginStarted: false
+    });
+  }
+
+  function subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  return {
+    authenticated,
+    beginLogin,
+    expired,
+    getState: () => state,
+    subscribe
+  };
+}
+
+export function getAuthenticationRecoveryCoordinator() {
+  if (!sharedCoordinator) sharedCoordinator = createAuthenticationRecoveryCoordinator();
+  return sharedCoordinator;
+}
+
+export function startAuthenticationRecovery(nextPath = getCurrentHashPath()) {
+  const coordinator = getAuthenticationRecoveryCoordinator();
+  coordinator.expired({ interactive: false, continuationPath: nextPath });
+  return coordinator.beginLogin();
+}
+
+export async function completeAuthenticationCallback(nextPath, {
+  syncPlayer = syncAuthenticatedPlayer,
+  navigate = path => { window.location.hash = '#' + path; },
+  coordinator = getAuthenticationRecoveryCoordinator()
+} = {}) {
+  const safeNextPath = sanitizeRedirectPath(nextPath, '/campaigns');
+  clearPlayer();
+  const player = await syncPlayer();
+  coordinator.authenticated();
+  navigate(safeNextPath);
+  return player;
+}
+
+function isAuthenticationRedirect(response, origin) {
+  if (response?.type === 'opaqueredirect') return true;
+  if (!response?.redirected || !response.url) return false;
+  try {
+    const redirectedUrl = new URL(response.url, origin);
+    return redirectedUrl.origin !== origin || !redirectedUrl.pathname.startsWith('/api/');
+  } catch {
+    return true;
+  }
+}
+
+export function installAuthFetchInterceptor({
+  target = window,
+  coordinator = getAuthenticationRecoveryCoordinator()
+} = {}) {
+  if (target[FETCH_INTERCEPTOR_FLAG]) return;
+
+  const originalFetch = target.fetch.bind(target);
+  target.fetch = async (input, init = {}) => {
+    const isBackground = Boolean(init[BACKGROUND_AUTH_REQUEST_KEY]);
+    const { [BACKGROUND_AUTH_REQUEST_KEY]: _background, ...fetchInit } = init;
+    const requestUrl = typeof input === 'string' || input instanceof URL ? String(input) : input?.url;
+    const origin = target.location?.origin || window.location.origin;
+    const url = requestUrl ? new URL(requestUrl, origin) : null;
+    const isApiRequest = url && url.origin === origin && url.pathname.startsWith('/api/');
 
     let nextInit = fetchInit;
     if (isApiRequest) {
-      const headers = new Headers(typeof input === 'object' && input instanceof Request ? input.headers : undefined);
-      const initHeaders = new Headers(fetchInit.headers || undefined);
-      initHeaders.forEach((value, key) => headers.set(key, value));
+      const requestHeaders = typeof Request !== 'undefined' && input instanceof Request
+        ? input.headers
+        : undefined;
+      const headers = new Headers(requestHeaders);
+      new Headers(fetchInit.headers || undefined).forEach((value, key) => headers.set(key, value));
       headers.set('X-Requested-With', 'JavaScript');
       nextInit = { ...fetchInit, headers };
     }
 
     const response = await originalFetch(input, nextInit);
-    if (isApiRequest && !shouldSuppressAuthRedirect && !window.location.hash.includes('kc=1')) {
-      if (response.status === 499
-          || (response.redirected && response.url && !new URL(response.url, window.location.origin).pathname.startsWith('/api/'))) {
-        clearPlayer();
-        startLogin(getCurrentHashPath());
-      }
+    const onCallback = target.location?.hash?.includes('kc=1');
+    if (isApiRequest
+        && (response.status === 499 || isAuthenticationRedirect(response, origin))) {
+      coordinator.expired({ interactive: !isBackground && !onCallback });
     }
-
     return response;
   };
-
-  window[FETCH_INTERCEPTOR_FLAG] = true;
+  target[FETCH_INTERCEPTOR_FLAG] = true;
 }
 
 export function requirePlayer() {
-  const p = getPlayer();
-  if (!p) {
+  const player = getPlayer();
+  if (!player) {
     window.location.hash = '#/login?next=' + encodeURIComponent(getCurrentHashPath());
     return null;
   }
-  return p;
+  return player;
 }

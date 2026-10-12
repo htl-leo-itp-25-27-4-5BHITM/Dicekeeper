@@ -1,121 +1,305 @@
-const RECONNECT_LOG_DELAY_MS = 1000;
-const MANUAL_RECONNECT_MIN_MS = 1000;
-const MANUAL_RECONNECT_MAX_MS = 15000;
-// Two missed server heartbeats (every 20s) mean the stream is silently dead.
-const STALE_CONNECTION_MS = 45000;
+import {
+  backgroundAuthRequest,
+  getAuthenticationRecoveryCoordinator
+} from './auth.js';
 
-export function connectCampaignEvents(campaignId, handlers, options = {}) {
-  const baseUrl = '/api/campaign/' + encodeURIComponent(campaignId) + '/sse';
+const DEFAULT_RECONNECT_DELAYS_MS = Object.freeze([1_000, 2_000, 5_000, 10_000]);
+const DEFAULT_HEARTBEAT_TIMEOUT_MS = 45_000;
+
+export function connectCampaignEvents(campaignId, handlers = {}, options = {}) {
+  const url = '/api/campaign/' + encodeURIComponent(campaignId) + '/sse';
+  const sourceFactory = options.sourceFactory || (sourceUrl => new EventSource(sourceUrl));
+  const fetchImpl = options.fetchImpl || fetch;
+  const authCoordinator = options.authCoordinator || getAuthenticationRecoveryCoordinator();
+  const reconnectDelaysMs = options.reconnectDelaysMs || DEFAULT_RECONNECT_DELAYS_MS;
+  const heartbeatTimeoutMs = options.heartbeatTimeoutMs || DEFAULT_HEARTBEAT_TIMEOUT_MS;
+  const setTimeoutImpl = options.setTimeout || ((callback, delay) => setTimeout(callback, delay));
+  const clearTimeoutImpl = options.clearTimeout || (timer => clearTimeout(timer));
+  const origin = options.origin || window.location.origin;
+
   let source = null;
-  let connectedOnce = false;
-  let closed = false;
-  let lastErrorLog = 0;
-  let lastEventId = null;
-  let lastActivity = Date.now();
+  let state = 'connecting';
+  let disposed = false;
+  let epoch = 0;
   let reconnectTimer = null;
-  let reconnectDelay = MANUAL_RECONNECT_MIN_MS;
-  let watchdogTimer = null;
+  let livenessTimer = null;
+  let recoveryPromise = null;
+  let reconciliationRun = null;
+  let reconnectAttempt = 0;
+  let connectedOnce = false;
+  let lastEventId = null;
 
-  const logPrefix = '[campaign-sse ' + campaignId + ']';
-
-  function rememberEvent(event) {
-    lastActivity = Date.now();
-    if (event.lastEventId) lastEventId = event.lastEventId;
+  function setState(nextState) {
+    if (state === nextState) return;
+    state = nextState;
+    options.onStateChange?.(state);
   }
 
-  function open() {
-    // The query parameter lets the server replay missed events for a freshly created EventSource;
-    // the browser itself only sends Last-Event-ID on its own automatic reconnects.
-    const url = lastEventId ? baseUrl + '?lastEventId=' + encodeURIComponent(lastEventId) : baseUrl;
-    source = new EventSource(url);
-    lastActivity = Date.now();
+  function clearReconnectTimer() {
+    if (reconnectTimer !== null) clearTimeoutImpl(reconnectTimer);
+    reconnectTimer = null;
+  }
 
-    source.addEventListener('connected', async event => {
-      rememberEvent(event);
-      reconnectDelay = MANUAL_RECONNECT_MIN_MS;
-      const reconnect = connectedOnce;
-      connectedOnce = true;
-      console.info(logPrefix, reconnect ? 'reconnected' : 'connected', {
-        lastEventId: lastEventId || null
-      });
-      try {
-        await options.onConnected?.({ reconnect, event });
-      } catch (error) {
-        console.error(logPrefix, 'state reconciliation failed', error);
-      }
-    });
+  function clearLivenessTimer() {
+    if (livenessTimer !== null) clearTimeoutImpl(livenessTimer);
+    livenessTimer = null;
+  }
 
-    source.addEventListener('heartbeat', event => {
-      rememberEvent(event);
-      options.onHeartbeat?.();
-    });
+  function closeSource() {
+    if (!source) return;
+    source.close();
+    source = null;
+  }
 
-    Object.entries(handlers).forEach(([eventName, handler]) => {
-      source.addEventListener(eventName, event => {
-        rememberEvent(event);
-        try {
-          const data = event.data ? JSON.parse(event.data) : null;
-          handler(data, event);
-        } catch (error) {
-          console.error(logPrefix, 'ignored invalid event', {
-            eventName,
-            lastEventId: event.lastEventId || null,
-            data: event.data,
-            error
-          });
-        }
-      });
-    });
+  function armLivenessTimer(sourceEpoch) {
+    clearLivenessTimer();
+    if (disposed || sourceEpoch !== epoch) return;
+    livenessTimer = setTimeoutImpl(() => {
+      livenessTimer = null;
+      handleSourceFailure(sourceEpoch);
+    }, heartbeatTimeoutMs);
+  }
 
-    source.onerror = () => {
-      if (closed) return;
-      const now = Date.now();
-      if (now - lastErrorLog >= RECONNECT_LOG_DELAY_MS) {
-        console.warn(logPrefix, 'connection lost; reconnecting', {
-          readyState: source.readyState
-        });
-        lastErrorLog = now;
-      }
-      // A non-200 response (proxy 502, expired session, ...) makes the browser give up for good.
-      if (source.readyState === EventSource.CLOSED) scheduleReconnect();
-      options.onError?.();
+  async function reconcile(reason, sourceEpoch) {
+    if (!options.loadSnapshot) {
+      if (!disposed && sourceEpoch === epoch) setState('current');
+      return;
+    }
+
+    if (reconciliationRun?.epoch === sourceEpoch) {
+      reconciliationRun.dirty = true;
+      return reconciliationRun.promise;
+    }
+
+    const run = {
+      epoch: sourceEpoch,
+      dirty: false,
+      promise: null
     };
+    run.promise = (async () => {
+      setState('reconciling');
+      while (!disposed && run.epoch === epoch) {
+        run.dirty = false;
+        let snapshot;
+        try {
+          snapshot = await options.loadSnapshot({
+            campaignId,
+            reason,
+            generation: run.epoch
+          });
+        } catch (error) {
+          if (!disposed && run.epoch === epoch) {
+            setState('stale');
+            options.onReconciliationError?.(error);
+          }
+          return;
+        }
+
+        if (disposed || run.epoch !== epoch) return;
+        if (run.dirty) continue;
+
+        try {
+          await options.applySnapshot?.(snapshot, {
+            campaignId,
+            reason,
+            generation: run.epoch
+          });
+        } catch (error) {
+          if (!disposed && run.epoch === epoch) {
+            setState('stale');
+            options.onReconciliationError?.(error);
+          }
+          return;
+        }
+
+        if (disposed || run.epoch !== epoch) return;
+        if (run.dirty) continue;
+        setState('current');
+        return;
+      }
+    })().finally(() => {
+      if (reconciliationRun === run) reconciliationRun = null;
+    });
+    reconciliationRun = run;
+    return run.promise;
   }
 
-  function scheduleReconnect() {
-    if (closed || reconnectTimer) return;
-    if (source) source.close();
-    reconnectTimer = setTimeout(() => {
+  function scheduleReconnect(delay, recoveryEpoch = epoch) {
+    if (disposed || recoveryEpoch !== epoch || reconnectTimer !== null) return false;
+    setState('reconnecting');
+    reconnectTimer = setTimeoutImpl(() => {
       reconnectTimer = null;
-      if (!closed) open();
-    }, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, MANUAL_RECONNECT_MAX_MS);
+      if (!disposed && recoveryEpoch === epoch) openSource(false);
+    }, delay);
+    return true;
   }
 
-  function checkStale() {
-    if (closed || reconnectTimer) return;
-    if (Date.now() - lastActivity > STALE_CONNECTION_MS) {
-      console.warn(logPrefix, 'no heartbeat received; reopening stream');
-      scheduleReconnect();
+  async function classifyAndRecover(recoveryEpoch) {
+    if (recoveryPromise) return recoveryPromise;
+    recoveryPromise = (async () => {
+      let response;
+      try {
+        response = await fetchImpl(
+          '/api/campaign/' + encodeURIComponent(campaignId) + '/game/state',
+          backgroundAuthRequest({ cache: 'no-store', redirect: 'manual' })
+        );
+      } catch (error) {
+        if (!disposed && recoveryEpoch === epoch) {
+          setState('unavailable');
+          options.onError?.(error);
+        }
+        return;
+      }
+
+      if (disposed || recoveryEpoch !== epoch) return;
+      if (response.status === 499 || response.type === 'opaqueredirect') {
+        authCoordinator.expired({ interactive: false });
+        setState('reauthenticating');
+        return;
+      }
+      if (response.status === 403) {
+        setState('revoked');
+        return;
+      }
+      if (!response.ok) {
+        setState('unavailable');
+        return;
+      }
+
+      const delayIndex = Math.min(reconnectAttempt, reconnectDelaysMs.length - 1);
+      const delay = reconnectDelaysMs[delayIndex] ?? 0;
+      reconnectAttempt += 1;
+      scheduleReconnect(delay, recoveryEpoch);
+    })().finally(() => {
+      recoveryPromise = null;
+    });
+    return recoveryPromise;
+  }
+
+  function handleSourceFailure(sourceEpoch) {
+    if (disposed || sourceEpoch !== epoch || recoveryPromise) return;
+    epoch += 1;
+    const recoveryEpoch = epoch;
+    clearLivenessTimer();
+    clearReconnectTimer();
+    closeSource();
+    setState('stale');
+    options.onError?.();
+    classifyAndRecover(recoveryEpoch);
+  }
+
+  function parseSequence(event) {
+    if (!event.lastEventId) return null;
+    const value = Number(event.lastEventId);
+    return Number.isSafeInteger(value) && value > 0 ? value : Number.NaN;
+  }
+
+  function handleEvent(eventName, handler, event, sourceEpoch) {
+    if (disposed || sourceEpoch !== epoch) return;
+
+    const sequence = parseSequence(event);
+    if (Number.isNaN(sequence)) {
+      reconcile('invalid-event-id', sourceEpoch);
+      return;
+    }
+    if (sequence !== null && lastEventId !== null) {
+      if (sequence === lastEventId) return;
+      if (sequence < lastEventId || sequence > lastEventId + 1) {
+        reconcile(sequence < lastEventId ? 'out-of-order-event' : 'event-gap', sourceEpoch);
+        return;
+      }
+    }
+
+    let data = null;
+    try {
+      data = event.data ? JSON.parse(event.data) : null;
+    } catch {
+      reconcile('malformed-event', sourceEpoch);
+      return;
+    }
+
+    if (sequence !== null) lastEventId = sequence;
+    if (reconciliationRun?.epoch === sourceEpoch) {
+      reconciliationRun.dirty = true;
+      return;
+    }
+
+    try {
+      handler(data, event);
+    } catch (error) {
+      options.onEventError?.(error, { eventName });
+      reconcile('event-handler-failed', sourceEpoch);
     }
   }
 
-  function onVisible() {
-    if (document.visibilityState === 'visible') checkStale();
+  function openSource(initial) {
+    if (disposed) return false;
+    clearReconnectTimer();
+    clearLivenessTimer();
+    closeSource();
+
+    epoch += 1;
+    const sourceEpoch = epoch;
+    setState(initial ? 'connecting' : 'reconnecting');
+    // A freshly created EventSource sends no Last-Event-ID, so pass it along to let the
+    // server replay the events missed while disconnected.
+    source = sourceFactory(lastEventId !== null ? url + '?lastEventId=' + lastEventId : url);
+
+    source.addEventListener('connected', event => {
+      if (disposed || sourceEpoch !== epoch) return;
+      const reconnect = connectedOnce;
+      connectedOnce = true;
+      reconnectAttempt = 0;
+      armLivenessTimer(sourceEpoch);
+      options.onConnected?.({ reconnect, event });
+      reconcile(reconnect ? 'reconnected' : 'connected', sourceEpoch);
+    });
+
+    source.addEventListener('heartbeat', event => {
+      if (disposed || sourceEpoch !== epoch) return;
+      armLivenessTimer(sourceEpoch);
+      options.onHeartbeat?.(event);
+    });
+
+    for (const [eventName, handler] of Object.entries(handlers)) {
+      source.addEventListener(eventName, event => {
+        handleEvent(eventName, handler, event, sourceEpoch);
+      });
+    }
+
+    source.onerror = () => handleSourceFailure(sourceEpoch);
+    return true;
   }
 
-  open();
-  watchdogTimer = setInterval(checkStale, STALE_CONNECTION_MS / 3);
-  document.addEventListener('visibilitychange', onVisible);
+  const stopAuthSubscription = authCoordinator.subscribe(authState => {
+    if (disposed || authState.status !== 'authenticated' || state !== 'reauthenticating') return;
+    scheduleReconnect(0, epoch);
+  });
 
-  const close = () => {
-    closed = true;
-    clearTimeout(reconnectTimer);
-    clearInterval(watchdogTimer);
-    document.removeEventListener('visibilitychange', onVisible);
-    if (source) source.close();
-    console.info(logPrefix, 'closed');
-  };
+  function retry() {
+    if (disposed || !['unavailable', 'stale', 'revoked'].includes(state)) return false;
+    clearReconnectTimer();
+    setState('reconnecting');
+    return openSource(false);
+  }
+
+  function close() {
+    if (disposed) return;
+    disposed = true;
+    epoch += 1;
+    clearReconnectTimer();
+    clearLivenessTimer();
+    closeSource();
+    stopAuthSubscription?.();
+    setState('disposed');
+    options.onClose?.();
+  }
+
   close.close = close;
+  close.retry = retry;
+  close.reconcile = reason => reconcile(reason || 'explicit', epoch);
+  close.getState = () => state;
+
+  openSource(true);
   return close;
 }

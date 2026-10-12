@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Session Recovery Fixture</title>
+  <link rel="stylesheet" href="/src/main/resources/META-INF/resources/app/style.css">
+</head>
+<body>
+  <main>
+    <h1>Live Session Recovery</h1>
+    <div id="liveStatus" class="live-status-slot" aria-label="Live connection status"></div>
+    <section aria-label="Live projection">
+      <output id="projection">Noch keine bestätigte Projektion</output>
+    </section>
+    <dl>
+      <dt>Snapshot applications</dt><dd id="applyCount">0</dd>
+      <dt>Notification polls</dt><dd id="pollCount">0</dd>
+      <dt>Event sources</dt><dd id="sourceCount">0</dd>
+      <dt>Login initiations</dt><dd id="loginCount">0</dd>
+    </dl>
+    <output id="stateHistory" aria-label="Connection state history"></output>
+  </main>
+  <script type="module" src="/tests/e2e/fixtures/live-session-recovery.js"></script>
+</body>
+</html>

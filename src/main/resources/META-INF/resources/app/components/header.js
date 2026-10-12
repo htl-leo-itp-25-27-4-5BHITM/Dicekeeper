@@ -1,12 +1,17 @@
 /**
  * SPA Header component – notification bell, user avatar
  */
-import { getPlayer, suppressAuthRedirect } from '../services/auth.js';
+import {
+  backgroundAuthRequest,
+  getAuthenticationRecoveryCoordinator,
+  getPlayer
+} from '../services/auth.js';
 import { esc, playerLoginName, renderAvatarPicture, timeAgo } from '../services/utils.js';
 import { navigate } from '../router.js';
 import { getTheme, toggleTheme } from '../services/theme.js';
 
 let pollInterval = null;
+let stopAuthSubscription = null;
 
 function getNotificationIcon(type) {
   switch (type) {
@@ -62,6 +67,7 @@ export function renderHeader() {
 }
 
 export function initHeader() {
+  destroyHeader();
   const player = getPlayer();
   if (!player) return;
 
@@ -117,7 +123,7 @@ export function initHeader() {
     try {
       const res = await fetch(
         `/api/notification/player/${player.id}/unread/count`,
-        suppressAuthRedirect({ cache: 'no-store' })
+        backgroundAuthRequest({ cache: 'no-store' })
       );
       if (res.ok) {
         const count = await res.json();
@@ -193,12 +199,29 @@ export function initHeader() {
     } catch (err) { /* ignore */ }
   });
 
-  loadNotificationCount();
-  if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(loadNotificationCount, 30000);
+  function startPolling({ immediate = false } = {}) {
+    if (immediate) loadNotificationCount();
+    if (!pollInterval) pollInterval = setInterval(loadNotificationCount, 30000);
+  }
+
+  function stopPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = null;
+  }
+
+  stopAuthSubscription = getAuthenticationRecoveryCoordinator().subscribe(state => {
+    if (state.status === 'expired') {
+      stopPolling();
+    } else if (state.status === 'authenticated') {
+      startPolling({ immediate: true });
+    }
+  });
+  startPolling({ immediate: true });
 }
 export function destroyHeader() {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  stopAuthSubscription?.();
+  stopAuthSubscription = null;
   // remove theme listener if present
   const headerToggle = document.getElementById('headerThemeToggle');
   if (headerToggle && headerToggle._onThemeChanged) {

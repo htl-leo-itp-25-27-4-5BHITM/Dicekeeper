@@ -24,12 +24,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manages SSE connections per campaign and broadcasts events.
  *
- * <p>Every non-heartbeat event gets a monotonically increasing id and is kept in a
+ * <p>Every non-heartbeat event gets an id that increases by exactly one per campaign (clients
+ * treat a gap as lost events and reload their snapshot) and is kept in a
  * small per-campaign replay buffer. Clients that reconnect with a {@code Last-Event-ID}
  * receive the events they missed, so short connection drops do not lose dice rolls,
  * turn changes or the campaign start.</p>
@@ -51,8 +51,6 @@ public class SseBroadcaster {
     TransactionSynchronizationRegistry transactionRegistry;
 
     private final ConcurrentHashMap<Long, CampaignChannel> channels = new ConcurrentHashMap<>();
-    // Seeded from the clock so ids stay increasing across restarts and stale client ids never skip new events.
-    private final AtomicLong eventSequence = new AtomicLong(System.currentTimeMillis() * 1_000);
     private long heartbeatTimerId;
 
     record BufferedEvent(long id, String name, String json) {
@@ -61,6 +59,8 @@ public class SseBroadcaster {
     static final class CampaignChannel {
         final Set<SseConnection> connections = new CopyOnWriteArraySet<>();
         final Deque<BufferedEvent> replayBuffer = new ArrayDeque<>();
+        // Seeded from the clock so ids stay increasing across restarts and stale client ids never skip new events.
+        long lastEventId = System.currentTimeMillis() * 1_000;
     }
 
     public static class SseConnection {
@@ -155,7 +155,7 @@ public class SseBroadcaster {
         // Buffer even without subscribers: a player who is reconnecting right now must still get it.
         CampaignChannel channel = channels.computeIfAbsent(campaignId, id -> new CampaignChannel());
         synchronized (channel) {
-            BufferedEvent buffered = new BufferedEvent(eventSequence.incrementAndGet(), eventName, json);
+            BufferedEvent buffered = new BufferedEvent(++channel.lastEventId, eventName, json);
             channel.replayBuffer.addLast(buffered);
             while (channel.replayBuffer.size() > REPLAY_BUFFER_SIZE) {
                 channel.replayBuffer.removeFirst();

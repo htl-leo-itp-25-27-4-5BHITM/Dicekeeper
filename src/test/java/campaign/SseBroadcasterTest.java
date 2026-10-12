@@ -78,6 +78,20 @@ class SseBroadcasterTest {
     }
 
     @Test
+    void eventIdsAreContiguousPerCampaign() {
+        RecordingSink sink = new RecordingSink();
+        broadcaster.register(1L, sink, sse, null);
+
+        broadcaster.broadcast(1L, "dice", Map.of("result", 1));
+        broadcaster.broadcast(2L, "dice", Map.of("result", 2));
+        broadcaster.broadcast(1L, "dice", Map.of("result", 3));
+
+        long first = Long.parseLong(sink.events.get(1).get("id"));
+        long second = Long.parseLong(sink.events.get(2).get("id"));
+        assertEquals(first + 1, second);
+    }
+
+    @Test
     void replayIsScopedToTheCampaign() {
         broadcaster.broadcast(1L, "dice", Map.of("result", 1));
 
