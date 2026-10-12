@@ -1,0 +1,5 @@
+name: invalid-missing-admin
+jobs:
+  deploy:
+    steps:
+      - run: kubectl apply -f k8s/deployment.yaml

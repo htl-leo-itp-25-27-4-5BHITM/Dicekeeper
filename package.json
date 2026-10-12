@@ -1,0 +1,20 @@
+{
+  "name": "dicekeeper-client-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:js && npm run test:browser",
+    "test:js": "vitest run",
+    "test:js:watch": "vitest",
+    "test:browser": "playwright test",
+    "test:browser:smoke": "playwright test tests/e2e/smoke.spec.js",
+    "verify:oidc-boundary": "node scripts/verify-oidc-refresh-boundary.mjs",
+    "verify:live-session-recovery": "node scripts/verify-live-session-recovery.mjs",
+    "verify:account-deletion-config": "node scripts/validate-account-deletion-config.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "jsdom": "27.4.0",
+    "vitest": "4.1.11"
+  }
+}

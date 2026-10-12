@@ -1,8 +1,15 @@
 /**
  * Login View – Keycloak sign-in entry point
  */
-import { clearPlayer, getPlayer, sanitizeRedirectPath, startLogin, syncAuthenticatedPlayer } from '../services/auth.js';
+import {
+  clearPlayer,
+  completeAuthenticationCallback,
+  getPlayer,
+  sanitizeRedirectPath,
+  startLogin
+} from '../services/auth.js';
 import { navigate } from '../router.js';
+import { requestAccountDeletion } from '../services/accountDeletion.js';
 
 export default async function LoginView() {
   const app = document.getElementById('app');
@@ -61,6 +68,7 @@ export default async function LoginView() {
 
   const btn = document.getElementById('loginBtn');
   const statusEl = document.getElementById('loginStatus');
+  let resumeDeletionMode = false;
 
   function setStatus(msg, isError = false) {
     statusEl.textContent = msg || '';
@@ -96,10 +104,20 @@ export default async function LoginView() {
     btn.querySelector('.login-submit-arrow').innerHTML = '<span class="login-spinner"></span>';
     setStatus('Synchronisiere Benutzerprofil…');
     try {
-      await syncAuthenticatedPlayer();
+      await completeAuthenticationCallback(nextPath, { navigate });
       setStatus('Anmeldung erfolgreich. Weiterleitung…');
-      navigate(nextPath);
     } catch (err) {
+      if (err?.code === 'ACCOUNT_DELETION_PENDING') {
+        clearPlayer();
+        resumeDeletionMode = true;
+        setStatus(err.message, true);
+        return;
+      }
+      if (err?.code === 'ACCOUNT_DELETION_COMPLETED') {
+        clearPlayer();
+        setStatus(err.message, true);
+        return;
+      }
       if (needsFreshAppSession(err)) {
         clearPlayer();
         setStatus('Verifizierung erkannt. Anmeldung wird neu verbunden…');
@@ -109,12 +127,34 @@ export default async function LoginView() {
       setStatus('Anmeldung fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'), true);
     } finally {
       btn.disabled = false;
-      btn.querySelector('.login-submit-text').textContent = 'Mit Keycloak anmelden';
+      btn.querySelector('.login-submit-text').textContent = resumeDeletionMode
+        ? 'Löschung fortsetzen'
+        : 'Mit Keycloak anmelden';
       btn.querySelector('.login-submit-arrow').textContent = '→';
     }
   }
 
+  async function resumeDeletion() {
+    btn.disabled = true;
+    btn.querySelector('.login-submit-text').textContent = 'Löschung wird fortgesetzt…';
+    const result = await requestAccountDeletion();
+    if (result.ok) {
+      clearPlayer();
+      sessionStorage.clear();
+      localStorage.clear();
+      window.location.assign('/');
+      return;
+    }
+    setStatus(result.message, true);
+    btn.disabled = !result.retryable;
+    btn.querySelector('.login-submit-text').textContent = 'Löschung fortsetzen';
+  }
+
   btn.addEventListener('click', () => {
+    if (resumeDeletionMode) {
+      resumeDeletion();
+      return;
+    }
     setStatus('Weiterleitung zu Keycloak…');
     startLogin(nextPath);
   });

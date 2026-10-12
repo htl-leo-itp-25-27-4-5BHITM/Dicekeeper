@@ -8,6 +8,8 @@ import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
+import { createLiveStatus } from '../components/liveStatus.js';
+import { loadPlayerRecoverySnapshot } from '../services/liveSnapshots.js';
 
 const SKILLS = [
   { name:'Acrobatics', de:'Akrobatik', ability:'Dexterity' },{ name:'Animal Handling', de:'Tierführung', ability:'Wisdom' },
@@ -35,6 +37,7 @@ export default async function PlayerView({ id }) {
 
   app.innerHTML = renderHeader() + `
     <div id="pvTurnBanner" class="pv2-turn-banner"></div>
+    <div id="pvLiveStatus" class="live-status-slot"></div>
     <div class="pv2-loading" id="pvLoading"><span class="loading-spinner"></span> Spiel wird geladen...</div>
 
     <!-- ===== MOBILE: compact top bar + tab panels ===== -->
@@ -145,6 +148,9 @@ export default async function PlayerView({ id }) {
   let campaign = null, character = null, campaignPlayers = [], playerNameMap = {}, characterMap = {};
   let currentHP = 0, maxHP = 0, diceHistory = [], decisions = [], votedDecisions = {};
   let eventSource = null, currentTurnPlayerId = null, selectedDiceSides = 20;
+  const liveStatus = createLiveStatus('pvLiveStatus', {
+    onRetry: () => eventSource?.retry()
+  });
   let playerMapCanvas = null, playerMapMarkers = [];
   let mobileMapCanvas = null;
   let fogExplorationData = null;
@@ -168,46 +174,31 @@ export default async function PlayerView({ id }) {
   }
 
   // ===== SSE =====
-  async function reconcileLiveState() {
-    const [stateResult, decisionsResult, markersResult, campaignResult] = await Promise.allSettled([
-      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '?playerId=' + currentPlayer.id, { cache: 'no-store' })
-    ]);
+  function applyRecoverySnapshot(snapshot) {
+    const nextTurn = snapshot.state.currentTurnPlayerId;
+    currentHP = snapshot.state.playerHp?.[currentPlayer.id] ?? currentHP;
+    maxHP = snapshot.state.playerMaxHp?.[currentPlayer.id] ?? maxHP;
+    if (nextTurn !== undefined && nextTurn !== -1) currentTurnPlayerId = nextTurn;
+    decisions = snapshot.decisions;
+    playerMapMarkers = snapshot.markers;
+    campaign = snapshot.campaign;
+    activeMap = getActiveCampaignMap(campaign);
 
-    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
-      const state = await stateResult.value.json();
-      if (state.playerHp?.[currentPlayer.id] !== undefined) currentHP = state.playerHp[currentPlayer.id];
-      if (state.playerMaxHp?.[currentPlayer.id] !== undefined) maxHP = state.playerMaxHp[currentPlayer.id];
-      if (state.currentTurnPlayerId && state.currentTurnPlayerId !== -1) {
-        currentTurnPlayerId = state.currentTurnPlayerId;
-        updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
-      }
-      renderCoreStats();
-      renderParty();
-      if (isMobile()) renderMobParty();
+    if (currentTurnPlayerId !== null) {
+      updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
     }
-
-    if (decisionsResult.status === 'fulfilled' && decisionsResult.value.ok) {
-      decisions = await decisionsResult.value.json();
-      renderDecisions();
-      if (isMobile()) renderMobDecisions();
+    renderCoreStats();
+    renderParty();
+    renderDecisions();
+    syncPlayerMap();
+    if (isMobile()) {
+      renderMobParty();
+      renderMobDecisions();
     }
-
-    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
-      playerMapMarkers = await markersResult.value.json();
-      syncPlayerMap();
-    }
-
-    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
-      campaign = await campaignResult.value.json();
-      activeMap = getActiveCampaignMap(campaign);
-      const mapUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
-      const fallbackUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
-      if (playerMapCanvas) playerMapCanvas.updateMapImage(mapUrl, fallbackUrl);
-      if (mobileMapCanvas) mobileMapCanvas.updateMapImage(mapUrl, fallbackUrl);
-    }
+    const mapUrl = activeMap ? resolveMapUrl(activeMap.path, { variant: 'canvas' }) : '';
+    const fallbackUrl = activeMap ? resolveOriginalImageUrl(activeMap.path) : '';
+    if (playerMapCanvas) playerMapCanvas.updateMapImage(mapUrl, fallbackUrl);
+    if (mobileMapCanvas) mobileMapCanvas.updateMapImage(mapUrl, fallbackUrl);
   }
 
   function connectSSE() {
@@ -270,10 +261,12 @@ export default async function PlayerView({ id }) {
       renderParty();
       if (isMobile()) renderMobParty();
       },
-      campaign_updated: () => reconcileLiveState(),
-      state_reset: () => reconcileLiveState()
+      campaign_updated: () => eventSource?.reconcile('campaign-updated'),
+      state_reset: () => eventSource?.reconcile('state-reset')
     }, {
-      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
+      loadSnapshot: () => loadPlayerRecoverySnapshot(campaignId, currentPlayer.id),
+      applySnapshot: applyRecoverySnapshot,
+      onStateChange: state => liveStatus.setState(state)
     });
   }
 
@@ -411,8 +404,8 @@ export default async function PlayerView({ id }) {
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }); if (r.ok) playerMapMarkers = await r.json(); } catch(e) {}
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/fog-exploration', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d.data) fogExplorationData = d.data; } } catch(e) {}
 
-      connectSSE();
       renderAll();
+      connectSSE();
       document.getElementById('pvLoading').style.display = 'none';
       if (isMobile()) {
         document.getElementById('pvMobile').style.display = 'flex';
@@ -1035,6 +1028,7 @@ export default async function PlayerView({ id }) {
 
   return () => {
     destroyHeader();
+    liveStatus.destroy();
     if (eventSource) { eventSource.close(); eventSource = null; }
     if (playerMapCanvas) { playerMapCanvas.destroy(); playerMapCanvas = null; }
     if (mobileMapCanvas) { mobileMapCanvas.destroy(); mobileMapCanvas = null; }

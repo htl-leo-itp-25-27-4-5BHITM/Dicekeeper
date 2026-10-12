@@ -116,6 +116,7 @@ const server = http.createServer((req, res) => {
     upstreamRes.on('end', () => {
       const original = Buffer.concat(chunks).toString('utf8');
       const rewritten = Buffer.from(rewriteText(original), 'utf8');
+      delete responseHeaders['transfer-encoding'];
       responseHeaders['content-length'] = String(rewritten.length);
       res.writeHead(upstreamRes.statusCode || 502, responseHeaders);
       res.end(rewritten);

@@ -1,5 +1,7 @@
 package security;
 
+import account.deletion.AccountDeletionMarker;
+import account.deletion.AccountDeletionResponses;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
@@ -29,6 +31,9 @@ public class AuthResource {
 
     @Inject
     SecurityIdentity securityIdentity;
+
+    @Inject
+    AccountDeletionResponses accountDeletionResponses;
 
     @GET
     @Path("callback")
@@ -65,7 +70,9 @@ public class AuthResource {
     @Authenticated
     @Transactional
     public Response login(@QueryParam("redirect") String redirectPath) {
-        securityIdentityService.getOrCreateCurrentPlayer(securityIdentity);
+        if (securityIdentityService.findDeletionMarker(securityIdentity).isEmpty()) {
+            securityIdentityService.getOrCreateCurrentPlayer(securityIdentity);
+        }
         return Response.seeOther(safeRedirect(redirectPath)).build();
     }
 
@@ -74,6 +81,10 @@ public class AuthResource {
     @Authenticated
     @Transactional
     public Response me() {
+        AccountDeletionMarker marker = securityIdentityService.findDeletionMarker(securityIdentity).orElse(null);
+        if (marker != null) {
+            return accountDeletionResponses.pending(marker.state);
+        }
         Player player = securityIdentityService.getOrCreateCurrentPlayer(securityIdentity);
         return Response.ok(player).build();
     }

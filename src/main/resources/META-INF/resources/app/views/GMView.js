@@ -6,6 +6,8 @@ import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, playerLogi
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
+import { createLiveStatus } from '../components/liveStatus.js';
+import { loadGMRecoverySnapshot } from '../services/liveSnapshots.js';
 
 export default async function GMView({ id }) {
   const player = requirePlayer();
@@ -18,6 +20,7 @@ export default async function GMView({ id }) {
 
   app.innerHTML = renderHeader() + `
     <div class="gm-page">
+      <div id="gmLiveStatus" class="live-status-slot"></div>
       <div class="gm-main">
         <div class="glass map-container">
           <div class="map-toolbar">
@@ -157,6 +160,9 @@ export default async function GMView({ id }) {
   } catch (e) {}
 
   let players = [], currentIndex = 0, decisions = [], eventSource = null, selectedDiceSides = 20;
+  const liveStatus = createLiveStatus('gmLiveStatus', {
+    onRetry: () => eventSource?.retry()
+  });
 
   // Load markers from state
   async function loadMapMarkers() {
@@ -490,44 +496,30 @@ export default async function GMView({ id }) {
   }
 
   // ===== SSE =====
-  async function reconcileLiveState() {
-    const [stateResult, markersResult, decisionsResult, campaignResult] = await Promise.allSettled([
-      fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }),
-      fetch('/api/campaign/' + campaignId + '?playerId=' + player.id, { cache: 'no-store' })
-    ]);
+  function applyRecoverySnapshot(snapshot) {
+    const nextPlayers = players.map(existing => ({
+      ...existing,
+      hp: snapshot.state.playerHp?.[existing.id] ?? existing.hp,
+      maxHp: snapshot.state.playerMaxHp?.[existing.id] ?? existing.maxHp,
+      active: snapshot.state.playerActive?.[existing.id] ?? existing.active
+    }));
+    const nextTurn = snapshot.state.currentTurnPlayerId;
+    const nextIndex = nextTurn !== undefined && nextTurn !== -1
+      ? nextPlayers.findIndex(candidate => candidate.id === nextTurn)
+      : currentIndex;
 
-    if (stateResult.status === 'fulfilled' && stateResult.value.ok) {
-      const state = await stateResult.value.json();
-      for (const p of players) {
-        if (state.playerHp?.[p.id] !== undefined) p.hp = state.playerHp[p.id];
-        if (state.playerMaxHp?.[p.id] !== undefined) p.maxHp = state.playerMaxHp[p.id];
-        if (state.playerActive?.[p.id] !== undefined) p.active = state.playerActive[p.id];
-      }
-      if (state.currentTurnPlayerId && state.currentTurnPlayerId !== -1) {
-        const index = players.findIndex(p => p.id === state.currentTurnPlayerId);
-        if (index >= 0) currentIndex = index;
-      }
-      renderPlayers();
-    }
+    players = nextPlayers;
+    if (nextIndex >= 0) currentIndex = nextIndex;
+    mapMarkers = snapshot.markers;
+    decisions = snapshot.decisions;
+    campaign = snapshot.campaign;
+    applyCampaignMap(campaign);
 
-    if (markersResult.status === 'fulfilled' && markersResult.value.ok) {
-      mapMarkers = await markersResult.value.json();
-      syncMapCanvases();
-    }
-
-    if (decisionsResult.status === 'fulfilled' && decisionsResult.value.ok) {
-      decisions = await decisionsResult.value.json();
-      renderDecisions();
-    }
-
-    if (campaignResult.status === 'fulfilled' && campaignResult.value.ok) {
-      campaign = await campaignResult.value.json();
-      applyCampaignMap(campaign);
-      renderMapSelectors();
-      updateMapImages();
-    }
+    renderPlayers();
+    syncMapCanvases();
+    renderDecisions();
+    renderMapSelectors();
+    updateMapImages();
   }
 
   function connectSSE() {
@@ -575,11 +567,13 @@ export default async function GMView({ id }) {
       undo: d => {
       if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
       },
-      campaign_updated: () => reconcileLiveState(),
+      campaign_updated: () => eventSource?.reconcile('campaign-updated'),
       roster_updated: () => loadPlayers(),
-      state_reset: () => reconcileLiveState()
+      state_reset: () => eventSource?.reconcile('state-reset')
     }, {
-      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
+      loadSnapshot: () => loadGMRecoverySnapshot(campaignId, player.id),
+      applySnapshot: applyRecoverySnapshot,
+      onStateChange: state => liveStatus.setState(state)
     });
   }
 
@@ -931,13 +925,14 @@ export default async function GMView({ id }) {
   // Init – load markers BEFORE players so the "create default group" check works
   renderMapSelectors();
   initMiniMap();
-  connectSSE();
   await loadMapMarkers();
   await loadPlayers();
-  loadDecisions();
+  await loadDecisions();
+  connectSSE();
 
   return () => {
     destroyHeader();
+    liveStatus.destroy();
     if (eventSource) { eventSource.close(); eventSource = null; }
     if (mapCanvas) { mapCanvas.destroy(); mapCanvas = null; }
     if (mapCanvasMax) { mapCanvasMax.destroy(); mapCanvasMax = null; }
