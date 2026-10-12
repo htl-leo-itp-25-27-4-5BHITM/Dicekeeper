@@ -14,18 +14,32 @@ import jakarta.ws.rs.sse.SseEventSink;
 import io.vertx.core.Vertx;
 import org.jboss.logging.Logger;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manages SSE connections per campaign and broadcasts events.
+ *
+ * <p>Every non-heartbeat event gets a monotonically increasing id and is kept in a
+ * small per-campaign replay buffer. Clients that reconnect with a {@code Last-Event-ID}
+ * receive the events they missed, so short connection drops do not lose dice rolls,
+ * turn changes or the campaign start.</p>
  */
 @ApplicationScoped
 public class SseBroadcaster {
 
     private static final Logger LOG = Logger.getLogger(SseBroadcaster.class);
+    static final int REPLAY_BUFFER_SIZE = 200;
+    private static final long RECONNECT_DELAY_MS = 2_000;
 
     @Inject
     ObjectMapper objectMapper;
@@ -36,27 +50,70 @@ public class SseBroadcaster {
     @Inject
     TransactionSynchronizationRegistry transactionRegistry;
 
-    // campaignId → set of active SSE sinks
-    private final ConcurrentHashMap<Long, Set<SseConnection>> connections = new ConcurrentHashMap<>();
-    private final AtomicLong eventSequence = new AtomicLong();
+    private final ConcurrentHashMap<Long, CampaignChannel> channels = new ConcurrentHashMap<>();
+    // Seeded from the clock so ids stay increasing across restarts and stale client ids never skip new events.
+    private final AtomicLong eventSequence = new AtomicLong(System.currentTimeMillis() * 1_000);
     private long heartbeatTimerId;
+
+    record BufferedEvent(long id, String name, String json) {
+    }
+
+    static final class CampaignChannel {
+        final Set<SseConnection> connections = new CopyOnWriteArraySet<>();
+        final Deque<BufferedEvent> replayBuffer = new ArrayDeque<>();
+    }
 
     public static class SseConnection {
         public final SseEventSink sink;
         public final Sse sse;
+        // Sends are chained so concurrent broadcasts never write to the same sink at once.
+        private CompletionStage<?> tail = CompletableFuture.completedFuture(null);
 
         public SseConnection(SseEventSink sink, Sse sse) {
             this.sink = sink;
             this.sse = sse;
         }
+
+        synchronized CompletionStage<?> enqueue(OutboundSseEvent event) {
+            CompletionStage<?> next = tail
+                    .exceptionally(ignored -> null)
+                    .thenCompose(ignored -> sink.isClosed()
+                            ? CompletableFuture.failedFuture(new IllegalStateException("SSE sink closed"))
+                            : sink.send(event).thenApply(sent -> (Object) sent));
+            tail = next;
+            return next;
+        }
     }
 
-    public void register(Long campaignId, SseEventSink sink, Sse sse) {
-        Set<SseConnection> campaignConnections =
-                connections.computeIfAbsent(campaignId, id -> new CopyOnWriteArraySet<>());
-        campaignConnections.add(new SseConnection(sink, sse));
+    /**
+     * Registers a client and sends it the welcome event followed by every buffered event
+     * newer than {@code lastEventId}, atomically with respect to concurrent broadcasts.
+     */
+    public void register(Long campaignId, SseEventSink sink, Sse sse, Long lastEventId) {
+        CampaignChannel channel = channels.computeIfAbsent(campaignId, id -> new CampaignChannel());
+        SseConnection connection = new SseConnection(sink, sse);
+        synchronized (channel) {
+            channel.connections.add(connection);
+            send(campaignId, channel, connection, sse.newEventBuilder()
+                    .name("connected")
+                    .reconnectDelay(RECONNECT_DELAY_MS)
+                    .data(String.class, "{\"status\":\"connected\",\"campaignId\":" + campaignId + "}")
+                    .build());
+            if (lastEventId != null) {
+                int replayed = 0;
+                for (BufferedEvent buffered : channel.replayBuffer) {
+                    if (buffered.id() > lastEventId) {
+                        send(campaignId, channel, connection, toEvent(sse, buffered));
+                        replayed++;
+                    }
+                }
+                if (replayed > 0) {
+                    LOG.debugv("Replayed SSE events: campaign={0} count={1}", campaignId, replayed);
+                }
+            }
+        }
         LOG.debugv("SSE client connected: campaign={0} clients={1}",
-                campaignId, campaignConnections.size());
+                campaignId, channel.connections.size());
     }
 
     public void broadcast(Long campaignId, String eventName, Object data) {
@@ -87,12 +144,6 @@ public class SseBroadcaster {
     }
 
     private void broadcastNow(Long campaignId, String eventName, Object data) {
-        Set<SseConnection> sinks = connections.get(campaignId);
-        if (sinks == null || sinks.isEmpty()) {
-            LOG.debugv("SSE event has no subscribers: campaign={0} event={1}", campaignId, eventName);
-            return;
-        }
-
         String json;
         try {
             json = objectMapper.writeValueAsString(data);
@@ -101,27 +152,46 @@ public class SseBroadcaster {
             return;
         }
 
-        long eventId = eventSequence.incrementAndGet();
-        for (SseConnection conn : sinks) {
-            if (conn.sink.isClosed()) {
-                removeConnection(campaignId, sinks, conn, null);
-                continue;
+        // Buffer even without subscribers: a player who is reconnecting right now must still get it.
+        CampaignChannel channel = channels.computeIfAbsent(campaignId, id -> new CampaignChannel());
+        synchronized (channel) {
+            BufferedEvent buffered = new BufferedEvent(eventSequence.incrementAndGet(), eventName, json);
+            channel.replayBuffer.addLast(buffered);
+            while (channel.replayBuffer.size() > REPLAY_BUFFER_SIZE) {
+                channel.replayBuffer.removeFirst();
             }
-            try {
-                OutboundSseEvent event = conn.sse.newEventBuilder()
-                        .id(Long.toString(eventId))
-                        .name(eventName)
-                        .reconnectDelay(2_000)
-                        .data(String.class, json)
-                        .build();
-                conn.sink.send(event).whenComplete((ignored, failure) -> {
-                    if (failure != null) {
-                        removeConnection(campaignId, sinks, conn, failure);
-                    }
-                });
-            } catch (Exception e) {
-                removeConnection(campaignId, sinks, conn, e);
+            if (channel.connections.isEmpty()) {
+                LOG.debugv("SSE event has no subscribers: campaign={0} event={1}", campaignId, eventName);
+                return;
             }
+            for (SseConnection conn : channel.connections) {
+                send(campaignId, channel, conn, toEvent(conn.sse, buffered));
+            }
+        }
+    }
+
+    private OutboundSseEvent toEvent(Sse sse, BufferedEvent buffered) {
+        return sse.newEventBuilder()
+                .id(Long.toString(buffered.id()))
+                .name(buffered.name())
+                .reconnectDelay(RECONNECT_DELAY_MS)
+                .data(String.class, buffered.json())
+                .build();
+    }
+
+    private void send(Long campaignId, CampaignChannel channel, SseConnection conn, OutboundSseEvent event) {
+        if (conn.sink.isClosed()) {
+            removeConnection(campaignId, channel, conn, null);
+            return;
+        }
+        try {
+            conn.enqueue(event).whenComplete((ignored, failure) -> {
+                if (failure != null) {
+                    removeConnection(campaignId, channel, conn, failure);
+                }
+            });
+        } catch (Exception e) {
+            removeConnection(campaignId, channel, conn, e);
         }
     }
 
@@ -136,25 +206,34 @@ public class SseBroadcaster {
     }
 
     void sendHeartbeat() {
-        for (Long campaignId : connections.keySet()) {
-            broadcast(campaignId, "heartbeat", java.util.Map.of("timestamp", System.currentTimeMillis()));
+        String json = "{\"timestamp\":" + System.currentTimeMillis() + "}";
+        for (Map.Entry<Long, CampaignChannel> entry : channels.entrySet()) {
+            CampaignChannel channel = entry.getValue();
+            List<SseConnection> snapshot;
+            synchronized (channel) {
+                snapshot = new ArrayList<>(channel.connections);
+            }
+            for (SseConnection conn : snapshot) {
+                // Heartbeats carry no id so they never advance the client's Last-Event-ID.
+                send(entry.getKey(), channel, conn, conn.sse.newEventBuilder()
+                        .name("heartbeat")
+                        .data(String.class, json)
+                        .build());
+            }
         }
     }
 
-    private void removeConnection(Long campaignId, Set<SseConnection> sinks,
+    private void removeConnection(Long campaignId, CampaignChannel channel,
                                   SseConnection connection, Throwable failure) {
-        if (!sinks.remove(connection)) {
+        if (!channel.connections.remove(connection)) {
             return;
-        }
-        if (sinks.isEmpty()) {
-            connections.remove(campaignId, sinks);
         }
         if (failure == null) {
             LOG.debugv("SSE client disconnected: campaign={0} clients={1}",
-                    campaignId, sinks.size());
+                    campaignId, channel.connections.size());
         } else {
             LOG.debugv(failure, "SSE delivery failed: campaign={0} clients={1}",
-                    campaignId, sinks.size());
+                    campaignId, channel.connections.size());
         }
         try {
             connection.sink.close();

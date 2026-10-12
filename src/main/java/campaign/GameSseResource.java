@@ -29,6 +29,8 @@ public class GameSseResource {
     @GET
     @Produces(MediaType.SERVER_SENT_EVENTS)
     public void subscribe(@PathParam("campaignId") Long campaignId,
+                          @HeaderParam("Last-Event-ID") String lastEventIdHeader,
+                          @QueryParam("lastEventId") String lastEventIdQuery,
                           @Context SseEventSink sink,
                           @Context Sse sse) {
         if (Campaign.findById(campaignId) == null) {
@@ -45,16 +47,23 @@ public class GameSseResource {
             throw new ForbiddenException("You are not a member of this campaign");
         }
 
-        broadcaster.register(campaignId, sink, sse);
+        // Browsers send Last-Event-ID on automatic reconnects; the client passes it as a
+        // query parameter when it has to recreate the EventSource itself.
+        Long lastEventId = parseEventId(lastEventIdHeader);
+        if (lastEventId == null) {
+            lastEventId = parseEventId(lastEventIdQuery);
+        }
+        broadcaster.register(campaignId, sink, sse, lastEventId);
+    }
 
-        // Send a welcome event so the client knows connection is established
+    private static Long parseEventId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         try {
-            sink.send(sse.newEventBuilder()
-                    .name("connected")
-                    .data(String.class, "{\"status\":\"connected\",\"campaignId\":" + campaignId + "}")
-                    .build());
-        } catch (Exception e) {
-            // sink already closed
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 }

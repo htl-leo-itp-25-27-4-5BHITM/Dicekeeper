@@ -5,6 +5,7 @@ import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, playerLoginName, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
+import { createDiceRollTracker, submitDiceRoll } from '../services/diceRolls.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
@@ -147,6 +148,8 @@ export default async function PlayerView({ id }) {
   let eventSource = null, currentTurnPlayerId = null, selectedDiceSides = 20;
   let playerMapCanvas = null, playerMapMarkers = [];
   let mobileMapCanvas = null;
+  let disposed = false;
+  const diceTracker = createDiceRollTracker();
   let fogExplorationData = null;
   let activeMap = null;
   const isMobile = () => window.innerWidth <= 768;
@@ -184,6 +187,8 @@ export default async function PlayerView({ id }) {
         currentTurnPlayerId = state.currentTurnPlayerId;
         updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
       }
+      // Shows a roll that happened while this client was not connected.
+      if (state.lastDiceRoll) handleDiceEvent(state.lastDiceRoll);
       renderCoreStats();
       renderParty();
       if (isMobile()) renderMobParty();
@@ -273,7 +278,8 @@ export default async function PlayerView({ id }) {
       campaign_updated: () => reconcileLiveState(),
       state_reset: () => reconcileLiveState()
     }, {
-      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
+      // Also on the first connect: covers everything that happened between loadGame and the stream opening.
+      onConnected: () => reconcileLiveState()
     });
   }
 
@@ -348,8 +354,11 @@ export default async function PlayerView({ id }) {
     }
   }
 
+  // Rolls older than this are only added to the history, without a toast.
+  const DICE_TOAST_MAX_AGE_MS = 60000;
+
   function handleDiceEvent(d) {
-    if (!d) return;
+    if (!d || !diceTracker.accept(d)) return;
     const isOwnRoll = d.playerId === currentPlayer.id;
     const eventPlayerName = resolveEventPlayerName(d);
     diceHistory.unshift({
@@ -362,7 +371,8 @@ export default async function PlayerView({ id }) {
     showDiceResultInView('pvMob', d);
     renderDiceHistoryInto('pvDiceHist');
     renderDiceHistoryInto('pvMobDiceHist');
-    if (!isOwnRoll) showDiceToast(eventPlayerName, d.diceType, d.result);
+    const isRecent = !d.timestamp || Date.now() - d.timestamp < DICE_TOAST_MAX_AGE_MS;
+    if (!isOwnRoll && isRecent) showDiceToast(eventPlayerName, d.diceType, d.result);
   }
 
   // ===== LOAD =====
@@ -404,6 +414,14 @@ export default async function PlayerView({ id }) {
             currentTurnPlayerId = state.currentTurnPlayerId;
             updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
           }
+          const lastRoll = state.lastDiceRoll;
+          if (lastRoll && diceTracker.accept(lastRoll)) {
+            diceHistory.unshift({
+              dice: resolveEventPlayerName(lastRoll) + ' · ' + (lastRoll.diceType || ''),
+              result: lastRoll.result,
+              time: new Date(lastRoll.timestamp || Date.now()).toLocaleTimeString()
+            });
+          }
         }
       } catch(e) {}
 
@@ -411,6 +429,7 @@ export default async function PlayerView({ id }) {
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }); if (r.ok) playerMapMarkers = await r.json(); } catch(e) {}
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/fog-exploration', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d.data) fogExplorationData = d.data; } } catch(e) {}
 
+      if (disposed) return;
       connectSSE();
       renderAll();
       document.getElementById('pvLoading').style.display = 'none';
@@ -636,6 +655,14 @@ export default async function PlayerView({ id }) {
   }
 
   // ===== DICE =====
+  function sendRoll(payload, showFb) {
+    submitDiceRoll(campaignId, payload).catch(err => {
+      console.error('[dice] roll could not be sent', err);
+      showFb('⚠️ Wurf nicht übertragen – bitte erneut würfeln', 'var(--danger)');
+      showToast('Dein Wurf konnte nicht an die Gruppe gesendet werden.', 'error');
+    });
+  }
+
   function renderDice() {
     const el = document.getElementById('pvDiceBody');
     const types = [4, 6, 8, 10, 12, 20, 100];
@@ -672,7 +699,7 @@ export default async function PlayerView({ id }) {
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
           const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-          fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
+          sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }, showFb);
         }
       }, 55);
     });
@@ -687,7 +714,7 @@ export default async function PlayerView({ id }) {
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
       const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-      fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
+      sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }, showFb);
     });
     renderHist();
   }
@@ -979,7 +1006,7 @@ export default async function PlayerView({ id }) {
           else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
           const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-          fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }) });
+          sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }, showFb);
         }
       }, 55);
     });
@@ -994,7 +1021,7 @@ export default async function PlayerView({ id }) {
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvMobRollBtn').disabled = false;
       const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-      fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }) });
+      sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }, showFb);
     });
     renderHist();
   }
@@ -1034,6 +1061,7 @@ export default async function PlayerView({ id }) {
   loadGame();
 
   return () => {
+    disposed = true;
     destroyHeader();
     if (eventSource) { eventSource.close(); eventSource = null; }
     if (playerMapCanvas) { playerMapCanvas.destroy(); playerMapCanvas = null; }

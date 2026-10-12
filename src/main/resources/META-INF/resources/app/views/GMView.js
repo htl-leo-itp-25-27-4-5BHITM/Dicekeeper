@@ -4,6 +4,7 @@
 import { requirePlayer } from '../services/auth.js';
 import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
+import { createDiceRollTracker, submitDiceRoll } from '../services/diceRolls.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 
@@ -12,6 +13,7 @@ export default async function GMView({ id }) {
   if (!player) return;
   const campaignId = id;
   const dmLoginName = playerLoginName(player, 'Dungeon Master');
+  const diceTracker = createDiceRollTracker();
 
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
@@ -509,6 +511,8 @@ export default async function GMView({ id }) {
         const index = players.findIndex(p => p.id === state.currentTurnPlayerId);
         if (index >= 0) currentIndex = index;
       }
+      // Shows a roll that happened while this client was not connected.
+      if (state.lastDiceRoll) showBroadcastDiceRoll(state.lastDiceRoll);
       renderPlayers();
     }
 
@@ -579,7 +583,7 @@ export default async function GMView({ id }) {
       roster_updated: () => loadPlayers(),
       state_reset: () => reconcileLiveState()
     }, {
-      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
+      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : syncLastDiceRoll()
     });
   }
 
@@ -772,8 +776,27 @@ export default async function GMView({ id }) {
     return event?.playerName || 'Ein Spieler';
   }
 
+  // Picks up a roll made while the page was loading, before the event stream was open.
+  async function syncLastDiceRoll() {
+    try {
+      const res = await fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' });
+      if (!res.ok) return;
+      const state = await res.json();
+      if (state.lastDiceRoll) showBroadcastDiceRoll(state.lastDiceRoll);
+    } catch (e) {
+      // The next event or reconnect will reconcile.
+    }
+  }
+
+  function sendRoll(payload) {
+    submitDiceRoll(campaignId, payload).catch(err => {
+      console.error('[dice] roll could not be sent', err);
+      showFb('⚠️ Wurf nicht übertragen – bitte erneut würfeln', 'var(--danger)');
+    });
+  }
+
   function showBroadcastDiceRoll(d) {
-    if (!d) return;
+    if (!d || !diceTracker.accept(d)) return;
     const eventPlayerName = resolveEventPlayerName(d);
     const resultEl = document.getElementById('gmDiceResult');
     const labelEl = document.getElementById('gmDiceLabel');
@@ -812,7 +835,7 @@ export default async function GMView({ id }) {
         if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
         else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
         else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-        fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: f }) });
+        sendRoll({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: f });
       }
     }, 55);
   });
@@ -825,7 +848,7 @@ export default async function GMView({ id }) {
     r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
     showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
     document.getElementById('gmRollBtn').disabled = false;
-    fetch('/api/campaign/' + campaignId + '/game/dice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: val }) });
+    sendRoll({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: val });
   });
 
   const manIn = document.getElementById('gmManualInput');

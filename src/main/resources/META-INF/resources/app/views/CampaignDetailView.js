@@ -8,8 +8,10 @@ import { renderHeader, initHeader, destroyHeader } from '../components/header.js
 import { showMapCropModal } from '../components/mapCropModal.js';
 import { showToast } from '../components/toast.js';
 import { bindMaxPlayerCountValidation, readMaxPlayerCount } from '../services/campaignValidation.js';
+import { connectCampaignEvents } from '../services/campaignEvents.js';
 
 const MAX_CAMPAIGN_MAPS = 5;
+const START_POLL_INTERVAL_MS = 10000;
 
 export default async function CampaignDetailView({ id }) {
   const player = requirePlayer();
@@ -32,6 +34,11 @@ export default async function CampaignDetailView({ id }) {
   let playerRole = null;
   let isPublic = true;
   let dmInitialState = null;
+  let disposed = false;
+  let closeEvents = null;
+  let startPollTimer = null;
+  let reloadInFlight = null;
+  let reloadQueued = false;
 
   const content = document.getElementById('cdContent');
 
@@ -491,13 +498,75 @@ export default async function CampaignDetailView({ id }) {
         if (playerRole === 'PLAYER' && myCP && myCP.characterStatus === 'APPROVED') { navigate('/campaign/' + id + '/play'); return; }
       }
 
+      if (disposed) return;
       if (playerRole === 'DM') renderDMView();
-      else if (playerRole === 'PLAYER') renderPlayerView();
-      else renderNotJoinedView();
+      else if (playerRole === 'PLAYER') { renderPlayerView(); watchForCampaignStart(); }
+      else { stopLiveUpdates(); renderNotJoinedView(); }
     } catch (err) { setStatus('Fehler: ' + err.message, true); }
+  }
+
+  // Players waiting in the lobby must follow the DM into the game without reloading.
+  function watchForCampaignStart() {
+    if (disposed) return;
+    if (!closeEvents) {
+      closeEvents = connectCampaignEvents(id, {
+        campaign_started: () => reloadLobby(),
+        campaign_updated: () => reloadLobby(),
+        roster_updated: () => reloadLobby(),
+        campaign_deleted: () => {
+          setStatus('Die Kampagne wurde gelöscht', true);
+          navigate('/campaigns');
+        }
+      }, {
+        // Catches a start that happened while the stream was (re)connecting.
+        onConnected: ({ reconnect }) => { if (reconnect) return reloadLobby(); }
+      });
+    }
+    // Fallback in case the event stream is blocked or drops an event.
+    if (!startPollTimer) {
+      startPollTimer = setInterval(pollCampaignStarted, START_POLL_INTERVAL_MS);
+    }
+  }
+
+  async function pollCampaignStarted() {
+    if (disposed || document.hidden) return;
+    try {
+      const res = await fetch('/api/campaign/' + id + '?playerId=' + player.id, { cache: 'no-store' });
+      if (!res.ok) return;
+      const latest = await res.json();
+      if (latest.started) reloadLobby();
+    } catch (e) {
+      // Network hiccup; the next poll or SSE event will catch up.
+    }
+  }
+
+  async function reloadLobby() {
+    if (disposed) return;
+    if (reloadInFlight) { reloadQueued = true; return reloadInFlight; }
+    reloadInFlight = (async () => {
+      try {
+        do {
+          reloadQueued = false;
+          await loadCampaignData();
+        } while (reloadQueued && !disposed);
+      } finally {
+        reloadInFlight = null;
+      }
+    })();
+    return reloadInFlight;
+  }
+
+  function stopLiveUpdates() {
+    if (startPollTimer) { clearInterval(startPollTimer); startPollTimer = null; }
+    if (closeEvents) { closeEvents(); closeEvents = null; }
+  }
+
+  function stopWatching() {
+    disposed = true;
+    stopLiveUpdates();
   }
 
   loadCampaignData();
 
-  return () => { destroyHeader(); };
+  return () => { stopWatching(); destroyHeader(); };
 }

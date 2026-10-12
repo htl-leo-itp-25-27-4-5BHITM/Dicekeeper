@@ -106,8 +106,10 @@ public class GameState {
             playerHp.putIfAbsent(playerId, hp);
         }
 
-        public void recordDiceRoll(Long playerId, String playerName, String diceType, int result) {
-            this.lastDiceRoll = new DiceRollInfo(playerId, playerName, diceType, result, System.currentTimeMillis());
+        public DiceRollInfo recordDiceRoll(Long playerId, String playerName, String diceType, int result) {
+            DiceRollInfo roll = new DiceRollInfo(playerId, playerName, diceType, result, System.currentTimeMillis());
+            this.lastDiceRoll = roll;
+            return roll;
         }
 
         /** Returns a snapshot for initial state load */

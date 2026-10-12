@@ -17,4 +17,15 @@ class GameStateTest {
         assertEquals(14, state.playerHp.get(7L));
         assertEquals(20, state.playerMaxHp.get(7L));
     }
+
+    @Test
+    void recordedDiceRollMatchesSnapshot() {
+        GameState.CampaignGameState state = new GameState.CampaignGameState();
+
+        GameState.DiceRollInfo roll = state.recordDiceRoll(3L, "alice", "d20", 17);
+
+        GameState.DiceRollInfo snapshotRoll = (GameState.DiceRollInfo) state.snapshot().get("lastDiceRoll");
+        assertEquals(roll.timestamp, snapshotRoll.timestamp);
+        assertEquals(17, snapshotRoll.result);
+    }
 }

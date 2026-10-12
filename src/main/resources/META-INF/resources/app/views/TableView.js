@@ -6,6 +6,10 @@
 import { requirePlayer } from '../services/auth.js';
 import { esc, getActiveCampaignMap, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
+import { createDiceRollTracker } from '../services/diceRolls.js';
+
+// The table only pops up rolls that are still fresh; older ones would be confusing.
+const TABLE_DICE_MAX_AGE_MS = 15000;
 import { createMapCanvas } from '../components/mapCanvas.js';
 
 export default async function TableView({ id }) {
@@ -227,6 +231,14 @@ export default async function TableView({ id }) {
     }
   }
 
+  const diceTracker = createDiceRollTracker();
+
+  function handleDiceRoll(d, { onlyIfRecent = false } = {}) {
+    if (!d || !diceTracker.accept(d)) return;
+    if (onlyIfRecent && d.timestamp && Date.now() - d.timestamp > TABLE_DICE_MAX_AGE_MS) return;
+    showDiceRoll(resolveEventPlayerName(d), d.diceType, d.result);
+  }
+
   function showDiceRoll(playerName, diceType, result) {
     const display = document.getElementById('tvDiceDisplay');
     const content = document.getElementById('tvDiceContent');
@@ -275,6 +287,7 @@ export default async function TableView({ id }) {
         if (state.playerMaxHp?.[p.id] !== undefined) p.maxHp = state.playerMaxHp[p.id];
         if (state.playerActive?.[p.id] !== undefined) p.active = state.playerActive[p.id];
       }
+      if (state.lastDiceRoll) handleDiceRoll(state.lastDiceRoll, { onlyIfRecent: true });
       renderPlayers();
     }
 
@@ -310,7 +323,7 @@ export default async function TableView({ id }) {
       },
 
       dice: d => {
-      showDiceRoll(resolveEventPlayerName(d), d.diceType, d.result);
+      handleDiceRoll(d);
       },
 
       player_active: d => {
@@ -365,7 +378,7 @@ export default async function TableView({ id }) {
       campaign_updated: () => reconcileLiveState(),
       state_reset: () => reconcileLiveState()
     }, {
-      onConnected: ({ reconnect }) => reconnect ? reconcileLiveState() : undefined
+      onConnected: () => reconcileLiveState()
     });
   }
 

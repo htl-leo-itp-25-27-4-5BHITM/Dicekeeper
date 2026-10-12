@@ -105,14 +105,15 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.recordDiceRoll(playerId, playerName, diceType, result);
+        GameState.DiceRollInfo roll = state.recordDiceRoll(playerId, playerName, diceType, result);
 
+        // Same timestamp as the state snapshot so clients can de-duplicate replayed rolls.
         broadcaster.broadcast(campaignId, "dice", Map.of(
                 "playerId", playerId != null ? playerId : -1,
                 "playerName", playerName,
                 "diceType", diceType,
                 "result", result,
-                "timestamp", System.currentTimeMillis()
+                "timestamp", roll.timestamp
         ));
 
         return Response.ok(Map.of("result", result)).build();
