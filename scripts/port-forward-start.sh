@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${DICEKEEPER_SKIP_LOCAL_PORT_FORWARDS:-0}" == "1" ]]; then
+  echo "[port-forward] skipped for the Kubernetes development workspace"
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 NAMESPACE="student-it200233"

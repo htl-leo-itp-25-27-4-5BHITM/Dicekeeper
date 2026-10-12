@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dicekeeper-devbox-workspace
+  namespace: student-it200233
+  labels:
+    app.kubernetes.io/name: dicekeeper-devbox
+    app.kubernetes.io/component: workspace
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
