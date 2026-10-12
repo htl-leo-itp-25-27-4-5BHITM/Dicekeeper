@@ -9,3 +9,8 @@ mvnw.cmd
 .env
 k8s/secret.yaml
 uploads/
+node_modules/
+playwright-report/
+test-results/
+.playwright-cli/
+scratches/

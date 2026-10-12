@@ -3443,3 +3443,57 @@ body.table-view-active {
     max-height: 35vh;
   }
 }
+/* Live-session recovery status shared by synchronized campaign views. */
+.live-status-slot {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px 0;
+}
+
+.live-status-slot--table {
+  padding: 0 16px 12px;
+}
+
+.live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(12, 18, 31, 0.9);
+  color: #fff;
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
+.live-status__indicator {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.live-status--ok { color: var(--accent-green); }
+.live-status--pending { color: #8fc9ff; }
+.live-status--warning { color: var(--gold); }
+.live-status--danger { color: #ff8d8d; }
+.live-status--muted { color: rgba(255, 255, 255, 0.6); }
+
+.live-status__action {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.live-status__action:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}

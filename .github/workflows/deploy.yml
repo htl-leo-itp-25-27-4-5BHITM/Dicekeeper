@@ -116,6 +116,7 @@ jobs:
           KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
           KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
           KEYCLOAK_STATE_SECRET: ${{ secrets.KEYCLOAK_STATE_SECRET }}
+          ACCOUNT_DELETION_ENABLED: ${{ vars.ACCOUNT_DELETION_ENABLED }}
           IMAGOR_SECRET: ${{ secrets.IMAGOR_SECRET }}
         run: |
           required=(
@@ -137,7 +138,7 @@ jobs:
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
-
+          ACCOUNT_DELETION_ENABLED="${ACCOUNT_DELETION_ENABLED:-false}"
           kubectl -n "$NAMESPACE" delete secret dicekeeper-db-secret --ignore-not-found
           kubectl -n "$NAMESPACE" create secret generic dicekeeper-db-secret \
             --from-literal=username="$DB_USERNAME" \
@@ -148,6 +149,7 @@ jobs:
             --from-literal=KEYCLOAK_CLIENT_ID="$KEYCLOAK_CLIENT_ID" \
             --from-literal=KEYCLOAK_CLIENT_SECRET="$KEYCLOAK_CLIENT_SECRET" \
             --from-literal=KEYCLOAK_STATE_SECRET="$KEYCLOAK_STATE_SECRET" \
+            --from-literal=ACCOUNT_DELETION_ENABLED="$ACCOUNT_DELETION_ENABLED" \
             --from-literal=IMAGOR_SECRET="$IMAGOR_SECRET"
           kubectl -n "$NAMESPACE" apply -f k8s/keycloak-service.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/keycloak-deployment.yaml
@@ -173,6 +175,7 @@ jobs:
           DEV_KEYCLOAK_CLIENT_ID: ${{ secrets.DEV_KEYCLOAK_CLIENT_ID }}
           DEV_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DEV_KEYCLOAK_CLIENT_SECRET }}
           DEV_KEYCLOAK_STATE_SECRET: ${{ secrets.DEV_KEYCLOAK_STATE_SECRET }}
+          DEV_ACCOUNT_DELETION_ENABLED: ${{ vars.DEV_ACCOUNT_DELETION_ENABLED }}
           DEV_IMAGOR_SECRET: ${{ secrets.DEV_IMAGOR_SECRET }}
           IMAGOR_SECRET: ${{ secrets.IMAGOR_SECRET }}
         run: |
@@ -181,6 +184,7 @@ jobs:
           DEV_KEYCLOAK_AUTH_SERVER_URL="${DEV_KEYCLOAK_AUTH_SERVER_URL:-http://keycloak:8080/realms/dicekeeper}"
           DEV_KEYCLOAK_CLIENT_ID="${DEV_KEYCLOAK_CLIENT_ID:-dicekeeper-dev-web}"
           DEV_IMAGOR_SECRET="${DEV_IMAGOR_SECRET:-$IMAGOR_SECRET}"
+          DEV_ACCOUNT_DELETION_ENABLED="${DEV_ACCOUNT_DELETION_ENABLED:-false}"
 
           required=(
             DEV_DB_PASSWORD
@@ -198,7 +202,6 @@ jobs:
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
-
           kubectl -n "$NAMESPACE" delete secret dicekeeper-dev-db-secret --ignore-not-found
           kubectl -n "$NAMESPACE" create secret generic dicekeeper-dev-db-secret \
             --from-literal=username="$DEV_DB_USERNAME" \
@@ -210,6 +213,7 @@ jobs:
             --from-literal=KEYCLOAK_CLIENT_ID="$DEV_KEYCLOAK_CLIENT_ID" \
             --from-literal=KEYCLOAK_CLIENT_SECRET="$DEV_KEYCLOAK_CLIENT_SECRET" \
             --from-literal=KEYCLOAK_STATE_SECRET="$DEV_KEYCLOAK_STATE_SECRET" \
+            --from-literal=ACCOUNT_DELETION_ENABLED="$DEV_ACCOUNT_DELETION_ENABLED" \
             --from-literal=IMAGOR_SECRET="$DEV_IMAGOR_SECRET"
           kubectl -n "$NAMESPACE" apply -f k8s/dev/pvc.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/dev/imagor-service.yaml

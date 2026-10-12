@@ -1,85 +1,163 @@
 package player;
 
+import account.deletion.AccountDeletionMarker;
+import account.deletion.AccountDeletionMarkerService;
+import account.deletion.AccountDeletionState;
 import campaign.Campaign;
-import campaign.CampaignDeletionService;
 import campaign.CampaignPlayer;
-import character.CharacterDeletionService;
+import campaign.GameState;
+import campaign.GroupDecision;
+import character.ability.CharacterAbility;
+import character.skill.CharacterSkill;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import notification.Notification;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
 
 @ApplicationScoped
 public class PlayerDeletionService {
 
-    @ConfigProperty(name = "dicekeeper.upload-dir")
-    String uploadDir;
+    @Inject
+    AccountDeletionMarkerService markerService;
 
     @Inject
-    CampaignDeletionService campaignDeletionService;
-
-    @Inject
-    CharacterDeletionService characterDeletionService;
+    GameState gameState;
 
     @Transactional
-    public void deleteLocalPlayerAccount(Long playerId) {
+    public AccountDeletionMarker deleteLocalPlayerAccount(String subjectDigest, Long playerId) {
+        AccountDeletionMarker existing = markerService.findForUpdate(subjectDigest).orElse(null);
+        if (existing != null && existing.state != AccountDeletionState.PREPARED) {
+            return existing;
+        }
+        if (existing != null && !existing.originalPlayerId.equals(playerId)) {
+            throw new IllegalStateException("Deletion marker ownership mismatch");
+        }
+
+        CleanupPlan plan = discover(playerId);
+        AccountDeletionMarker marker = existing != null
+                ? existing
+                : markerService.createPrepared(subjectDigest, playerId, plan.filePaths());
+
+        if (marker.cleanupPaths().isEmpty() && !plan.filePaths().isEmpty()) {
+            marker.setCleanupPaths(plan.filePaths());
+            marker.updatedAt = Instant.now();
+        }
+
+        deleteRows(plan, playerId);
+        return markerService.transition(subjectDigest,
+                AccountDeletionState.PREPARED,
+                AccountDeletionState.LOCAL_DELETED);
+    }
+
+    CleanupPlan discover(Long playerId) {
         Player player = Player.findById(playerId);
-        if (player == null) {
-            return;
-        }
-
         List<Campaign> ownedCampaigns = Campaign.find("playerId", playerId).list();
-        for (Campaign campaign : ownedCampaigns) {
-            campaignDeletionService.deleteCampaign(campaign);
-        }
-
-        List<CampaignPlayer> remainingMemberships = CampaignPlayer.find("playerId", playerId).list();
-        List<Long> membershipIds = remainingMemberships.stream()
-                .map(membership -> membership.id)
-                .filter(Objects::nonNull)
-                .toList();
-        List<Long> characterIds = remainingMemberships.stream()
-                .map(membership -> membership.characterId)
-                .filter(Objects::nonNull)
+        List<Long> ownedCampaignIds = ownedCampaigns.stream()
+                .map(campaign -> campaign.id)
+                .filter(id -> id != null)
                 .distinct()
                 .toList();
 
-        if (!membershipIds.isEmpty()) {
-            Notification.delete("secondaryReferenceId in ?1", membershipIds);
+        List<CampaignPlayer> affectedMemberships;
+        if (ownedCampaignIds.isEmpty()) {
+            affectedMemberships = CampaignPlayer.find("playerId", playerId).list();
+        } else {
+            affectedMemberships = CampaignPlayer.find(
+                    "campaignId in ?1 or playerId = ?2", ownedCampaignIds, playerId).list();
+        }
+
+        List<Long> membershipIds = affectedMemberships.stream()
+                .map(membership -> membership.id)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        List<Long> characterIds = affectedMemberships.stream()
+                .map(membership -> membership.characterId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        LinkedHashSet<String> filePaths = new LinkedHashSet<>();
+        if (player != null) {
+            addUploadPath(filePaths, player.profilePicture);
+        }
+        for (Campaign campaign : ownedCampaigns) {
+            for (String path : mapPaths(campaign)) {
+                addUploadPath(filePaths, path);
+            }
+        }
+
+        return new CleanupPlan(ownedCampaignIds, membershipIds, characterIds, List.copyOf(filePaths));
+    }
+
+    private void deleteRows(CleanupPlan plan, Long playerId) {
+        if (!plan.ownedCampaignIds().isEmpty()) {
+            GroupDecision.delete("campaignId in ?1", plan.ownedCampaignIds());
+            Notification.delete("referenceId in ?1", plan.ownedCampaignIds());
+        }
+        if (!plan.membershipIds().isEmpty()) {
+            Notification.delete("secondaryReferenceId in ?1", plan.membershipIds());
+            CampaignPlayer.delete("id in ?1", plan.membershipIds());
         }
         Notification.delete("playerId", playerId);
 
-        for (CampaignPlayer membership : remainingMemberships) {
-            membership.delete();
+        if (!plan.ownedCampaignIds().isEmpty()) {
+            Campaign.delete("id in ?1", plan.ownedCampaignIds());
+            plan.ownedCampaignIds().forEach(gameState::remove);
         }
 
-        for (Long characterId : characterIds) {
+        Player.deleteById(playerId);
+
+        Set<Long> orphanCharacterIds = new LinkedHashSet<>();
+        for (Long characterId : plan.characterIds()) {
             if (CampaignPlayer.count("characterId", characterId) == 0) {
-                characterDeletionService.deleteCharacterById(characterId);
+                orphanCharacterIds.add(characterId);
             }
         }
-
-        deleteUploadedFile(player.profilePicture);
-        player.delete();
+        if (!orphanCharacterIds.isEmpty()) {
+            CharacterAbility.delete("character.id in ?1", orphanCharacterIds);
+            List<Integer> integerIds = orphanCharacterIds.stream().map(Long::intValue).toList();
+            CharacterSkill.delete("characterId in ?1", integerIds);
+            character.Character.delete("id in ?1", orphanCharacterIds);
+        }
     }
 
-    private void deleteUploadedFile(String filePath) {
-        if (filePath == null || filePath.isBlank()) return;
-        try {
-            String relative = filePath.replaceFirst("^/uploads/", "");
-            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
-            if (Files.exists(file) && !Files.isDirectory(file)) {
-                Files.delete(file);
+    private List<String> mapPaths(Campaign campaign) {
+        List<String> paths = new ArrayList<>();
+        if (campaign.mapImagePaths != null && !campaign.mapImagePaths.isBlank()) {
+            for (String path : campaign.mapImagePaths.split("\\R")) {
+                if (path != null && !path.isBlank() && !paths.contains(path.trim())) {
+                    paths.add(path.trim());
+                }
             }
-        } catch (IOException e) {
-            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
         }
+        if (paths.isEmpty() && campaign.mapImagePath != null && !campaign.mapImagePath.isBlank()) {
+            paths.add(campaign.mapImagePath.trim());
+        }
+        return paths;
+    }
+
+    private void addUploadPath(Set<String> target, String path) {
+        if (path == null || path.isBlank()) {
+            return;
+        }
+        String normalized = path.trim().replace('\\', '/');
+        if (normalized.startsWith("/uploads/")) {
+            target.add(normalized.substring("/uploads/".length()));
+        } else if (normalized.startsWith("uploads/")) {
+            target.add(normalized.substring("uploads/".length()));
+        }
+    }
+
+    record CleanupPlan(List<Long> ownedCampaignIds,
+                       List<Long> membershipIds,
+                       List<Long> characterIds,
+                       List<String> filePaths) {
     }
 }

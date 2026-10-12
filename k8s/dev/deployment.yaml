@@ -57,8 +57,19 @@ spec:
                 secretKeyRef:
                   name: dicekeeper-dev-secret
                   key: KEYCLOAK_STATE_SECRET
-            - name: KEYCLOAK_ADMIN_ENABLED
-              value: "false"
+            - name: ACCOUNT_DELETION_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: dicekeeper-dev-secret
+                  key: ACCOUNT_DELETION_ENABLED
+            - name: KEYCLOAK_ADMIN_CONNECT_TIMEOUT
+              value: PT3S
+            - name: KEYCLOAK_ADMIN_REQUEST_TIMEOUT
+              value: PT5S
+            - name: ACCOUNT_DELETION_MARKER_RETENTION
+              value: P7D
+            - name: ACCOUNT_DELETION_SESSION_WINDOW
+              value: PT8H
             - name: IMAGOR_SECRET
               valueFrom:
                 secretKeyRef:
@@ -72,6 +83,8 @@ spec:
               value: "false"
             - name: QUARKUS_OIDC_TOKEN_STATE_MANAGER_STRATEGY
               value: id-token
+            - name: OIDC_REFRESH_TOKEN_CACHE_TIME_TO_LIVE
+              value: 5S
             - name: QUARKUS_HTTP_PROXY_ENABLE_FORWARDED_HOST
               value: "false"
           volumeMounts:
