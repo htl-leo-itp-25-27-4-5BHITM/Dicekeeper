@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   LIVE_STATUS_CONTENT,
+  createHeadlessLiveStatus,
   createLiveStatus
 } from '../../src/main/resources/META-INF/resources/app/components/liveStatus.js';
 
@@ -39,5 +40,27 @@ describe('accessible live status', () => {
     retry.focus();
     retry.click();
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('recovers without rendering anything when headless', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '';
+    const onReauthenticate = vi.fn();
+    const onRetry = vi.fn();
+    const status = createHeadlessLiveStatus({ onReauthenticate, onRetry, retryDelayMs: 1000 });
+
+    status.setState('reauthenticating');
+    expect(onReauthenticate).toHaveBeenCalledOnce();
+
+    status.setState('unavailable');
+    vi.advanceTimersByTime(1000);
+    expect(onRetry).toHaveBeenCalledOnce();
+
+    status.setState('unavailable');
+    status.destroy();
+    vi.advanceTimersByTime(1000);
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(document.body.innerHTML).toBe('');
+    vi.useRealTimers();
   });
 });

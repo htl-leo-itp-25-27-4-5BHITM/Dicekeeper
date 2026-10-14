@@ -5,11 +5,13 @@ import character.ability.CharacterAbility;
 import background.Background;
 import characterclass.CharacterClass;
 import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import security.SecurityIdentityService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +25,15 @@ public class CharacterResource {
     @Inject
     CharacterDeletionService characterDeletionService;
 
+    @Inject
+    CharacterAccess characterAccess;
+
+    @Inject
+    SecurityIdentityService securityIdentityService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
+
     /**
      * Create a new empty character for the character creation flow.
      */
@@ -31,6 +42,7 @@ public class CharacterResource {
     @Transactional
     public Response createInitialCharacter() {
         Character character = new Character();
+        character.ownerPlayerId = currentPlayerId();
         character.persist();
 
         CharacterDTO dto = CharacterDTO.fromEntity(character);
@@ -38,12 +50,12 @@ public class CharacterResource {
     }
 
     /**
-     * Get all characters as DTOs.
+     * Get all characters of the current player as DTOs.
      */
     @GET
     @Path("/all")
     public Response getAllCharacters() {
-        List<Character> characters = Character.listAll();
+        List<Character> characters = Character.list("ownerPlayerId", currentPlayerId());
         List<CharacterDTO> dtos = characters.stream()
             .map(this::toFullDTO)
             .collect(Collectors.toList());
@@ -57,12 +69,14 @@ public class CharacterResource {
     @Path("/{id}")
     public Response getCharacter(@PathParam("id") Long id) {
         Character character = Character.findById(id);
-        if (character == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                .entity("Character not found").build();
+        Long playerId = currentPlayerId();
+        if (character == null || !characterAccess.canReadSummary(character, playerId)) {
+            return characterAccess.notFound();
         }
 
-        CharacterDTO dto = toFullDTO(character);
+        CharacterDTO dto = characterAccess.canReadFull(character, playerId)
+                ? toFullDTO(character)
+                : toSummaryDTO(character);
         return Response.ok(dto).build();
     }
 
@@ -73,8 +87,8 @@ public class CharacterResource {
     @Path("/{id}/getName")
     public Response getCharacterName(@PathParam("id") Long id) {
         Character character = Character.findById(id);
-        if (character == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+        if (character == null || !characterAccess.canReadSummary(character, currentPlayerId())) {
+            return characterAccess.notFound();
         }
         return Response.ok(character.name).build();
     }
@@ -86,8 +100,8 @@ public class CharacterResource {
     @Path("/{id}/getAbilityScores")
     public Response getCharacterAbilityScores(@PathParam("id") Long id) {
         Character character = Character.findById(id);
-        if (character == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+        if (character == null || !characterAccess.canReadFull(character, currentPlayerId())) {
+            return characterAccess.notFound();
         }
 
         List<CharacterAbility> list = CharacterAbility.list("character", character);
@@ -106,9 +120,14 @@ public class CharacterResource {
     @Transactional
     public Response updateCharacter(@PathParam("id") Long id, CharacterUpdateDTO updated) {
         Character existing = Character.findById(id);
-        if (existing == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                .entity("Character not found").build();
+        if (existing == null || !characterAccess.isOwner(existing, currentPlayerId())) {
+            return characterAccess.notFound();
+        }
+        if (updated == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Character update is required").build();
+        }
+        if (characterAccess.isLockedForEditing(existing)) {
+            return characterAccess.locked();
         }
 
         if (updated.name != null) {
@@ -145,13 +164,32 @@ public class CharacterResource {
     @Transactional
     public Response deleteCharacter(@PathParam("id") Long id) {
         Character character = Character.findById(id);
-        if (character == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                .entity("Character not found").build();
+        if (character == null || !characterAccess.isOwner(character, currentPlayerId())) {
+            return characterAccess.notFound();
+        }
+        if (characterAccess.isLockedForEditing(character)) {
+            return characterAccess.locked();
         }
 
         characterDeletionService.deleteCharacterById(id);
         return Response.noContent().build();
+    }
+
+    private Long currentPlayerId() {
+        return securityIdentityService.getCurrentPlayerId(securityIdentity);
+    }
+
+    /** What fellow players see: name, level, race and class, no scores, background or story. */
+    private CharacterDTO toSummaryDTO(Character character) {
+        CharacterDTO dto = new CharacterDTO();
+        dto.id = character.id;
+        dto.name = character.name;
+        dto.level = character.level;
+        dto.race = character.race;
+        if (character.classId != 0) {
+            dto.characterClass = characterclass.ClassDTO.fromEntity(CharacterClass.findById(character.classId));
+        }
+        return dto;
     }
 
     private CharacterDTO toFullDTO(Character character) {

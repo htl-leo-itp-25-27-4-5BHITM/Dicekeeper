@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import tool.UploadPaths;
 import tool.UploadPermissionUtil;
 
 @Path("/api/campaign")
@@ -44,15 +45,29 @@ public class CampaignResource {
     @Inject
     SseBroadcaster broadcaster;
 
+    @Inject
+    GameState gameState;
+
+    /**
+     * Campaigns the current player may see: public ones and the ones they are a member of.
+     * Lists never contain the DM story; it is only returned by the single-campaign endpoints.
+     */
     @GET
-    public List<Campaign> list() {
-        return Campaign.listAll();
+    public List<CampaignDTO> list() {
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        List<Long> memberCampaignIds = CampaignPlayer.<CampaignPlayer>find("playerId", currentPlayerId).stream()
+                .map(cp -> cp.campaignId)
+                .toList();
+        List<Campaign> campaigns = memberCampaignIds.isEmpty()
+                ? Campaign.list("isPublic", true)
+                : Campaign.list("isPublic = true or id in ?1", memberCampaignIds);
+        return toListDtos(campaigns);
     }
 
     @GET
     @Path("public/all")
-    public List<Campaign> listPublic() {
-        return Campaign.find("isPublic", true).list();
+    public List<CampaignDTO> listPublic() {
+        return toListDtos(Campaign.list("isPublic", true));
     }
 
     @GET
@@ -69,7 +84,7 @@ public class CampaignResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
         if (cp == null && !Boolean.TRUE.equals(campaign.isPublic)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("You are not allowed to view this campaign")
+                    .entity("Du darfst diese Kampagne nicht ansehen")
                     .build();
         }
 
@@ -92,7 +107,7 @@ public class CampaignResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can view the story")
+                    .entity("Nur der DM kann die Story einsehen")
                     .build();
         }
 
@@ -117,24 +132,24 @@ public class CampaignResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", id, currentPlayerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can update the story")
+                    .entity("Nur der DM kann die Story ändern")
                     .build();
         }
 
         campaign.story = storyUpdate.story;
-        return Response.ok(campaign).build();
+        return Response.ok(new CampaignDTO(campaign, true)).build();
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
-    public Response create(Campaign campaign) {
-        if (campaign == null || campaign.name == null || campaign.name.trim().isEmpty()) {
+    public Response create(CampaignWriteDTO request) {
+        if (request == null || request.name == null || request.name.trim().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Campaign name is required")
+                    .entity("Bitte gib einen Kampagnennamen ein")
                     .build();
         }
-        Response validationError = validateMaxPlayerCount(campaign.maxPlayerCount);
+        Response validationError = validateMaxPlayerCount(request.maxPlayerCount);
         if (validationError != null) {
             return validationError;
         }
@@ -147,21 +162,27 @@ public class CampaignResource {
                     .build();
         }
 
-        campaign.id = null;
+        // Map paths, owner and start state are server-owned and never taken from the request.
+        Campaign campaign = new Campaign();
+        campaign.name = request.name;
+        campaign.description = request.description;
+        campaign.story = request.story;
+        campaign.isPublic = Boolean.TRUE.equals(request.isPublic);
+        campaign.maxPlayerCount = request.maxPlayerCount;
         campaign.playerId = currentPlayerId;
         campaign.persist();
 
         CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
         dm.persist();
 
-        return Response.status(Response.Status.CREATED).entity(campaign).build();
+        return Response.status(Response.Status.CREATED).entity(new CampaignDTO(campaign, true)).build();
     }
 
     @PATCH
     @Path("{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional
-    public Response update(@PathParam("id") Long id, Campaign updated) {
+    public Response update(@PathParam("id") Long id, CampaignWriteDTO updated) {
         if (updated == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Campaign update is required")
@@ -177,7 +198,7 @@ public class CampaignResource {
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (existing.playerId == null || !existing.playerId.equals(currentPlayerId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can update this campaign")
+                    .entity("Nur der DM kann diese Kampagne ändern")
                     .build();
         }
         Response validationError = validateMaxPlayerCount(updated.maxPlayerCount);
@@ -200,8 +221,12 @@ public class CampaignResource {
         if (updated.story != null) {
             existing.story = updated.story;
         }
+        boolean justStarted = Boolean.TRUE.equals(updated.started) && !Boolean.TRUE.equals(existing.started);
         if (updated.started != null) {
             existing.started = updated.started;
+        }
+        if (justStarted) {
+            gameState.onCampaignStarted(id);
         }
 
         CampaignDTO dto = new CampaignDTO(existing, true);
@@ -227,7 +252,7 @@ public class CampaignResource {
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (existing.playerId == null || !existing.playerId.equals(currentPlayerId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can delete this campaign")
+                    .entity("Nur der DM kann diese Kampagne löschen")
                     .build();
         }
 
@@ -251,20 +276,20 @@ public class CampaignResource {
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can upload maps")
+                    .entity("Nur der DM kann Karten hochladen")
                     .build();
         }
 
         if (fileUpload == null || fileUpload.fileName() == null || fileUpload.fileName().isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("No file uploaded")
+                    .entity("Keine Datei hochgeladen")
                     .build();
         }
 
         String originalFileName = fileUpload.fileName();
         if (!isValidImageType(originalFileName)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Only JPG, PNG or SVG images are allowed")
+                    .entity("Nur JPG-, PNG- oder SVG-Bilder sind erlaubt")
                     .build();
         }
 
@@ -272,7 +297,7 @@ public class CampaignResource {
             List<String> mapPaths = getMapPaths(campaign);
             if (mapPaths.size() >= 5) {
                 return Response.status(Response.Status.CONFLICT)
-                        .entity("A campaign can have at most 5 maps")
+                        .entity("Eine Kampagne kann höchstens 5 Karten haben")
                         .build();
             }
 
@@ -290,7 +315,7 @@ public class CampaignResource {
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
             UploadPermissionUtil.ensureSharedReadAccess(target);
 
-            String mapPath = "/uploads/maps/" + newFileName;
+            String mapPath = UploadPaths.publicPath(UploadPaths.MAPS, newFileName);
             mapPaths.add(mapPath);
             campaign.selectedMapIndex = mapPaths.size() - 1;
             saveMapPaths(campaign, mapPaths);
@@ -301,7 +326,7 @@ public class CampaignResource {
 
             return Response.ok(dto).build();
         } catch (IOException e) {
-            String msg = "Failed to upload map: " + e.getMessage();
+            String msg = "Karten-Upload fehlgeschlagen: " + e.getMessage();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(msg).build();
         }
     }
@@ -313,17 +338,17 @@ public class CampaignResource {
     public Response selectMap(@PathParam("id") Long id, Map<String, Object> body) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Kampagne nicht gefunden").build();
         }
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
-            return Response.status(Response.Status.FORBIDDEN).entity("Only the DM can select maps").build();
+            return Response.status(Response.Status.FORBIDDEN).entity("Nur der DM kann Karten auswählen").build();
         }
 
         Integer index = toInt(body != null ? body.get("selectedMapIndex") : null);
         List<String> mapPaths = getMapPaths(campaign);
         if (index == null || index < 0 || index >= mapPaths.size()) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid map index").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Ungültige Karte").build();
         }
 
         campaign.selectedMapIndex = index;
@@ -341,20 +366,20 @@ public class CampaignResource {
     public Response deleteMap(@PathParam("id") Long id, @PathParam("mapIndex") int mapIndex) {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Kampagne nicht gefunden").build();
         }
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (campaign.playerId == null || !campaign.playerId.equals(currentPlayerId)) {
-            return Response.status(Response.Status.FORBIDDEN).entity("Only the DM can delete maps").build();
+            return Response.status(Response.Status.FORBIDDEN).entity("Nur der DM kann Karten löschen").build();
         }
 
         List<String> mapPaths = getMapPaths(campaign);
         if (mapIndex < 0 || mapIndex >= mapPaths.size()) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Map not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Karte nicht gefunden").build();
         }
 
         String removedPath = mapPaths.remove(mapIndex);
-        deleteUploadedFile(removedPath);
+        deleteOwnMapFile(campaign, removedPath);
 
         int selected = campaign.selectedMapIndex != null ? campaign.selectedMapIndex : 0;
         if (mapPaths.isEmpty()) {
@@ -382,23 +407,26 @@ public class CampaignResource {
         }
 
         List<Campaign> campaigns = Campaign.list("playerId", playerId);
-        return Response.ok(campaigns).build();
+        return Response.ok(toListDtos(campaigns)).build();
     }
 
-    private void deleteUploadedFile(String filePath) {
-        if (filePath == null || filePath.isBlank()) return;
-        try {
-            // filePath is like "/uploads/maps/campaign-1-uuid.png"
-            // strip leading "/uploads/" to get relative path within uploadDir
-            String relative = filePath.replaceFirst("^/uploads/", "");
-            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
-            if (Files.exists(file) && !Files.isDirectory(file)) {
-                Files.delete(file);
-            }
-        } catch (IOException e) {
-            // Log but don't fail the request
-            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
+    private void deleteOwnMapFile(Campaign campaign, String filePath) {
+        // Only map files this server created for this campaign are deleted (campaign-<id>-<uuid>.ext in uploads/maps).
+        if (filePath == null || !filePath.startsWith("/uploads/maps/campaign-" + campaign.id + "-")) {
+            return;
         }
+        UploadPaths.resolveManagedFile(uploadDir, filePath, UploadPaths.MAPS).ifPresent(file -> {
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException e) {
+                // Log but don't fail the request
+                System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
+            }
+        });
+    }
+
+    private List<CampaignDTO> toListDtos(List<Campaign> campaigns) {
+        return campaigns.stream().map(campaign -> new CampaignDTO(campaign, false)).toList();
     }
 
     private boolean isValidImageType(String filename) {

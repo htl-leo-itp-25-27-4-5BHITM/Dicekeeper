@@ -8,7 +8,7 @@ import { esc, getActiveCampaignMap, playerLoginName, resolveMapUrl, resolveOrigi
 import { connectCampaignEvents } from '../services/campaignEvents.js';
 import { createDiceRollTracker } from '../services/diceRolls.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
-import { createLiveStatus } from '../components/liveStatus.js';
+import { createHeadlessLiveStatus } from '../components/liveStatus.js';
 import { loadTableRecoverySnapshot } from '../services/liveSnapshots.js';
 
 // The table only pops up rolls that are still fresh; older ones would be confusing.
@@ -31,7 +31,6 @@ export default async function TableView({ id }) {
           <span class="table-sidebar-icon">⚔️</span>
           <h2 class="table-sidebar-title" id="tvCampaignName">Kampagne</h2>
         </div>
-        <div id="tvLiveStatus" class="live-status-slot live-status-slot--table"></div>
         <div class="table-turn-header">
           <span class="table-section-icon">🎯</span>
           <h3>Spieler Reihenfolge</h3>
@@ -64,7 +63,7 @@ export default async function TableView({ id }) {
   let activeMap = null;
   let mapMarkers = [];
   let eventSource = null;
-  const liveStatus = createLiveStatus('tvLiveStatus', {
+  const liveStatus = createHeadlessLiveStatus({
     onRetry: () => eventSource?.retry()
   });
 
@@ -98,7 +97,8 @@ export default async function TableView({ id }) {
   try {
     const cpRes = await fetch('/api/campaign-player/' + campaignId, { cache: 'no-store' });
     const cps = await cpRes.json();
-    for (const cp of cps.filter(c => c.role === 'PLAYER')) {
+    // Only players with an approved character take part in the game (turns, HP, map).
+    for (const cp of cps.filter(c => c.role === 'PLAYER' && c.characterStatus === 'APPROVED')) {
       try {
         const pRes = await fetch('/api/player/id/' + cp.playerId);
         if (!pRes.ok) continue;
@@ -217,14 +217,7 @@ export default async function TableView({ id }) {
       fogSolid: true,
       fogPositions: getPlayerMarkerPositions(),
       initialExplorationData: fogExplorationData,
-      gameStarted: true,
-      onExplorationChange: (dataUrl) => {
-        fetch('/api/campaign/' + campaignId + '/game/fog-exploration', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: dataUrl })
-        }).catch(() => {});
-      }
+      gameStarted: true
     });
   }
 

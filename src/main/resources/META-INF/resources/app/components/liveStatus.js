@@ -58,3 +58,40 @@ export function createLiveStatus(target, {
   setState('connecting');
   return { destroy, setState };
 }
+
+// Same recovery behavior as createLiveStatus, but without any visible UI:
+// expired sessions start the login flow and unavailable streams retry automatically.
+export function createHeadlessLiveStatus({
+  onReauthenticate = startAuthenticationRecovery,
+  onRetry = () => {},
+  retryDelayMs = 5000,
+  setTimeoutImpl = setTimeout,
+  clearTimeoutImpl = clearTimeout
+} = {}) {
+  let retryTimer = null;
+  let disposed = false;
+
+  function clearRetryTimer() {
+    if (retryTimer !== null) clearTimeoutImpl(retryTimer);
+    retryTimer = null;
+  }
+
+  function setState(state) {
+    if (disposed) return;
+    clearRetryTimer();
+    if (state === 'reauthenticating') onReauthenticate();
+    if (state === 'unavailable') {
+      retryTimer = setTimeoutImpl(() => {
+        retryTimer = null;
+        if (!disposed) onRetry();
+      }, retryDelayMs);
+    }
+  }
+
+  function destroy() {
+    disposed = true;
+    clearRetryTimer();
+  }
+
+  return { destroy, setState };
+}

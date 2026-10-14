@@ -17,11 +17,11 @@ export default async function CharacterSelectView({ campaignId }) {
     <div class="character-select-page">
       <div class="container"><div class="card">
         <div class="card-header" style="text-align:center;">
-          <h1 class="card-title">Select Your Character</h1>
-          <p class="card-subtitle">Choose a character to use in this campaign</p>
+          <h1 class="card-title">Charakter auswählen</h1>
+          <p class="card-subtitle">Wähle einen Charakter für diese Kampagne</p>
         </div>
         <div id="csStatus" style="display:none"></div>
-        <div id="csContent"><div class="loading">Loading...</div></div>
+        <div id="csContent"><div class="loading">Wird geladen…</div></div>
       </div></div>
     </div>
   `;
@@ -38,13 +38,13 @@ export default async function CharacterSelectView({ campaignId }) {
 
   try {
     const campaignRes = await fetch(`/api/campaign/${campaignId}`, { cache: 'no-store' });
-    if (!campaignRes.ok) throw new Error('Failed to load campaign');
+    if (!campaignRes.ok) throw new Error('Kampagne konnte nicht geladen werden');
     const campaign = await campaignRes.json();
 
-    let dmName = 'Unknown';
+    let dmName = 'Unbekannt';
     if (campaign.playerId) {
       const dmRes = await fetch(`/api/player/id/${campaign.playerId}`, { cache: 'no-store' });
-      if (dmRes.ok) { const dm = await dmRes.json(); dmName = playerLoginName(dm, 'Unknown'); }
+      if (dmRes.ok) { const dm = await dmRes.json(); dmName = playerLoginName(dm, 'Unbekannt'); }
     }
 
     const charsRes = await fetch('/api/character/all', { cache: 'no-store' });
@@ -54,20 +54,20 @@ export default async function CharacterSelectView({ campaignId }) {
     const charListHtml = characters.length > 0
       ? characters.map(c => `
         <div class="character-item" data-id="${c.id}">
-          <div class="character-item-name">${esc(c.name) || 'Unnamed'}</div>
-          <div class="character-item-meta">${esc(c.characterClass?.name || 'No class')} • Level ${c.level || 1}</div>
+          <div class="character-item-name">${esc(c.name) || 'Ohne Namen'}</div>
+          <div class="character-item-meta">${esc(c.characterClass?.name || 'Keine Klasse')} • Stufe ${c.level || 1}</div>
         </div>`).join('')
-      : '<div class="empty-message">You don\'t have any characters yet.</div>';
+      : '<div class="empty-message">Du hast noch keine Charaktere.</div>';
 
     content.innerHTML = `
       <div class="campaign-info-box"><div class="campaign-name">${esc(campaign.name)}</div><div class="campaign-dm">DM: ${esc(dmName)}</div></div>
-      <div class="section-title">Your Characters</div>
+      <div class="section-title">Deine Charaktere</div>
       <div class="character-list" id="charList">${charListHtml}</div>
-      <div class="divider"><span>or</span></div>
-      <button class="create-new-btn" id="createNewBtn">+ Create New Character</button>
+      <div class="divider"><span>oder</span></div>
+      <button class="create-new-btn" id="createNewBtn">+ Neuen Charakter erstellen</button>
       <div class="actions">
-        <button class="btn btn-secondary" id="csCancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="csSubmitBtn" disabled>Submit Character</button>
+        <button class="btn btn-secondary" id="csCancelBtn">Abbrechen</button>
+        <button class="btn btn-primary" id="csSubmitBtn" disabled>Charakter einreichen</button>
       </div>
     `;
 
@@ -90,24 +90,24 @@ export default async function CharacterSelectView({ campaignId }) {
     document.getElementById('csCancelBtn').addEventListener('click', () => navigate('/campaigns'));
 
     submitBtn.addEventListener('click', async () => {
-      if (!selectedCharacterId) { showStatus('Please select a character.', true); return; }
-      submitBtn.disabled = true; submitBtn.textContent = 'Submitting...';
+      if (!selectedCharacterId) { showStatus('Bitte wähle einen Charakter.', true); return; }
+      submitBtn.disabled = true; submitBtn.textContent = 'Wird eingereicht…';
       try {
         const res = await fetch(`/api/campaign-player/${campaignId}/${player.id}/submit-character`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ characterId: parseInt(selectedCharacterId) })
         });
-        if (!res.ok) throw new Error(await res.text() || 'Failed');
-        showStatus('Character submitted for DM approval!', false);
+        if (!res.ok) throw new Error(await res.text() || 'Fehlgeschlagen');
+        showStatus('Charakter wurde dem DM zur Freigabe vorgelegt!', false);
         setTimeout(() => navigate('/campaign/' + campaignId), 1500);
       } catch (err) {
-        showStatus('Error: ' + err.message, true);
-        submitBtn.disabled = false; submitBtn.textContent = 'Submit Character';
+        showStatus('Fehler: ' + err.message, true);
+        submitBtn.disabled = false; submitBtn.textContent = 'Charakter einreichen';
       }
     });
   } catch (err) {
-    showStatus('Error: ' + err.message, true);
+    showStatus('Fehler: ' + err.message, true);
   }
 
   return () => { destroyHeader(); };

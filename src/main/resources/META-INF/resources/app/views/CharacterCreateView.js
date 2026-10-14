@@ -8,64 +8,71 @@ import { renderHeader, initHeader, destroyHeader } from '../components/header.js
 import { showToast } from '../components/toast.js';
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from '../services/sessionDraft.js';
 
-export default async function CharacterCreateView() {
+export default async function CharacterCreateView(routeParams = {}) {
   const player = requirePlayer();
   if (!player) return;
 
   const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
   const campaignId = params.get('campaignId');
-  const draftKey = 'dicekeeper:character-create:draft:' + (campaignId || 'standalone');
+  // Edit mode: correct an existing (e.g. rejected) character instead of creating a new one.
+  const editId = routeParams.id ? Number(routeParams.id) : null;
+  const isEdit = Number.isFinite(editId) && editId > 0;
+  const draftKey = isEdit
+    ? 'dicekeeper:character-edit:draft:' + editId
+    : 'dicekeeper:character-create:draft:' + (campaignId || 'standalone');
 
+  const saveLabel = isEdit ? (campaignId ? 'Speichern & erneut einreichen' : 'Änderungen speichern') : 'Charakter erstellen';
   const app = document.getElementById('app');
   document.body.classList.add('has-header');
 
   app.innerHTML = renderHeader() + `
     <div class="character-create-page">
       <div class="container"><div class="card">
-        <a href="#" class="back-link" id="ccBackLink">← Back</a>
+        <a href="#" class="back-link" id="ccBackLink">← Zurück</a>
         <div class="card-header">
-          <h1 class="card-title">Create Character</h1>
-          <p class="card-subtitle" id="ccStepTitle">Step 1: Basic Information</p>
+          <h1 class="card-title">${isEdit ? 'Charakter bearbeiten' : 'Charakter erstellen'}</h1>
+          <p class="card-subtitle" id="ccStepTitle">Schritt 1: Grunddaten</p>
         </div>
+        <div id="ccDmNotes" hidden></div>
         <div class="steps"><div class="step active" data-step="1"></div><div class="step" data-step="2"></div><div class="step" data-step="3"></div><div class="step" data-step="4"></div></div>
         <div id="ccStatus" class="status-message"></div>
         <div id="ccStep1" class="step-content active">
           <div class="section">
-            <div class="form-group"><label>Character Name</label><input type="text" id="ccCharName" placeholder="Name" maxlength="100"></div>
-            <div class="form-group"><label>Race</label>
-              <select id="ccRace"><option value="">Select a race...</option>
-                <option>Human</option><option>Elf</option><option>Dwarf</option><option>Halfling</option>
-                <option>Dragonborn</option><option>Gnome</option><option>Half-Elf</option><option>Half-Orc</option><option>Tiefling</option>
+            <div class="form-group"><label>Name des Charakters</label><input type="text" id="ccCharName" placeholder="Name" maxlength="100"></div>
+            <div class="form-group"><label>Volk</label>
+              <select id="ccRace"><option value="">Volk auswählen…</option>
+                <option>Mensch</option><option>Elf</option><option>Zwerg</option><option>Halbling</option>
+                <option>Drachenblütiger</option><option>Gnom</option><option>Halbelf</option><option>Halbork</option><option>Tiefling</option>
               </select></div>
-            <div class="form-group"><label>Alignment</label>
-              <select id="ccAlign"><option value="">Select alignment...</option>
-                <option>Lawful Good</option><option>Neutral Good</option><option>Chaotic Good</option>
-                <option>Lawful Neutral</option><option>True Neutral</option><option>Chaotic Neutral</option>
-                <option>Lawful Evil</option><option>Neutral Evil</option><option>Chaotic Evil</option>
+            <div class="form-group"><label>Gesinnung</label>
+              <select id="ccAlign"><option value="">Gesinnung auswählen…</option>
+                <option>Rechtschaffen Gut</option><option>Neutral Gut</option><option>Chaotisch Gut</option>
+                <option>Rechtschaffen Neutral</option><option>Neutral</option><option>Chaotisch Neutral</option>
+                <option>Rechtschaffen Böse</option><option>Neutral Böse</option><option>Chaotisch Böse</option>
               </select></div>
           </div>
-          <div class="nav-buttons"><button class="btn btn-secondary" id="ccCancel">Cancel</button><button class="btn btn-primary" id="ccNext1">Next: Choose Class</button></div>
+          <div class="nav-buttons"><button class="btn btn-secondary" id="ccCancel">Abbrechen</button><button class="btn btn-primary" id="ccNext1">Weiter: Klasse wählen</button></div>
         </div>
         <div id="ccStep2" class="step-content">
-          <div class="section"><div class="section-title">Choose Your Class</div><div class="selection-grid" id="ccClassGrid"><div class="loading">Loading classes...</div></div><div class="selection-details" id="ccClassDetails" hidden></div></div>
-          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack2">Back</button><button class="btn btn-primary" id="ccNext2" disabled>Next: Background</button></div>
+          <div class="section"><div class="section-title">Wähle deine Klasse</div><div class="selection-grid" id="ccClassGrid"><div class="loading">Klassen werden geladen…</div></div><div class="selection-details" id="ccClassDetails" hidden></div></div>
+          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack2">Zurück</button><button class="btn btn-primary" id="ccNext2" disabled>Weiter: Hintergrund</button></div>
         </div>
         <div id="ccStep3" class="step-content">
-          <div class="section"><div class="section-title">Choose Your Background</div><div class="selection-grid" id="ccBgGrid"><div class="loading">Loading backgrounds...</div></div><div class="selection-details" id="ccBgDetails" hidden></div></div>
-          <div class="form-group" style="margin-top:20px"><label>Backstory (Optional)</label><textarea id="ccBackstory" placeholder="Your character's backstory..."></textarea></div>
-          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack3">Back</button><button class="btn btn-primary" id="ccNext3" disabled>Next: Ability Scores</button></div>
+          <div class="section"><div class="section-title">Wähle deinen Hintergrund</div><div class="selection-grid" id="ccBgGrid"><div class="loading">Hintergründe werden geladen…</div></div><div class="selection-details" id="ccBgDetails" hidden></div></div>
+          <div class="form-group" style="margin-top:20px"><label>Vorgeschichte (optional)</label><textarea id="ccBackstory" placeholder="Die Vorgeschichte deines Charakters…"></textarea></div>
+          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack3">Zurück</button><button class="btn btn-primary" id="ccNext3" disabled>Weiter: Attributswerte</button></div>
         </div>
         <div id="ccStep4" class="step-content">
-          <div class="section"><div class="section-title">Assign Ability Scores</div>
-            <div class="points-remaining"><div class="points-remaining-value" id="ccPoints">27</div><div class="points-remaining-label">Points Remaining</div></div>
+          <div class="section"><div class="section-title">Attributswerte verteilen</div>
+            <div class="points-remaining"><div class="points-remaining-value" id="ccPoints">27</div><div class="points-remaining-label">Verbleibende Punkte</div></div>
             <div class="ability-grid" id="ccAbilityGrid"></div>
           </div>
-          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack4">Back</button><button class="btn btn-success" id="ccCreateBtn">Create Character</button></div>
+          <div class="nav-buttons"><button class="btn btn-secondary" id="ccBack4">Zurück</button><button class="btn btn-success" id="ccCreateBtn">${saveLabel}</button></div>
         </div>
         <div id="ccStep5" class="step-content">
           <div id="ccPreview"></div>
-          <div class="status-message success show" style="text-align:center"><strong>Character Created!</strong><br>Your character is ready.</div>
-          <div class="nav-buttons"><button class="btn btn-secondary" id="ccAnother">Create Another</button><button class="btn btn-success" id="ccDone">Done</button></div>
+          <div class="status-message success show" style="text-align:center" id="ccDoneMessage"><strong>${isEdit ? 'Charakter gespeichert!' : 'Charakter erstellt!'}</strong><br>Dein Charakter ist bereit.</div>
+          <div class="nav-buttons">${isEdit ? '' : '<button class="btn btn-secondary" id="ccAnother">Weiteren erstellen</button>'}<button class="btn btn-success" id="ccDone">Fertig</button></div>
         </div>
       </div></div>
     </div>
@@ -75,7 +82,7 @@ export default async function CharacterCreateView() {
   const backLink = document.getElementById('ccBackLink');
   if (campaignId) {
     backLink.href = '#/campaign/' + campaignId + '/select-character';
-    backLink.textContent = '← Back to Character Selection';
+    backLink.textContent = '← Zurück zur Charakterauswahl';
   } else {
     backLink.href = '#/campaigns';
   }
@@ -89,7 +96,7 @@ export default async function CharacterCreateView() {
   let abilities = [];
   let abilityScores = {};
   const totalPoints = 27;
-  const subtitles = ['Step 1: Basic Information', 'Step 2: Choose Your Class', 'Step 3: Choose Your Background', 'Step 4: Assign Ability Scores', 'Character Complete!'];
+  const subtitles = ['Schritt 1: Grunddaten', 'Schritt 2: Klasse wählen', 'Schritt 3: Hintergrund wählen', 'Schritt 4: Attributswerte verteilen', isEdit ? 'Charakter gespeichert!' : 'Charakter fertig!'];
   let isRestoringDraft = false;
 
   function showStatus(msg, type = 'info') {
@@ -140,14 +147,19 @@ export default async function CharacterCreateView() {
     if (!draft || typeof draft !== 'object') return 1;
     isRestoringDraft = true;
     document.getElementById('ccCharName').value = draft.name || '';
-    document.getElementById('ccRace').value = draft.race || '';
-    document.getElementById('ccAlign').value = draft.alignment || '';
+    selectValue('ccRace', draft.race);
+    selectValue('ccAlign', draft.alignment);
     document.getElementById('ccBackstory').value = draft.backstory || '';
     selectedClassId = draft.selectedClassId ? Number(draft.selectedClassId) : null;
     selectedBackgroundId = draft.selectedBackgroundId ? Number(draft.selectedBackgroundId) : null;
     abilityScores = draft.abilityScores && typeof draft.abilityScores === 'object' ? { ...draft.abilityScores } : {};
     isRestoringDraft = false;
     return Math.max(1, Math.min(4, Number(draft.currentStep) || 1));
+  }
+
+  const ABILITY_ABBR = { strength: 'STÄ', dexterity: 'GES', constitution: 'KON', intelligence: 'INT', wisdom: 'WEI', charisma: 'CHA' };
+  function abilityAbbr(name) {
+    return ABILITY_ABBR[String(name || '').toLowerCase()] || String(name || '').substring(0, 3).toUpperCase();
   }
 
   const costMap = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
@@ -162,7 +174,7 @@ export default async function CharacterCreateView() {
       const mod = calcMod(score);
       const box = document.createElement('div');
       box.className = 'ability-box';
-      box.innerHTML = `<div class="ability-label">${esc(ab.name.substring(0, 3).toUpperCase())}</div>
+      box.innerHTML = `<div class="ability-label">${esc(abilityAbbr(ab.name))}</div>
         <div class="ability-controls">
           <button class="ability-btn" data-id="${ab.id}" data-action="dec">−</button>
           <div class="ability-value">${score}</div>
@@ -206,13 +218,13 @@ export default async function CharacterCreateView() {
     const box = document.getElementById(containerId);
     if (!box) return;
     if (!item) {
-      box.innerHTML = '<p class="selection-details-hint">Select a card to read the full description.</p>';
+      box.innerHTML = '<p class="selection-details-hint">Wähle eine Karte, um die vollständige Beschreibung zu lesen.</p>';
       box.hidden = false;
       return;
     }
     const paragraphs = descriptionParagraphs(item.description);
     box.innerHTML = `<div class="selection-details-name">${esc(item.name)}</div>`
-      + (paragraphs.length ? paragraphs.map(p => `<p>${esc(p)}</p>`).join('') : '<p>No description available.</p>');
+      + (paragraphs.length ? paragraphs.map(p => `<p>${esc(p)}</p>`).join('') : '<p>Keine Beschreibung vorhanden.</p>');
     box.hidden = false;
   }
 
@@ -245,7 +257,7 @@ export default async function CharacterCreateView() {
       classes = await r.json();
       renderClassGrid();
     } catch (e) {
-      grid.innerHTML = '<p style="opacity:0.7">Failed to load classes</p>';
+      grid.innerHTML = '<p style="opacity:0.7">Klassen konnten nicht geladen werden</p>';
     }
   }
 
@@ -278,7 +290,7 @@ export default async function CharacterCreateView() {
       backgrounds = await r.json();
       renderBackgroundGrid();
     } catch (e) {
-      grid.innerHTML = '<p style="opacity:0.7">No backgrounds</p>';
+      grid.innerHTML = '<p style="opacity:0.7">Keine Hintergründe</p>';
       document.getElementById('ccNext3').disabled = false;
     }
   }
@@ -290,7 +302,7 @@ export default async function CharacterCreateView() {
       abilities.forEach(ab => { if (!abilityScores[ab.id]) abilityScores[ab.id] = 8; });
       renderAbilityGrid();
     } catch (e) {
-      document.getElementById('ccAbilityGrid').innerHTML = '<p>Failed to load</p>';
+      document.getElementById('ccAbilityGrid').innerHTML = '<p>Laden fehlgeschlagen</p>';
     }
   }
 
@@ -307,7 +319,7 @@ export default async function CharacterCreateView() {
 
   document.getElementById('ccNext1').addEventListener('click', async () => {
     const name = document.getElementById('ccCharName').value.trim();
-    if (!name) { showStatus('Please enter a name', 'error'); return; }
+    if (!name) { showStatus('Bitte gib einen Namen ein', 'error'); return; }
     goToStep(2);
     await loadClasses();
   });
@@ -315,7 +327,7 @@ export default async function CharacterCreateView() {
   // Step 2
   document.getElementById('ccBack2').addEventListener('click', () => goToStep(1));
   document.getElementById('ccNext2').addEventListener('click', async () => {
-    if (!selectedClassId) { showStatus('Select a class', 'error'); return; }
+    if (!selectedClassId) { showStatus('Bitte wähle eine Klasse', 'error'); return; }
     goToStep(3);
     await loadBackgrounds();
   });
@@ -331,20 +343,24 @@ export default async function CharacterCreateView() {
   document.getElementById('ccBack4').addEventListener('click', () => goToStep(3));
   document.getElementById('ccCreateBtn').addEventListener('click', async () => {
     const btn = document.getElementById('ccCreateBtn');
-    btn.disabled = true; btn.textContent = 'Creating...';
-    showStatus('Saving...', 'info');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+    showStatus('Speichere…', 'info');
     try {
       const name = document.getElementById('ccCharName').value.trim();
-      const r = await fetch('/api/character/createInitialCharacter', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-      if (!r.ok) throw new Error(await r.text());
-      const c = await r.json();
-      characterId = c.id;
+      if (isEdit) {
+        characterId = editId;
+      } else {
+        const r = await fetch('/api/character/createInitialCharacter', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        if (!r.ok) throw new Error(await r.text());
+        const c = await r.json();
+        characterId = c.id;
+      }
       const patchRes = await fetch('/api/character/' + characterId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          level: 1,
+          level: existingLevel,
           race: document.getElementById('ccRace').value || null,
           alignment: document.getElementById('ccAlign').value || null,
           classId: selectedClassId,
@@ -354,26 +370,32 @@ export default async function CharacterCreateView() {
       });
       if (!patchRes.ok) throw new Error(await patchRes.text());
       for (const [abilityId, score] of Object.entries(abilityScores)) {
-        await fetch(`/api/character-ability/${characterId}/${abilityId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) });
+        const abilityRes = await fetch(`/api/character-ability/${characterId}/${abilityId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) });
+        if (!abilityRes.ok) throw new Error(await abilityRes.text());
+      }
+      if (isEdit && campaignMembership?.characterStatus === 'REJECTED' && campaignMembership.characterId === characterId) {
+        const resubmitRes = await fetch(`/api/campaign-player/${encodeURIComponent(campaignId)}/${player.id}/resubmit-character`, { method: 'POST' });
+        if (!resubmitRes.ok) throw new Error(await resubmitRes.text());
+        document.getElementById('ccDoneMessage').innerHTML = '<strong>Charakter gespeichert!</strong><br>Er wurde dem DM erneut zur Prüfung vorgelegt.';
       }
       const charRes = await fetch('/api/character/' + characterId);
       const character = await charRes.json();
-      const cn = classes.find(c => c.id === selectedClassId)?.name || 'Unknown';
+      const cn = classes.find(c => c.id === selectedClassId)?.name || 'Unbekannt';
       const ini = (character.name || 'C').substring(0, 2).toUpperCase();
       document.getElementById('ccPreview').innerHTML = `
         <div class="character-preview"><div class="preview-header">
           <div class="preview-avatar">${ini}</div>
-          <div class="preview-info"><h3>${esc(character.name)}</h3><div class="preview-meta">Level 1 ${esc(character.race || '')} ${esc(cn)}</div></div>
+          <div class="preview-info"><h3>${esc(character.name)}</h3><div class="preview-meta">Stufe ${character.level || 1} ${esc(character.race || '')} ${esc(cn)}</div></div>
         </div>
-        <div class="preview-stats">${abilities.map(ab => `<div class="preview-stat"><div class="preview-stat-label">${ab.name.substring(0, 3).toUpperCase()}</div><div class="preview-stat-value">${abilityScores[ab.id] || 8}</div></div>`).join('')}</div>
+        <div class="preview-stats">${abilities.map(ab => `<div class="preview-stat"><div class="preview-stat-label">${esc(abilityAbbr(ab.name))}</div><div class="preview-stat-value">${abilityScores[ab.id] || 8}</div></div>`).join('')}</div>
         </div>`;
       clearDraft();
       goToStep(5);
-    } catch (err) { showStatus('Error: ' + err.message, 'error'); btn.disabled = false; btn.textContent = 'Create Character'; }
+    } catch (err) { showStatus('Fehler: ' + err.message, 'error'); btn.disabled = false; btn.textContent = saveLabel; }
   });
 
   // Step 5
-  document.getElementById('ccAnother').addEventListener('click', () => {
+  document.getElementById('ccAnother')?.addEventListener('click', () => {
     characterId = null; selectedClassId = null; selectedBackgroundId = null; abilityScores = {};
     clearDraft();
     document.getElementById('ccCharName').value = '';
@@ -385,9 +407,53 @@ export default async function CharacterCreateView() {
     goToStep(1);
   });
   document.getElementById('ccDone').addEventListener('click', () => {
-    if (campaignId) navigate('/campaign/' + campaignId + '/select-character');
+    if (campaignId && isEdit) navigate('/campaign/' + campaignId);
+    else if (campaignId) navigate('/campaign/' + campaignId + '/select-character');
     else navigate('/campaigns');
   });
+
+  let campaignMembership = null;
+  let existingLevel = 1;
+  if (isEdit) {
+    let existing = null;
+    try {
+      const r = await fetch('/api/character/' + editId, { cache: 'no-store' });
+      if (r.ok) existing = await r.json();
+    } catch (e) {}
+    if (!existing) {
+      showStatus('Charakter nicht gefunden', 'error');
+      navigate(campaignId ? '/campaign/' + campaignId : '/campaigns');
+      return () => { destroyHeader(); };
+    }
+    if (campaignId) {
+      try {
+        const r = await fetch(`/api/campaign-player/${encodeURIComponent(campaignId)}/${player.id}/role`, { cache: 'no-store' });
+        if (r.ok) campaignMembership = await r.json();
+      } catch (e) {}
+    }
+    if (campaignMembership?.dmNotes) {
+      const notes = document.getElementById('ccDmNotes');
+      notes.className = 'status-message error show';
+      notes.innerHTML = '<strong>Hinweise des DM:</strong><br><span style="white-space:pre-wrap">' + esc(campaignMembership.dmNotes) + '</span>';
+      notes.hidden = false;
+    }
+    existingLevel = existing.level || 1;
+    document.getElementById('ccCharName').value = existing.name || '';
+    selectValue('ccRace', existing.race);
+    selectValue('ccAlign', existing.alignment);
+    document.getElementById('ccBackstory').value = existing.info || '';
+    selectedClassId = existing.characterClass?.id ?? null;
+    selectedBackgroundId = existing.background?.id ?? null;
+    abilityScores = {};
+    (existing.abilityScores || []).forEach(a => { if (a?.abilityId) abilityScores[a.abilityId] = a.score; });
+  }
+
+  // Older characters may contain values that are no longer in the list; keep them selectable.
+  function selectValue(selectId, value) {
+    const select = document.getElementById(selectId);
+    if (value && ![...select.options].some(o => o.value === value)) select.add(new Option(value, value));
+    select.value = value || '';
+  }
 
   const restoredStep = applyDraft(readSessionDraft(draftKey));
   if (restoredStep >= 2) await loadClasses();

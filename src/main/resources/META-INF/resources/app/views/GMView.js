@@ -4,10 +4,11 @@
 import { requirePlayer } from '../services/auth.js';
 import { esc, calcMod, fmtMod, getActiveCampaignMap, getCampaignMaps, playerLoginName, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
-import { createDiceRollTracker, submitDiceRoll } from '../services/diceRolls.js';
+import { createDiceRollTracker, rollOnServer, submitDiceRoll } from '../services/diceRolls.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
+import { showToast } from '../components/toast.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
-import { createLiveStatus } from '../components/liveStatus.js';
+import { createHeadlessLiveStatus } from '../components/liveStatus.js';
 import { loadGMRecoverySnapshot } from '../services/liveSnapshots.js';
 
 export default async function GMView({ id }) {
@@ -22,7 +23,6 @@ export default async function GMView({ id }) {
 
   app.innerHTML = renderHeader() + `
     <div class="gm-page">
-      <div id="gmLiveStatus" class="live-status-slot"></div>
       <div class="gm-main">
         <div class="glass map-container">
           <div class="map-toolbar">
@@ -44,7 +44,7 @@ export default async function GMView({ id }) {
           <div class="glass equal-box chat-box">
             <h3>Dungeon Master Chat</h3>
             <div class="chat-messages" id="gmChat"></div>
-            <input type="text" id="gmChatInput" placeholder="Nachricht eingeben">
+            <input type="text" id="gmChatInput" maxlength="500" placeholder="Nachricht an alle Spieler">
             <button id="gmChatSend">Senden</button>
           </div>
         </div>
@@ -162,7 +162,8 @@ export default async function GMView({ id }) {
   } catch (e) {}
 
   let players = [], currentIndex = 0, decisions = [], eventSource = null, selectedDiceSides = 20;
-  const liveStatus = createLiveStatus('gmLiveStatus', {
+  const shownDmMessages = new Set();
+  const liveStatus = createHeadlessLiveStatus({
     onRetry: () => eventSource?.retry()
   });
 
@@ -518,6 +519,7 @@ export default async function GMView({ id }) {
     applyCampaignMap(campaign);
     // Shows a roll that happened while this client was not connected.
     if (snapshot.state.lastDiceRoll) showBroadcastDiceRoll(snapshot.state.lastDiceRoll);
+    (snapshot.state.dmMessages || []).forEach(showDmMessage);
 
     renderPlayers();
     syncMapCanvases();
@@ -571,6 +573,7 @@ export default async function GMView({ id }) {
       undo: d => {
       if (d.allMarkers) { mapMarkers = d.allMarkers; syncMapCanvases(); }
       },
+      dm_message: d => showDmMessage(d),
       campaign_updated: () => eventSource?.reconcile('campaign-updated'),
       roster_updated: () => loadPlayers(),
       state_reset: () => eventSource?.reconcile('state-reset')
@@ -595,10 +598,12 @@ export default async function GMView({ id }) {
       const existingMaxHp = gameStateData?.playerMaxHp || {};
       const existingActive = gameStateData?.playerActive || {};
       const existingTurn = gameStateData?.currentTurnPlayerId;
+      (gameStateData?.dmMessages || []).forEach(showDmMessage);
 
       const cpRes = await fetch('/api/campaign-player/' + campaignId); const cps = await cpRes.json();
       const loaded = [];
-      for (const cp of cps.filter(c => c.role === 'PLAYER')) {
+      // Only players with an approved character take part in the game (turns, HP, map).
+      for (const cp of cps.filter(c => c.role === 'PLAYER' && c.characterStatus === 'APPROVED')) {
         try {
           const pRes = await fetch('/api/player/id/' + cp.playerId);
           if (!pRes.ok) continue;
@@ -664,7 +669,7 @@ export default async function GMView({ id }) {
 
   function renderPlayers() {
     const list = document.getElementById('gmPlayerList'); list.innerHTML = '';
-    if (players.length === 0) { list.innerHTML = '<div style="opacity:0.6;padding:10px;">No players joined yet.</div>'; return; }
+    if (players.length === 0) { list.innerHTML = '<div style="opacity:0.6;padding:10px;">Noch keine freigegebenen Spieler.</div>'; return; }
     players.forEach((p, i) => {
       const div = document.createElement('div');
       div.className = 'player' + (i === currentIndex ? ' active' : '');
@@ -727,23 +732,24 @@ export default async function GMView({ id }) {
     const overlay = document.getElementById('gmCharOverlay');
     const content = document.getElementById('gmCharContent');
     if (!p.characterId) {
-      content.innerHTML = '<h2>' + esc(p.name) + '</h2><div style="opacity:0.7;margin:16px 0;">No character submitted.</div><button class="close-btn" id="gmCharClose">Close</button>';
+      content.innerHTML = '<h2>' + esc(p.name) + '</h2><div style="opacity:0.7;margin:16px 0;">Kein Charakter eingereicht.</div><button class="close-btn" id="gmCharClose">Schließen</button>';
       overlay.classList.add('visible');
       document.getElementById('gmCharClose').onclick = () => overlay.classList.remove('visible');
       return;
     }
-    content.innerHTML = '<div style="text-align:center;padding:30px;opacity:0.7;">Loading character...</div>';
+    content.innerHTML = '<div style="text-align:center;padding:30px;opacity:0.7;">Charakter wird geladen…</div>';
     overlay.classList.add('visible');
     try {
       const r = await fetch('/api/character/' + p.characterId); const ch = await r.json();
       const abilIcons = { Strength: '💪', Dexterity: '🏹', Constitution: '🛡️', Intelligence: '🧠', Wisdom: '🔮', Charisma: '✨' };
+      const abilAbbr = { Strength: 'STÄ', Dexterity: 'GES', Constitution: 'KON', Intelligence: 'INT', Wisdom: 'WEI', Charisma: 'CHA' };
       function gs(name) { const f = ch.abilityScores?.find(a => a.abilityName?.toLowerCase() === name.toLowerCase()); return f ? f.score : 10; }
       const statsHTML = Object.keys(abilIcons).map(name => {
         const s = gs(name); const m = calcMod(s);
-        return '<div class="stat-box"><div class="stat-label">' + abilIcons[name] + ' ' + name.substring(0, 3).toUpperCase() + '</div><div class="stat-value">' + s + '</div><div class="stat-modifier">' + fmtMod(m) + '</div></div>';
+        return '<div class="stat-box"><div class="stat-label">' + abilIcons[name] + ' ' + abilAbbr[name] + '</div><div class="stat-value">' + s + '</div><div class="stat-modifier">' + fmtMod(m) + '</div></div>';
       }).join('');
-      content.innerHTML = '<h2>' + esc(ch.name || 'Unnamed') + '</h2><div class="char-meta">👤 ' + esc(p.name) + '<br>🏆 Level ' + (ch.level || 1) + '<br>🧬 ' + esc(ch.race || 'Unknown') + '<br>⚔️ ' + esc(ch.characterClass?.name || 'No Class') + '<br>📖 ' + esc(ch.background?.name || 'No Background') + '</div><div style="font-weight:600;margin-bottom:8px;">Ability Scores</div><div class="stats-grid">' + statsHTML + '</div><div style="font-weight:600;margin-bottom:6px;margin-top:10px;">Background Story</div><div class="info-box">' + esc(ch.info || 'No story yet...') + '</div><button class="close-btn" id="gmCharClose">Close</button>';
-    } catch (e) { content.innerHTML = '<h2>' + esc(p.name) + '</h2><div style="opacity:0.7;">Failed to load.</div><button class="close-btn" id="gmCharClose">Close</button>'; }
+      content.innerHTML = '<h2>' + esc(ch.name || 'Ohne Namen') + '</h2><div class="char-meta">👤 ' + esc(p.name) + '<br>🏆 Stufe ' + (ch.level || 1) + '<br>🧬 ' + esc(ch.race || 'Unbekannt') + '<br>⚔️ ' + esc(ch.characterClass?.name || 'Keine Klasse') + '<br>📖 ' + esc(ch.background?.name || 'Kein Hintergrund') + '</div><div style="font-weight:600;margin-bottom:8px;">Attributswerte</div><div class="stats-grid">' + statsHTML + '</div><div style="font-weight:600;margin-bottom:6px;margin-top:10px;">Vorgeschichte</div><div class="info-box">' + esc(ch.info || 'Noch keine Vorgeschichte…') + '</div><button class="close-btn" id="gmCharClose">Schließen</button>';
+    } catch (e) { content.innerHTML = '<h2>' + esc(p.name) + '</h2><div style="opacity:0.7;">Laden fehlgeschlagen.</div><button class="close-btn" id="gmCharClose">Schließen</button>'; }
     document.getElementById('gmCharClose').onclick = () => overlay.classList.remove('visible');
   }
   document.getElementById('gmCharOverlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('visible'); });
@@ -807,19 +813,21 @@ export default async function GMView({ id }) {
     const resultEl = document.getElementById('gmDiceResult');
     const rollBtn = document.getElementById('gmRollBtn');
     rollBtn.disabled = true;
-    let ticks = 0;
-    const iv = setInterval(() => {
-      resultEl.textContent = Math.floor(Math.random() * selectedDiceSides) + 1; ticks++;
-      if (ticks >= 12) {
-        clearInterval(iv); const f = Math.floor(Math.random() * selectedDiceSides) + 1;
+    const sides = selectedDiceSides;
+    rollOnServer(campaignId, sides, v => { resultEl.textContent = v; })
+      .then(f => {
         resultEl.textContent = f; resultEl.classList.remove('rolling'); void resultEl.offsetWidth; resultEl.classList.add('rolling');
         rollBtn.disabled = false;
-        if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
-        else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+        if (f === sides && sides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+        else if (f === 1 && sides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
         else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-        sendRoll({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: f });
-      }
-    }, 55);
+      })
+      .catch(err => {
+        console.error('[dice] roll failed', err);
+        resultEl.textContent = '—';
+        rollBtn.disabled = false;
+        showFb('⚠️ Wurf fehlgeschlagen – bitte erneut würfeln', 'var(--danger)');
+      });
   });
 
   document.getElementById('gmManualSet').addEventListener('click', () => {
@@ -830,7 +838,8 @@ export default async function GMView({ id }) {
     r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
     showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
     document.getElementById('gmRollBtn').disabled = false;
-    sendRoll({ playerId: null, playerName: dmLoginName, diceType: 'd' + selectedDiceSides, result: val });
+    // Physical table die: the server checks the range before accepting it.
+    sendRoll({ diceType: 'd' + selectedDiceSides, result: val, manual: true });
   });
 
   const manIn = document.getElementById('gmManualInput');
@@ -861,13 +870,8 @@ export default async function GMView({ id }) {
     const text = document.getElementById('gmDecText').value.trim();
     if (!title || !text) return;
     document.getElementById('gmDecModal').style.display = 'none';
-    await fetch('/api/campaign/' + campaignId + '/game/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: esc(title), text: esc(text) }) });
+    await fetch('/api/campaign/' + campaignId + '/game/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, text }) });
   });
-
-  window._gmVote = async function(did, type) {
-    const d = decisions.find(x => x.id === did); if (!d || d.status === 'RESOLVED') return;
-    await fetch('/api/campaign/' + campaignId + '/game/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId: did, vote: type, playerName: dmLoginName }) });
-  };
 
   function renderDecisions() {
     const c = document.getElementById('gmDecisionList');
@@ -890,8 +894,8 @@ export default async function GMView({ id }) {
       return '<div class="decision-card" style="' +
           (resolved ? 'opacity:0.7;border-left:3px solid ' + color + ';' : '') +
           '">' +
-          '<h4>' + (d.title || '') + '</h4>' +
-          '<div class="decision-desc">' + (d.text || '') + '</div>' +
+          '<h4>' + esc(d.title || '') + '</h4>' +
+          '<div class="decision-desc">' + esc(d.text || '') + '</div>' +
 
           (total > 0
                   ? '<div class="vote-bar-container">' +
@@ -913,18 +917,41 @@ export default async function GMView({ id }) {
           ) +
 
           (resolved
-                  ? '<div style="text-align:center;padding:8px;font-weight:700;color:' + color + ';">Ergebnis: ' + result + '</div>'
+                  ? '<div style="text-align:center;padding:8px;font-weight:700;color:' + color + ';">Ergebnis: ' + esc(result) + '</div>'
                   : '<div style="text-align:center;padding:8px;font-weight:600;opacity:0.7;"></div>'
           ) +
           '</div>';
     }).join('');
   }
 
-  // Chat
-  document.getElementById('gmChatSend').addEventListener('click', () => {
+  // Chat: messages go to all players through the server and appear here once they were sent.
+  function showDmMessage(m) {
+    if (!m || !m.text) return;
+    const key = m.timestamp + ':' + m.text;
+    if (shownDmMessages.has(key)) return;
+    shownDmMessages.add(key);
+    const chat = document.getElementById('gmChat'); if (!chat) return;
+    const div = document.createElement('div');
+    div.innerHTML = '<strong>DM:</strong> ' + esc(m.text);
+    chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
+  }
+
+  document.getElementById('gmChatSend').addEventListener('click', async () => {
     const input = document.getElementById('gmChatInput'); const msg = input.value.trim(); if (!msg) return;
-    const chat = document.getElementById('gmChat'); const div = document.createElement('div');
-    div.innerHTML = '<strong>DM:</strong> ' + esc(msg); chat.appendChild(div); chat.scrollTop = chat.scrollHeight; input.value = '';
+    const sendBtn = document.getElementById('gmChatSend');
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch('/api/campaign/' + campaignId + '/game/message', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: msg })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      showDmMessage(await res.json());
+      input.value = '';
+    } catch (e) {
+      showToast('Nachricht konnte nicht gesendet werden', 'error');
+    } finally {
+      sendBtn.disabled = false;
+    }
   });
   document.getElementById('gmChatInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('gmChatSend').click(); });
 
@@ -947,7 +974,6 @@ export default async function GMView({ id }) {
     if (eventSource) { eventSource.close(); eventSource = null; }
     if (mapCanvas) { mapCanvas.destroy(); mapCanvas = null; }
     if (mapCanvasMax) { mapCanvasMax.destroy(); mapCanvasMax = null; }
-    delete window._gmVote;
     document.body.style.overflow = '';
   };
 }

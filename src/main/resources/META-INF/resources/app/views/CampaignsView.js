@@ -16,11 +16,11 @@ export default async function CampaignsView() {
   app.innerHTML = renderHeader() + `
     <div class="campaigns-page">
       <div class="container">
-        <h1>Deine Kampagne</h1>
+        <h1>Deine Kampagnen</h1>
         <div id="status" style="color:#98a2b3;text-align:center;margin-bottom:16px;font-size:0.9rem;"></div>
         <div class="top-bar">
           <button id="newBtn" class="add-btn" title="Neue Kampagne erstellen">+</button>
-          <button id="backLogin" class="logout-btn">Logout</button>
+          <button id="backLogin" class="logout-btn">Abmelden</button>
         </div>
         <div id="myCampaignsList"></div>
         <div class="divider"><span>Öffentlich</span></div>
@@ -48,7 +48,7 @@ export default async function CampaignsView() {
     infoDiv.className = 'campaign-info';
     const titleDiv = document.createElement('div');
     titleDiv.className = 'campaign-title';
-    titleDiv.textContent = campaign.name || 'Unnamed Campaign';
+    titleDiv.textContent = campaign.name || 'Unbenannte Kampagne';
     const metaDiv = document.createElement('div');
     metaDiv.className = 'campaign-meta';
     const maxPlayers = campaign.maxPlayerCount !== null && campaign.maxPlayerCount !== undefined
@@ -65,7 +65,7 @@ export default async function CampaignsView() {
     if (campaign.isPublic) {
       const badge = document.createElement('span');
       badge.className = 'badge';
-      badge.textContent = 'Public';
+      badge.textContent = 'Öffentlich';
       actionsDiv.appendChild(badge);
     }
 
@@ -109,7 +109,8 @@ export default async function CampaignsView() {
         if (campaign.started && campaignPlayerData.characterStatus === 'APPROVED') {
           navigate('/campaign/' + campaign.id + '/play');
         } else if (campaignPlayerData.characterStatus === 'REJECTED' && campaignPlayerData.characterId) {
-          navigate('/campaign/' + campaign.id + '/select-character');
+          // Correct the rejected character (shows the DM's notes) and submit it again.
+          navigate('/character/edit/' + campaignPlayerData.characterId + '?campaignId=' + campaign.id);
         } else if (campaignPlayerData.characterStatus === 'PENDING' || campaignPlayerData.characterStatus === 'APPROVED') {
           navigate('/campaign/' + campaign.id);
         } else {

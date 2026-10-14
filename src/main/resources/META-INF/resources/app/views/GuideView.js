@@ -63,7 +63,7 @@ export default async function GuideView() {
       <main class="guide-shell">
         <section class="guide-hero">
           <div class="guide-hero-copy">
-            <p class="guide-eyebrow">Getting Started / User Guide</p>
+            <p class="guide-eyebrow">Erste Schritte / Anleitung</p>
             <h1>Von Account bis Abenteuer</h1>
             <p>Diese Anleitung gibt dir einen klaren Überblick über Dicekeeper: vom ersten Login über Kampagnen und Charaktere bis zum gemeinsamen Spieltisch.</p>
             <div class="guide-stats" aria-label="Guide Umfang">

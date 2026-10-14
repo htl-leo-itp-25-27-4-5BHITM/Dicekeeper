@@ -34,7 +34,7 @@ public class CampaignPlayerResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -42,7 +42,7 @@ public class CampaignPlayerResource {
         CampaignPlayer requesterMembership = findMembership(campaignId, requesterId);
         if (requesterMembership == null && !Boolean.TRUE.equals(campaign.isPublic)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("You are not a member of this campaign")
+                    .entity("Du bist kein Mitglied dieser Kampagne")
                     .build();
         }
 
@@ -56,7 +56,7 @@ public class CampaignPlayerResource {
         Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (!isDm(campaignId, requesterId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can view pending characters")
+                    .entity("Nur der DM kann eingereichte Charaktere einsehen")
                     .build();
         }
 
@@ -74,14 +74,14 @@ public class CampaignPlayerResource {
         Long requesterId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         if (!requesterId.equals(playerId) && !isDm(campaignId, requesterId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("You can only view your own role")
+                    .entity("Du kannst nur deine eigene Rolle einsehen")
                     .build();
         }
 
         CampaignPlayer cp = findMembership(campaignId, playerId);
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not in campaign")
+                    .entity("Spieler ist nicht in dieser Kampagne")
                     .build();
         }
         return Response.ok(cp).build();
@@ -98,7 +98,7 @@ public class CampaignPlayerResource {
         Player player = Player.findById(playerId);
         if (player == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not found")
+                    .entity("Spieler nicht gefunden")
                     .build();
         }
 
@@ -115,13 +115,13 @@ public class CampaignPlayerResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
         if (!campaign.isPublic) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Campaign is not public")
+                    .entity("Die Kampagne ist nicht öffentlich")
                     .build();
         }
 
@@ -129,14 +129,14 @@ public class CampaignPlayerResource {
         Player player = Player.findById(playerId);
         if (player == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not found")
+                    .entity("Spieler nicht gefunden")
                     .build();
         }
 
         CampaignPlayer existing = findMembership(campaignId, playerId);
         if (existing != null) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity("Player already in campaign")
+                    .entity("Du bist bereits in dieser Kampagne")
                     .build();
         }
 
@@ -147,7 +147,7 @@ public class CampaignPlayerResource {
             ).count();
             if (currentPlayerCount >= campaign.maxPlayerCount) {
                 return Response.status(Response.Status.CONFLICT)
-                        .entity("Campaign is full")
+                        .entity("Die Kampagne ist voll")
                         .build();
             }
         }
@@ -179,27 +179,27 @@ public class CampaignPlayerResource {
 
         if (submitDTO == null || submitDTO.characterId == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("characterId is required")
+                    .entity("Bitte wähle einen Charakter")
                     .build();
         }
 
         CampaignPlayer cp = findMembership(campaignId, playerId);
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not in campaign")
+                    .entity("Spieler ist nicht in dieser Kampagne")
                     .build();
         }
 
         if ("DM".equals(cp.role)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("DM does not need to submit a character")
+                    .entity("Der DM braucht keinen Charakter")
                     .build();
         }
 
         Character character = Character.findById(submitDTO.characterId);
-        if (character == null) {
+        if (character == null || !playerId.equals(character.ownerPlayerId)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Character not found")
+                    .entity("Charakter nicht gefunden")
                     .build();
         }
 
@@ -215,9 +215,9 @@ public class CampaignPlayerResource {
         Notification dmNotification = new Notification(
                 campaign.playerId, // DM's player ID
                 "CHARACTER_SUBMITTED",
-                "Character Submitted for Approval",
+                "Charakter zur Freigabe eingereicht",
                 resolvePlayerLoginName(player, playerId)
-                        + " has submitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
+                        + " hat den Charakter '" + character.name + "' für deine Kampagne '" + campaign.name + "' eingereicht",
                 campaignId,
                 cp.id // CampaignPlayer ID for easy lookup
         );
@@ -240,20 +240,20 @@ public class CampaignPlayerResource {
         CampaignPlayer dmCp = findMembership(campaignId, dmPlayerId);
         if (dmCp == null || !"DM".equals(dmCp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can approve characters")
+                    .entity("Nur der DM kann Charaktere freigeben")
                     .build();
         }
 
         CampaignPlayer playerCp = CampaignPlayer.findById(campaignPlayerId);
         if (playerCp == null || !playerCp.campaignId.equals(campaignId)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign player not found")
+                    .entity("Spieler nicht in dieser Kampagne gefunden")
                     .build();
         }
 
         if (!"PENDING".equals(playerCp.characterStatus)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Character is not pending approval")
+                    .entity("Der Charakter wartet nicht auf eine Freigabe")
                     .build();
         }
 
@@ -267,8 +267,8 @@ public class CampaignPlayerResource {
         Notification playerNotification = new Notification(
                 playerCp.playerId,
                 "CHARACTER_APPROVED",
-                "Character Approved!",
-                "Your character '" + character.name + "' has been approved for campaign '" + campaign.name + "'!",
+                "Charakter freigegeben!",
+                "Dein Charakter '" + character.name + "' wurde für die Kampagne '" + campaign.name + "' freigegeben!",
                 campaignId,
                 playerCp.characterId
         );
@@ -293,20 +293,20 @@ public class CampaignPlayerResource {
         CampaignPlayer dmCp = findMembership(campaignId, dmPlayerId);
         if (dmCp == null || !"DM".equals(dmCp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can reject characters")
+                    .entity("Nur der DM kann Charaktere ablehnen")
                     .build();
         }
 
         CampaignPlayer playerCp = CampaignPlayer.findById(campaignPlayerId);
         if (playerCp == null || !playerCp.campaignId.equals(campaignId)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign player not found")
+                    .entity("Spieler nicht in dieser Kampagne gefunden")
                     .build();
         }
 
         if (!"PENDING".equals(playerCp.characterStatus)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Character is not pending approval")
+                    .entity("Der Charakter wartet nicht auf eine Freigabe")
                     .build();
         }
 
@@ -320,8 +320,8 @@ public class CampaignPlayerResource {
         Notification playerNotification = new Notification(
                 playerCp.playerId,
                 "CHARACTER_REJECTED",
-                "Character Needs Changes",
-                "Your character '" + character.name + "' for campaign '" + campaign.name + "' needs some changes. Click to view DM notes.",
+                "Charakter muss überarbeitet werden",
+                "Dein Charakter '" + character.name + "' für die Kampagne '" + campaign.name + "' muss überarbeitet werden. Klicke hier, um die Hinweise des DM zu sehen.",
                 campaignId,
                 playerCp.characterId
         );
@@ -339,16 +339,21 @@ public class CampaignPlayerResource {
     @Transactional
     public Response resubmitCharacter(@PathParam("campaignId") Long campaignId,
                                       @PathParam("playerId") Long playerId) {
+        Response authorizationError = securityIdentityService.requireCurrentPlayer(securityIdentity, playerId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not in campaign")
+                    .entity("Spieler ist nicht in dieser Kampagne")
                     .build();
         }
 
         if (!"REJECTED".equals(cp.characterStatus)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Character was not rejected")
+                    .entity("Der Charakter wurde nicht abgelehnt")
                     .build();
         }
 
@@ -362,9 +367,9 @@ public class CampaignPlayerResource {
         Notification dmNotification = new Notification(
                 campaign.playerId,
                 "CHARACTER_SUBMITTED",
-                "Character Resubmitted",
+                "Charakter erneut eingereicht",
                 resolvePlayerLoginName(player, playerId)
-                        + " has resubmitted character '" + character.name + "' for your campaign '" + campaign.name + "'",
+                        + " hat den Charakter '" + character.name + "' für deine Kampagne '" + campaign.name + "' erneut eingereicht",
                 campaignId,
                 cp.id
         );
@@ -382,7 +387,7 @@ public class CampaignPlayerResource {
         CampaignPlayer targetMembership = findMembership(campaignId, playerId);
         if (targetMembership == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player not in campaign")
+                    .entity("Spieler ist nicht in dieser Kampagne")
                     .build();
         }
 
@@ -392,7 +397,7 @@ public class CampaignPlayerResource {
         if (selfLeave) {
             if ("DM".equals(targetMembership.role)) {
                 return Response.status(Response.Status.FORBIDDEN)
-                        .entity("DM cannot leave campaign")
+                        .entity("Der DM kann die Kampagne nicht verlassen")
                         .build();
             }
 
@@ -403,13 +408,13 @@ public class CampaignPlayerResource {
 
         if (!isDm(campaignId, requesterId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can remove other players")
+                    .entity("Nur der DM kann andere Spieler entfernen")
                     .build();
         }
 
         if ("DM".equals(targetMembership.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("The DM cannot be removed")
+                    .entity("Der DM kann nicht entfernt werden")
                     .build();
         }
 
