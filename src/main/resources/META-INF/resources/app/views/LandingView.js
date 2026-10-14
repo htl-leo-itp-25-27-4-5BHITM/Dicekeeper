@@ -29,7 +29,7 @@ export default async function LandingView() {
               <span class="lp-a11y-icon">👁</span>
               <span class="lp-a11y-label">Barrierefreie Farben</span>
             </button>
-            <button class="lp-nav-guide" id="lpNavGuide">Getting Started</button>
+            <button class="lp-nav-guide" id="lpNavGuide">Erste Schritte</button>
             <button class="lp-nav-login" id="lpNavLogin">Anmelden</button>
           </div>
         </div>

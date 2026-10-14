@@ -194,7 +194,7 @@ public class SecurityIdentityService {
         Long currentPlayerId = getCurrentPlayerId(identity);
         if (!currentPlayerId.equals(requestedPlayerId)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("You can only access your own player data")
+                    .entity("Du kannst nur auf deine eigenen Daten zugreifen")
                     .build();
         }
         return null;

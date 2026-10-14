@@ -36,7 +36,7 @@ export function renderHeader() {
         <button class="header-a11y-btn${getTheme() === 'accessible' ? ' active' : ''}" id="headerThemeToggle" title="Barrierefreie Farben" aria-pressed="${getTheme() === 'accessible'}">
           <span class="header-a11y-icon">👁</span>
         </button>
-        <button class="notification-btn" id="notificationBtn" title="Notifications">
+        <button class="notification-btn" id="notificationBtn" title="Benachrichtigungen">
           🔔
           <span class="notification-badge hidden" id="notificationBadge">0</span>
         </button>
@@ -53,14 +53,14 @@ export function renderHeader() {
     <div class="notification-overlay" id="notificationOverlay"></div>
     <aside class="notification-sidebar" id="notificationSidebar">
       <div class="notification-sidebar-header">
-        <span class="notification-sidebar-title">Notifications</span>
+        <span class="notification-sidebar-title">Benachrichtigungen</span>
         <button class="notification-close-btn" id="notificationCloseBtn">×</button>
       </div>
       <div class="notification-actions">
-        <button class="mark-all-read-btn" id="markAllReadBtn">Mark all as read</button>
+        <button class="mark-all-read-btn" id="markAllReadBtn">Alle als gelesen markieren</button>
       </div>
       <div class="notification-list" id="notificationList">
-        <div class="notification-empty">Loading notifications...</div>
+        <div class="notification-empty">Benachrichtigungen werden geladen…</div>
       </div>
     </aside>
   `;
@@ -140,10 +140,10 @@ export function initHeader() {
   async function loadNotifications() {
     try {
       const res = await fetch(`/api/notification/player/${player.id}`, { cache: 'no-store' });
-      if (!res.ok) { notificationList.innerHTML = '<div class="notification-empty">Failed to load</div>'; return; }
+      if (!res.ok) { notificationList.innerHTML = '<div class="notification-empty">Laden fehlgeschlagen</div>'; return; }
       const notifications = await res.json();
       if (!notifications || notifications.length === 0) {
-        notificationList.innerHTML = '<div class="notification-empty">No notifications yet</div>';
+        notificationList.innerHTML = '<div class="notification-empty">Noch keine Benachrichtigungen</div>';
         return;
       }
       notificationList.innerHTML = notifications.map(n => `
@@ -158,7 +158,7 @@ export function initHeader() {
         item.addEventListener('click', () => handleNotificationClick(item));
       });
     } catch (err) {
-      notificationList.innerHTML = '<div class="notification-empty">Failed to load</div>';
+      notificationList.innerHTML = '<div class="notification-empty">Laden fehlgeschlagen</div>';
     }
   }
 

@@ -13,6 +13,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import notification.Notification;
+import tool.UploadPaths;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -77,19 +78,23 @@ public class PlayerDeletionService {
                 .filter(id -> id != null)
                 .distinct()
                 .toList();
-        List<Long> characterIds = affectedMemberships.stream()
-                .map(membership -> membership.characterId)
+        List<Long> characterIds = java.util.stream.Stream.concat(
+                        affectedMemberships.stream().map(membership -> membership.characterId),
+                        character.Character.<character.Character>find("ownerPlayerId", playerId).stream()
+                                .map(owned -> owned.id))
                 .filter(id -> id != null)
                 .distinct()
                 .toList();
 
         LinkedHashSet<String> filePaths = new LinkedHashSet<>();
+        // Only files the server created for this player and their campaigns; a stored path can never
+        // make the deletion remove someone else's upload.
         if (player != null) {
-            addUploadPath(filePaths, player.profilePicture);
+            addUploadPath(filePaths, player.profilePicture, UploadPaths.PROFILES, "player-" + player.id + "-");
         }
         for (Campaign campaign : ownedCampaigns) {
             for (String path : mapPaths(campaign)) {
-                addUploadPath(filePaths, path);
+                addUploadPath(filePaths, path, UploadPaths.MAPS, "campaign-" + campaign.id + "-");
             }
         }
 
@@ -98,6 +103,7 @@ public class PlayerDeletionService {
 
     private void deleteRows(CleanupPlan plan, Long playerId) {
         if (!plan.ownedCampaignIds().isEmpty()) {
+            campaign.GroupDecisionVote.delete("campaignId in ?1", plan.ownedCampaignIds());
             GroupDecision.delete("campaignId in ?1", plan.ownedCampaignIds());
             Notification.delete("referenceId in ?1", plan.ownedCampaignIds());
         }
@@ -143,15 +149,12 @@ public class PlayerDeletionService {
         return paths;
     }
 
-    private void addUploadPath(Set<String> target, String path) {
-        if (path == null || path.isBlank()) {
-            return;
-        }
-        String normalized = path.trim().replace('\\', '/');
-        if (normalized.startsWith("/uploads/")) {
+    private void addUploadPath(Set<String> target, String path, String folder, String ownerPrefix) {
+        if (path == null) return;
+        String normalized = path.trim();
+        if (UploadPaths.isManagedPath(normalized, folder)
+                && normalized.startsWith("/uploads/" + folder + "/" + ownerPrefix)) {
             target.add(normalized.substring("/uploads/".length()));
-        } else if (normalized.startsWith("uploads/")) {
-            target.add(normalized.substring("uploads/".length()));
         }
     }
 

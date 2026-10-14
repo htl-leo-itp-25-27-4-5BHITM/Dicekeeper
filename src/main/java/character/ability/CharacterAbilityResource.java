@@ -2,17 +2,33 @@ package character.ability;
 
 import ability.Ability;
 import character.Character;
+import character.CharacterAccess;
 import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import security.SecurityIdentityService;
 
 @Path("/api/character-ability")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated
 public class CharacterAbilityResource {
+
+    private static final int MIN_SCORE = 1;
+    private static final int MAX_SCORE = 20;
+
+    @Inject
+    CharacterAccess characterAccess;
+
+    @Inject
+    SecurityIdentityService securityIdentityService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
 
     /**
      * Update (or create) the ability score for a given character & ability.
@@ -29,15 +45,22 @@ public class CharacterAbilityResource {
         }
 
         Character character = Character.findById(characterId);
-        if (character == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Character not found").build();
+        if (character == null
+                || !characterAccess.isOwner(character, securityIdentityService.getCurrentPlayerId(securityIdentity))) {
+            return characterAccess.notFound();
+        }
+        if (characterAccess.isLockedForEditing(character)) {
+            return characterAccess.locked();
+        }
+        if (update.score < MIN_SCORE || update.score > MAX_SCORE) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("score must be between " + MIN_SCORE + " and " + MAX_SCORE).build();
         }
 
         Ability ability = Ability.findById(abilityId);
         if (ability == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Ability not found").build();
+                    .entity("Attribut nicht gefunden").build();
         }
 
         CharacterAbility ca = CharacterAbility

@@ -4,10 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import notification.Notification;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import tool.UploadPaths;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
 
 @ApplicationScoped
@@ -30,12 +30,13 @@ public class CampaignDeletionService {
         Long campaignId = campaign.id;
         broadcaster.broadcast(campaignId, "campaign_deleted", Map.of("campaignId", campaignId));
 
+        GroupDecisionVote.delete("campaignId", campaignId);
         GroupDecision.delete("campaignId", campaignId);
         Notification.delete("referenceId", campaignId);
         CampaignPlayer.delete("campaignId", campaignId);
 
         for (String mapPath : getMapPaths(campaign)) {
-            deleteUploadedFile(mapPath);
+            deleteOwnMapFile(campaignId, mapPath);
         }
         campaign.delete();
         gameState.remove(campaignId);
@@ -56,16 +57,15 @@ public class CampaignDeletionService {
         return paths;
     }
 
-    private void deleteUploadedFile(String filePath) {
-        if (filePath == null || filePath.isBlank()) return;
-        try {
-            String relative = filePath.replaceFirst("^/uploads/", "");
-            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
-            if (Files.exists(file) && !Files.isDirectory(file)) {
-                Files.delete(file);
+    private void deleteOwnMapFile(Long campaignId, String filePath) {
+        // Only map files this server created for this campaign are deleted (campaign-<id>-<uuid>.ext in uploads/maps).
+        if (filePath == null || !filePath.startsWith("/uploads/maps/campaign-" + campaignId + "-")) return;
+        UploadPaths.resolveManagedFile(uploadDir, filePath, UploadPaths.MAPS).ifPresent(file -> {
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException e) {
+                System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
-        }
+        });
     }
 }

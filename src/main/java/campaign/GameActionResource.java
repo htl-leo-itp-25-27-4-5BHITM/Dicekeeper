@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import character.Character;
+import character.ability.CharacterAbility;
 import player.Player;
 import security.SecurityIdentityService;
 
@@ -24,11 +26,23 @@ import java.util.stream.Collectors;
 @Authenticated
 public class GameActionResource {
 
+    private static final Map<String, Integer> ALLOWED_DICE = new java.util.LinkedHashMap<>();
+    static {
+        for (int sides : new int[]{4, 6, 8, 10, 12, 20, 100}) {
+            ALLOWED_DICE.put("d" + sides, sides);
+        }
+    }
+    private static final int MAX_DM_MESSAGE_LENGTH = 500;
+    private static final java.security.SecureRandom DICE_RANDOM = new java.security.SecureRandom();
+
     @Inject
     GameState gameState;
 
     @Inject
     SseBroadcaster broadcaster;
+
+    @Inject
+    DecisionVoteService decisionVoteService;
 
     @Inject
     SecurityIdentityService securityIdentityService;
@@ -65,13 +79,19 @@ public class GameActionResource {
         if (playerId == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity("playerId required").build();
         }
-        if (findMembership(campaignId, playerId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Player not in campaign").build();
+        CampaignPlayer target = findMembership(campaignId, playerId);
+        if (target == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
+        }
+        if (!isApprovedPlayer(target)) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("Nur Spieler mit freigegebenem Charakter können am Zug sein").build();
         }
         String playerName = resolvePlayerLoginName(playerId);
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         state.setTurn(playerId);
+        gameState.save(campaignId);
 
         broadcaster.broadcast(campaignId, "turn", Map.of(
                 "playerId", playerId,
@@ -93,19 +113,34 @@ public class GameActionResource {
             return campaignAccessDenied();
         }
 
-        boolean isDm = "DM".equals(membership.role);
-        Long submittedPlayerId = toLong(body.get("playerId"));
-        Long playerId = isDm && submittedPlayerId == null ? null : currentPlayerId;
+        // DM rolls are shown without a player id; players always roll as themselves.
+        Long playerId = "DM".equals(membership.role) ? null : currentPlayerId;
         String playerName = resolvePlayerLoginName(currentPlayerId);
-        String diceType = (String) body.getOrDefault("diceType", "d20");
-        Integer result = toInt(body.get("result"));
+        Object diceTypeValue = body != null ? body.getOrDefault("diceType", "d20") : "d20";
+        String diceType = diceTypeValue instanceof String ? ((String) diceTypeValue).toLowerCase(java.util.Locale.ROOT) : null;
+        Integer sides = diceType != null ? ALLOWED_DICE.get(diceType) : null;
+        if (sides == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("diceType must be one of " + ALLOWED_DICE.keySet()).build();
+        }
 
-        if (result == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("result required").build();
+        int result;
+        if (body != null && Boolean.TRUE.equals(body.get("manual"))) {
+            // Result of a physical die at the table: accepted, but only within the die's range.
+            Integer manualResult = toStrictInt(body.get("result"));
+            if (manualResult == null || manualResult < 1 || manualResult > sides) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("result must be between 1 and " + sides).build();
+            }
+            result = manualResult;
+        } else {
+            // Digital roll: the server decides the result, a client-sent result is ignored.
+            result = DICE_RANDOM.nextInt(sides) + 1;
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         GameState.DiceRollInfo roll = state.recordDiceRoll(playerId, playerName, diceType, result);
+        gameState.save(campaignId);
 
         // Same timestamp as the state snapshot so clients can de-duplicate replayed rolls.
         broadcaster.broadcast(campaignId, "dice", Map.of(
@@ -116,7 +151,7 @@ public class GameActionResource {
                 "timestamp", roll.timestamp
         ));
 
-        return Response.ok(Map.of("result", result)).build();
+        return Response.ok(Map.of("result", result, "diceType", diceType, "timestamp", roll.timestamp)).build();
     }
 
     // ===== HP MANAGEMENT =====
@@ -137,12 +172,13 @@ public class GameActionResource {
             return Response.status(Response.Status.BAD_REQUEST).entity("playerId and delta required").build();
         }
         if (findMembership(campaignId, playerId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Player not in campaign").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         int newHp = state.updateHp(playerId, delta);
         int maxHp = state.playerMaxHp.getOrDefault(playerId, 0);
+        gameState.save(campaignId);
 
         broadcaster.broadcast(campaignId, "hp", Map.of(
                 "playerId", playerId,
@@ -156,19 +192,21 @@ public class GameActionResource {
 
     // ===== INIT HP (called once per player on game load) =====
 
+    /**
+     * Initializes a player's HP if the game has none yet. The values are calculated on the server
+     * from the approved character; HP values sent by the client are ignored.
+     */
     @POST
     @Path("init-hp")
     public Response initHp(@PathParam("campaignId") Long campaignId,
                            Map<String, Object> body) {
-        Long playerId = toLong(body.get("playerId"));
-        Integer hp = toInt(body.get("hp"));
-        Integer maxHp = toInt(body.get("maxHp"));
-
-        if (playerId == null || hp == null || maxHp == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("playerId, hp, and maxHp required").build();
+        Long playerId = toLong(body != null ? body.get("playerId") : null);
+        if (playerId == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("playerId required").build();
         }
-        if (findMembership(campaignId, playerId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Player not in campaign").build();
+        CampaignPlayer target = findMembership(campaignId, playerId);
+        if (target == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
         }
 
         Long currentPlayerId = currentPlayerId();
@@ -177,16 +215,66 @@ public class GameActionResource {
             return campaignAccessDenied();
         }
 
+        int maxHp = calculateMaxHp(target.characterId);
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.initializeHp(playerId, hp, maxHp);
+        state.initializeHp(playerId, maxHp, maxHp);
         // Also initialize active state if not set
         state.playerActive.putIfAbsent(playerId, true);
+        gameState.save(campaignId);
 
         return Response.ok(Map.of(
                 "playerId", playerId,
                 "hp", state.playerHp.get(playerId),
                 "maxHp", state.playerMaxHp.get(playerId)
         )).build();
+    }
+
+    /** Level 1: 10 + CON modifier; every further level: 6 + CON modifier. At least 1. */
+    static int calculateMaxHp(int level, int constitution) {
+        int conMod = Math.floorDiv(constitution - 10, 2);
+        int lvl = Math.max(1, level);
+        return Math.max(1, 10 + conMod + (lvl - 1) * (6 + conMod));
+    }
+
+    private int calculateMaxHp(Long characterId) {
+        Character character = characterId != null ? Character.findById(characterId) : null;
+        if (character == null) {
+            return calculateMaxHp(1, 10);
+        }
+        int constitution = CharacterAbility.<CharacterAbility>list("character", character)
+                .stream()
+                .filter(ca -> ca.ability != null && "constitution".equalsIgnoreCase(ca.ability.name))
+                .mapToInt(ca -> ca.score)
+                .findFirst()
+                .orElse(10);
+        return calculateMaxHp(character.level, constitution);
+    }
+
+    // ===== DM MESSAGES =====
+
+    /** The DM sends a message to all players of the campaign. */
+    @POST
+    @Path("message")
+    public Response sendDmMessage(@PathParam("campaignId") Long campaignId,
+                                  Map<String, Object> body) {
+        Response authorizationError = requireDm(campaignId);
+        if (authorizationError != null) {
+            return authorizationError;
+        }
+
+        Object value = body != null ? body.get("text") : null;
+        String text = value instanceof String ? ((String) value).trim() : "";
+        if (text.isEmpty() || text.length() > MAX_DM_MESSAGE_LENGTH) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("text must contain 1 to " + MAX_DM_MESSAGE_LENGTH + " characters").build();
+        }
+
+        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
+        GameState.DmMessage message = state.addDmMessage(resolvePlayerLoginName(currentPlayerId()), text);
+        gameState.save(campaignId);
+
+        broadcaster.broadcast(campaignId, "dm_message", message);
+        return Response.ok(message).build();
     }
 
     // ===== PLAYER ACTIVE STATE =====
@@ -207,11 +295,12 @@ public class GameActionResource {
             return Response.status(Response.Status.BAD_REQUEST).entity("playerId and active required").build();
         }
         if (findMembership(campaignId, playerId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Player not in campaign").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         state.playerActive.put(playerId, active);
+        gameState.save(campaignId);
 
         broadcaster.broadcast(campaignId, "player_active", Map.of(
                 "playerId", playerId,
@@ -262,9 +351,9 @@ public class GameActionResource {
             return Response.status(Response.Status.BAD_REQUEST).entity("title and text required").build();
         }
 
-        // Count how many PLAYER entries are in this campaign (not DM)
+        // Electorate: players with an approved character (the DM does not vote)
         long playerCount = CampaignPlayer.find(
-                "campaignId = ?1 and role = 'PLAYER'", campaignId).count();
+                "campaignId = ?1 and role = 'PLAYER' and characterStatus = 'APPROVED'", campaignId).count();
 
         GroupDecision decision = new GroupDecision(campaignId, title, text, (int) playerCount);
         decision.persist();
@@ -289,64 +378,34 @@ public class GameActionResource {
 
     @POST
     @Path("vote")
-    @Transactional
     public Response vote(@PathParam("campaignId") Long campaignId,
                          Map<String, Object> body) {
-        Response authorizationError = requireCampaignMember(campaignId);
-        if (authorizationError != null) {
-            return authorizationError;
+        if (Campaign.findById(campaignId) == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Kampagne nicht gefunden").build();
+        }
+        Long playerId = currentPlayerId();
+        CampaignPlayer membership = findMembership(campaignId, playerId);
+        if (membership == null) {
+            return campaignAccessDenied();
+        }
+        if (!isApprovedPlayer(membership)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Nur Spieler mit freigegebenem Charakter können abstimmen").build();
         }
 
         Long decisionId = toLong(body.get("decisionId"));
-        String voteType = (String) body.get("vote"); // "yes" or "no"
-        Long playerId = currentPlayerId();
-        String playerName = resolvePlayerLoginName(playerId);
-
-        if (decisionId == null || voteType == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("decisionId and vote required").build();
+        Object voteValue = body.get("vote");
+        String voteType = voteValue instanceof String ? (String) voteValue : null; // "yes" or "no"
+        if (decisionId == null || !("yes".equals(voteType) || "no".equals(voteType))) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("decisionId and vote ('yes' or 'no') required").build();
         }
 
-        GroupDecision decision = GroupDecision.findById(decisionId);
-        if (decision == null || !decision.campaignId.equals(campaignId)) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Decision not found").build();
+        DecisionVoteService.VoteOutcome outcome =
+                decisionVoteService.vote(campaignId, decisionId, playerId, voteType);
+        if (outcome.decision() == null) {
+            return Response.status(outcome.status()).entity(outcome.error()).build();
         }
-
-        if ("RESOLVED".equals(decision.status)) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Decision already resolved").build();
-        }
-
-        if (playerId != null && decision.hasPlayerVoted(playerId)) {
-            return Response.status(Response.Status.CONFLICT).entity("Already voted").build();
-        }
-
-        decision.addVote(playerId, voteType);
-
-        // Broadcast the vote
-        broadcaster.broadcast(campaignId, "vote", Map.of(
-                "decisionId", decisionId,
-                "vote", voteType,
-                "playerName", playerName,
-                "yes", decision.yesVotes,
-                "no", decision.noVotes
-        ));
-
-        // Auto-close if all players voted
-        if (decision.allVoted()) {
-            decision.status = "RESOLVED";
-            decision.resolvedAt = System.currentTimeMillis();
-            String result = decision.yesVotes >= decision.noVotes ? "Ja" : "Nein";
-            decision.decisionMade = result + " (" + decision.yesVotes + " Ja / " + decision.noVotes + " Nein)";
-
-            broadcaster.broadcast(campaignId, "decision_resolved", Map.of(
-                    "decisionId", decisionId,
-                    "status", "RESOLVED",
-                    "result", result,
-                    "yes", decision.yesVotes,
-                    "no", decision.noVotes,
-                    "decisionMade", decision.decisionMade
-            ));
-        }
-
+        GroupDecision decision = outcome.decision();
         return Response.ok(Map.of(
                 "status", decision.status,
                 "yes", decision.yesVotes,
@@ -404,6 +463,7 @@ public class GameActionResource {
             if (label != null && !label.isEmpty()) marker.label = label;
 
             broadcaster.broadcast(campaignId, "marker_move", marker.toMap());
+            afterMapChange(campaignId, state);
             return Response.ok(marker.toMap()).build();
         } else {
             // Add new marker
@@ -412,6 +472,7 @@ public class GameActionResource {
             state.mapMarkers.put(newId, marker);
 
             broadcaster.broadcast(campaignId, "marker_add", marker.toMap());
+            afterMapChange(campaignId, state);
             return Response.ok(marker.toMap()).build();
         }
     }
@@ -429,10 +490,11 @@ public class GameActionResource {
         state.pushUndo();
         GameState.MapMarker removed = state.mapMarkers.remove(markerId);
         if (removed == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Marker not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Marker nicht gefunden").build();
         }
 
         broadcaster.broadcast(campaignId, "marker_remove", Map.of("id", markerId));
+        gameState.save(campaignId);
         return Response.ok(Map.of("id", markerId)).build();
     }
 
@@ -466,7 +528,7 @@ public class GameActionResource {
                 GameState.MapMarker m = state.mapMarkers.get(mid);
                 if (m != null && !"player".equals(m.type) && !"player-group".equals(m.type)) {
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Only player markers can be grouped").build();
+                            .entity("Nur Spieler-Marker können gruppiert werden").build();
                 }
             }
 
@@ -522,6 +584,7 @@ public class GameActionResource {
                     "newMarker", groupMarker.toMap(),
                     "allMarkers", allMarkers
             ));
+            afterMapChange(campaignId, state);
 
             return Response.ok(Map.of("marker", groupMarker.toMap())).build();
 
@@ -610,6 +673,7 @@ public class GameActionResource {
                     "removedIds", List.of(groupId),
                     "allMarkers", allMarkers
             ));
+            afterMapChange(campaignId, state);
 
             return Response.ok(Map.of("markers", allMarkers)).build();
 
@@ -618,8 +682,12 @@ public class GameActionResource {
         }
     }
 
-    // ===== FOG EXPLORATION PERSISTENCE =====
+    // ===== FOG EXPLORATION =====
 
+    /**
+     * Explored areas of the map. The fog is calculated on the server from player marker positions;
+     * clients only read it (there is deliberately no endpoint to upload fog data).
+     */
     @GET
     @Path("fog-exploration")
     public Response getFogExploration(@PathParam("campaignId") Long campaignId) {
@@ -628,31 +696,8 @@ public class GameActionResource {
             return authorizationError;
         }
 
-        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        String data = state.fogExploration;
-        if (data == null) {
-            return Response.ok(Map.of("data", "")).build();
-        }
-        return Response.ok(Map.of("data", data)).build();
-    }
-
-    @PUT
-    @Path("fog-exploration")
-    public Response saveFogExploration(@PathParam("campaignId") Long campaignId,
-                                       Map<String, Object> body) {
-        Response authorizationError = requireCampaignMember(campaignId);
-        if (authorizationError != null) {
-            return authorizationError;
-        }
-
-        String data = (String) body.get("data");
-        if (data == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("data required").build();
-        }
-        GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.fogExploration = data;
-        broadcaster.broadcast(campaignId, "fog_updated", Map.of("data", data));
-        return Response.ok(Map.of("saved", true)).build();
+        String data = gameState.getOrCreate(campaignId).fogExploration();
+        return Response.ok(Map.of("data", data != null ? data : "")).build();
     }
 
     // ===== UNDO LAST MAP CHANGE =====
@@ -668,16 +713,18 @@ public class GameActionResource {
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
         GameState.MapUndoSnapshot snap = state.popUndo();
         if (snap == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Nothing to undo").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Nichts zum Rückgängigmachen").build();
         }
 
+        gameState.save(campaignId);
         List<Map<String, Object>> allMarkers = state.mapMarkers.values().stream()
                 .map(GameState.MapMarker::toMap)
                 .collect(Collectors.toList());
 
+        String fog = state.fogExploration();
         Map<String, Object> payload = new java.util.HashMap<>();
         payload.put("allMarkers", allMarkers);
-        payload.put("fogExploration", snap.fogExploration != null ? snap.fogExploration : "");
+        payload.put("fogExploration", fog != null ? fog : "");
 
         broadcaster.broadcast(campaignId, "undo", payload);
         return Response.ok(payload).build();
@@ -694,18 +741,53 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.fogExploration = null;
+        state.clearFog();
         state.currentTurnPlayerId = null;
         state.playerHp.clear();
         state.playerMaxHp.clear();
         state.playerActive.clear();
         state.lastDiceRoll = null;
+        state.clearDmMessages();
         // Keep map markers (they are placed before the game starts)
+        if (isCampaignStarted(campaignId)) {
+            state.stampPlayerMarkers();
+        }
+        gameState.save(campaignId);
         broadcaster.broadcast(campaignId, "state_reset", state.snapshot());
         return Response.ok(Map.of("reset", true)).build();
     }
 
     // ===== HELPER =====
+
+    /** Persists the map change and, once the game runs, reveals the fog around player markers. */
+    private void afterMapChange(Long campaignId, GameState.CampaignGameState state) {
+        if (isCampaignStarted(campaignId) && state.stampPlayerMarkers()) {
+            String fog = state.fogExploration();
+            broadcaster.broadcast(campaignId, "fog_updated", Map.of("data", fog != null ? fog : ""));
+        }
+        gameState.save(campaignId);
+    }
+
+    private static boolean isApprovedPlayer(CampaignPlayer membership) {
+        return "PLAYER".equals(membership.role) && "APPROVED".equals(membership.characterStatus);
+    }
+
+    private boolean isCampaignStarted(Long campaignId) {
+        Campaign campaign = Campaign.findById(campaignId);
+        return campaign != null && Boolean.TRUE.equals(campaign.started);
+    }
+
+    /** Accepts only whole numbers (no 2.7, no "3abc"). */
+    private Integer toStrictInt(Object obj) {
+        if (obj instanceof Integer || obj instanceof Long || obj instanceof Short) {
+            long value = ((Number) obj).longValue();
+            return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE ? (int) value : null;
+        }
+        if (obj instanceof String) {
+            try { return Integer.parseInt(((String) obj).trim()); } catch (NumberFormatException e) { return null; }
+        }
+        return null;
+    }
 
     private Long toLong(Object obj) {
         if (obj == null) return null;
@@ -745,7 +827,7 @@ public class GameActionResource {
 
     private Response requireCampaignMember(Long campaignId) {
         if (Campaign.findById(campaignId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Kampagne nicht gefunden").build();
         }
         if (findMembership(campaignId, currentPlayerId()) == null) {
             return campaignAccessDenied();
@@ -755,10 +837,10 @@ public class GameActionResource {
 
     private Response requireDm(Long campaignId) {
         if (Campaign.findById(campaignId) == null) {
-            return Response.status(Response.Status.NOT_FOUND).entity("Campaign not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity("Kampagne nicht gefunden").build();
         }
         if (!isDm(campaignId, currentPlayerId())) {
-            return Response.status(Response.Status.FORBIDDEN).entity("Only the DM can do this").build();
+            return Response.status(Response.Status.FORBIDDEN).entity("Nur der DM kann das tun").build();
         }
         return null;
     }
@@ -774,7 +856,7 @@ public class GameActionResource {
 
     private Response campaignAccessDenied() {
         return Response.status(Response.Status.FORBIDDEN)
-                .entity("You are not a member of this campaign")
+                .entity("Du bist kein Mitglied dieser Kampagne")
                 .build();
     }
 }

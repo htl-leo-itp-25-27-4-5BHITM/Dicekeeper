@@ -28,7 +28,7 @@ public class GroupDecisionResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -36,7 +36,7 @@ public class GroupDecisionResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can view decisions")
+                    .entity("Nur der DM kann die Abstimmungen einsehen")
                     .build();
         }
 
@@ -53,7 +53,7 @@ public class GroupDecisionResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -61,17 +61,18 @@ public class GroupDecisionResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can create decisions")
+                    .entity("Nur der DM kann Abstimmungen erstellen")
                     .build();
         }
 
         if (dto.title == null || dto.title.trim().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Decision title is required")
+                    .entity("Bitte gib einen Titel für die Abstimmung ein")
                     .build();
         }
 
-        long playerCount = CampaignPlayer.find("campaignId = ?1 and role = 'PLAYER'", campaignId).count();
+        long playerCount = CampaignPlayer.find(
+                "campaignId = ?1 and role = 'PLAYER' and characterStatus = 'APPROVED'", campaignId).count();
         GroupDecision decision = new GroupDecision(campaignId, dto.title.trim(), dto.description, (int) playerCount);
         if (dto.orderIndex != null) {
             decision.orderIndex = dto.orderIndex;
@@ -92,7 +93,7 @@ public class GroupDecisionResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -100,14 +101,14 @@ public class GroupDecisionResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can update decisions")
+                    .entity("Nur der DM kann Abstimmungen ändern")
                     .build();
         }
 
         GroupDecision decision = GroupDecision.findById(decisionId);
         if (decision == null || !decision.campaignId.equals(campaignId)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Decision not found")
+                    .entity("Abstimmung nicht gefunden")
                     .build();
         }
 
@@ -142,7 +143,7 @@ public class GroupDecisionResource {
         Campaign campaign = Campaign.findById(campaignId);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -150,17 +151,18 @@ public class GroupDecisionResource {
         CampaignPlayer cp = CampaignPlayer.find("campaignId = ?1 and playerId = ?2", campaignId, playerId).firstResult();
         if (cp == null || !"DM".equals(cp.role)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("Only the DM can delete decisions")
+                    .entity("Nur der DM kann Abstimmungen löschen")
                     .build();
         }
 
         GroupDecision decision = GroupDecision.findById(decisionId);
         if (decision == null || !decision.campaignId.equals(campaignId)) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Decision not found")
+                    .entity("Abstimmung nicht gefunden")
                     .build();
         }
 
+        GroupDecisionVote.delete("decisionId", decision.id);
         decision.delete();
         return Response.noContent().build();
     }

@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import tool.UploadPaths;
 import tool.UploadPermissionUtil;
 
 @Path("/api/player")
@@ -48,7 +49,7 @@ public class PlayerResource {
         Player currentPlayer = securityIdentityService.getOrCreateCurrentPlayer(securityIdentity);
         if (currentPlayer.email == null || !currentPlayer.email.equalsIgnoreCase(email)) {
             return Response.status(Response.Status.FORBIDDEN)
-                    .entity("You can only access your own player identity")
+                    .entity("Du kannst nur auf dein eigenes Profil zugreifen")
                     .build();
         }
         return Response.ok(currentPlayer).build();
@@ -57,6 +58,7 @@ public class PlayerResource {
     @GET
     @Path("id/{id}")
     public Response getPlayerById(@PathParam("id") Long id) {
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
         try {
             Player player = Player.findById(id);
             if (player == null) {
@@ -64,9 +66,10 @@ public class PlayerResource {
                         .entity("Player with id " + id + " not found")
                         .build();
             }
-            return Response.ok(player).build();
+            // Only the player themselves gets e-mail and name; everyone else sees the public profile.
+            return Response.ok(player.id.equals(currentPlayerId) ? player : new PublicPlayerDTO(player)).build();
         } catch (Exception e) {
-            String msg = "Service temporarily unavailable: " + e.getMessage();
+            String msg = "Dienst vorübergehend nicht verfügbar: " + e.getMessage();
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                     .entity(msg)
                     .build();
@@ -93,20 +96,20 @@ public class PlayerResource {
 
         if (fileUpload == null || fileUpload.fileName() == null || fileUpload.fileName().isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("No file uploaded")
+                    .entity("Keine Datei hochgeladen")
                     .build();
         }
 
         String originalFileName = fileUpload.fileName();
         if (!isValidImageType(originalFileName)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Only JPG, PNG or SVG images are allowed")
+                    .entity("Nur JPG-, PNG- oder SVG-Bilder sind erlaubt")
                     .build();
         }
 
         try {
             // Delete old profile picture if exists
-            deleteUploadedFile(player.profilePicture);
+            deleteOwnProfilePicture(player);
 
             java.nio.file.Path profilesDir = Paths.get(uploadDir, "profiles").toAbsolutePath();
             Files.createDirectories(profilesDir);
@@ -122,11 +125,11 @@ public class PlayerResource {
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
             UploadPermissionUtil.ensureSharedReadAccess(target);
 
-            player.profilePicture = "/uploads/profiles/" + newFileName;
+            player.profilePicture = UploadPaths.publicPath(UploadPaths.PROFILES, newFileName);
 
             return Response.ok(player).build();
         } catch (IOException e) {
-            String msg = "Failed to upload profile picture: " + e.getMessage();
+            String msg = "Profilbild-Upload fehlgeschlagen: " + e.getMessage();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(msg).build();
         }
     }
@@ -154,9 +157,7 @@ public class PlayerResource {
         if (updated.name != null) {
             existing.name = updated.name;
         }
-        if (updated.profilePicture != null) {
-            existing.profilePicture = updated.profilePicture;
-        }
+        // profilePicture is only set by the upload endpoint; a client-supplied path is ignored.
 
         return Response.ok(existing).build();
     }
@@ -167,17 +168,19 @@ public class PlayerResource {
         return accountDeletionResponses.toResponse(accountDeletionCoordinator.delete(securityIdentity, id));
     }
 
-    private void deleteUploadedFile(String filePath) {
-        if (filePath == null || filePath.isBlank()) return;
-        try {
-            String relative = filePath.replaceFirst("^/uploads/", "");
-            java.nio.file.Path file = Paths.get(uploadDir).toAbsolutePath().resolve(relative).normalize();
-            if (Files.exists(file) && !Files.isDirectory(file)) {
-                Files.delete(file);
-            }
-        } catch (IOException e) {
-            System.err.println("Failed to delete old file " + filePath + ": " + e.getMessage());
+    private void deleteOwnProfilePicture(Player player) {
+        // Only files this server created for this player are deleted (player-<id>-<uuid>.ext in uploads/profiles).
+        if (player.profilePicture == null
+                || !player.profilePicture.startsWith("/uploads/profiles/player-" + player.id + "-")) {
+            return;
         }
+        UploadPaths.resolveManagedFile(uploadDir, player.profilePicture, UploadPaths.PROFILES).ifPresent(file -> {
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException e) {
+                System.err.println("Failed to delete old file " + player.profilePicture + ": " + e.getMessage());
+            }
+        });
     }
 
     private boolean isValidImageType(String filename) {

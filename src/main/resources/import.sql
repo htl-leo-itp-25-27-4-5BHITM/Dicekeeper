@@ -70,16 +70,16 @@ INSERT INTO campaign (id, name, description, story, player_id, is_public, max_pl
 VALUES (9001, 'Die Schatten von Grünwald', 'Eine mysteriöse Dunkelheit breitet sich im Grünwald aus. Mutige Abenteurer werden gesucht, um das Geheimnis zu lüften.', 'Die Spieler werden herausfinden, dass ein alter Nekromant namens Malachar in den Ruinen unter dem Wald erwacht ist. Er plant, eine Armee der Untoten zu erschaffen. Die Gruppe muss drei magische Artefakte finden, um ihn zu stoppen.', 1, true, 5, false);
 
 -- Sample character for user 2 (Fredl)
-INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
-VALUES (9001, 'Thorin Eisenfaust', 5, 1, 1, true, 'Ein erfahrener Zwergenkämpfer aus den Bergen von Kazad-Dum. Er sucht nach dem Mörder seines Bruders.', 'Zwerg', 'Rechtschaffen Gut');
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment, owner_player_id)
+VALUES (9001, 'Thorin Eisenfaust', 5, 1, 1, true, 'Ein erfahrener Zwergenkämpfer aus den Bergen von Kazad-Dum. Er sucht nach dem Mörder seines Bruders.', 'Zwerg', 'Rechtschaffen Gut', 2);
 
 -- Sample character for user 3 (Lena)
-INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
-VALUES (9002, 'Elara Mondschein', 2, 1, 1, true, 'Eine elfische Bardin, die durch die Lande reist und Geschichten vergessener Helden sammelt. Ihre Musik kann Herzen heilen und Feinde in den Schlaf singen.', 'Elf', 'Chaotisch Gut');
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment, owner_player_id)
+VALUES (9002, 'Elara Mondschein', 2, 1, 1, true, 'Eine elfische Bardin, die durch die Lande reist und Geschichten vergessener Helden sammelt. Ihre Musik kann Herzen heilen und Feinde in den Schlaf singen.', 'Elf', 'Chaotisch Gut', 3);
 
 -- Sample character for user 4 (Max)
-INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment)
-VALUES (9003, 'Grimjaw der Wilde', 1, 1, 1, true, 'Ein halborkischer Barbar aus den nördlichen Steppen. Nachdem sein Stamm von Gnolls überfallen wurde, zieht er als einsamer Krieger durch die Welt, getrieben von Rache und dem Wunsch, einen neuen Stamm zu finden.', 'Halbork', 'Chaotisch Neutral');
+INSERT INTO character (id, name, classId, backgroundId, level, isCreated, info, race, alignment, owner_player_id)
+VALUES (9003, 'Grimjaw der Wilde', 1, 1, 1, true, 'Ein halborkischer Barbar aus den nördlichen Steppen. Nachdem sein Stamm von Gnolls überfallen wurde, zieht er als einsamer Krieger durch die Welt, getrieben von Rache und dem Wunsch, einen neuen Stamm zu finden.', 'Halbork', 'Chaotisch Neutral', 4);
 
 
 
