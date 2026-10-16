@@ -63,7 +63,7 @@
                     </#if>
 
                     <#if realm.resetPasswordAllowed>
-                        <a class="dk-auth-inline-link" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
+                        <a id="dk-forgot-password-link" class="dk-auth-inline-link" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
                     </#if>
                 </div>
 
@@ -87,7 +87,7 @@
     <#elseif section = "info">
         <#if realm.password && realm.registrationAllowed && !registrationDisabled??>
             <span>${msg("noAccount")}</span>
-            <a class="dk-auth-inline-link" href="${url.registrationUrl}">${msg("doRegister")}</a>
+            <a id="dk-register-link" class="dk-auth-inline-link" href="${url.registrationUrl}">${msg("doRegister")}</a>
         </#if>
     </#if>
 </@layout.registrationLayout>

@@ -1,4 +1,4 @@
-<#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayRequiredFields=false>
+<#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayRequiredFields=false cardIntroKey="dicekeeperLoginCardIntro">
 <#assign currentLanguageTag = "en">
 <#assign textDirection = "ltr">
 <#assign supportedLocales = []>
@@ -97,7 +97,7 @@
                     <div class="dk-auth-required">${msg("requiredFields")}</div>
                 </#if>
                 <h2 class="dk-auth-page-title"><#nested "header"></h2>
-                <p class="dk-auth-page-copy">${msg("dicekeeperLoginCardIntro")}</p>
+                <p class="dk-auth-page-copy">${msg(cardIntroKey)}</p>
             </div>
 
             <#if displayMessage && message?has_content && (message.type != "warning" || !isAppInitiatedAction??)>

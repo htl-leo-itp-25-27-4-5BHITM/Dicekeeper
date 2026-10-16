@@ -1,5 +1,5 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayInfo=true displayMessage=!messagesPerField.existsError('username'); section>
+<@layout.registrationLayout displayInfo=true displayMessage=!messagesPerField.existsError('username') cardIntroKey="dicekeeperResetPasswordIntro"; section>
     <#if section = "header">
         ${msg("dicekeeperResetPasswordTitle")}
     <#elseif section = "form">
@@ -23,14 +23,16 @@
                     autocomplete="username"
                     autofocus
                     aria-invalid="<#if messagesPerField.existsError('username')>true<#else>false</#if>"
+                    aria-describedby="reset-password-identifier-hint<#if messagesPerField.existsError('username')> input-error-username</#if>"
                 >
+                <span id="reset-password-identifier-hint" class="dk-auth-helper">${msg("dicekeeperResetPasswordIdentifierHint")}</span>
                 <#if messagesPerField.existsError('username')>
-                    <span class="dk-auth-error" aria-live="polite">${kcSanitize(messagesPerField.getFirstError('username'))?no_esc}</span>
+                    <span id="input-error-username" class="dk-auth-error" aria-live="polite">${kcSanitize(messagesPerField.getFirstError('username'))?no_esc}</span>
                 </#if>
             </div>
 
             <div class="dk-auth-actions">
-                <button class="dk-auth-button dk-auth-button-primary dk-auth-button-block" type="submit">${msg("doSubmit")}</button>
+                <button id="kc-reset-password-submit" class="dk-auth-button dk-auth-button-primary dk-auth-button-block" type="submit">${msg("dicekeeperResetPasswordSubmit")}</button>
             </div>
         </form>
     <#elseif section = "info">
@@ -41,6 +43,6 @@
                 ${msg("emailInstruction")}
             </#if>
         </p>
-        <a class="dk-auth-inline-link" href="${url.loginUrl}">${msg("backToLogin")}</a>
+        <a id="kc-back-to-login" class="dk-auth-inline-link" href="${url.loginUrl}">${msg("backToLogin")}</a>
     </#if>
 </@layout.registrationLayout>

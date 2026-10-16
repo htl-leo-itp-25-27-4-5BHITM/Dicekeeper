@@ -1,5 +1,9 @@
 # Dicekeeper Keycloak Email + Login Theme
 
+The theme is validated against the exactly pinned Keycloak 26.8.1 release. Its password-reset
+templates use only the 26.8.1 upstream context values `link`, `linkExpiration`, `realmName`, and
+`linkExpirationFormatter`. Revalidate those contracts before changing the Keycloak pin.
+
 This theme styles the Keycloak email flow and login screens to match the Dicekeeper landing page:
 
 - dark emerald background
@@ -26,9 +30,12 @@ This theme styles the Keycloak email flow and login screens to match the Dicekee
 - `email/theme.properties`
 - `email/html/email-verification.ftl`
 - `email/html/executeActions.ftl`
+- `email/html/password-reset.ftl`
 - `email/text/email-verification.ftl`
 - `email/text/executeActions.ftl`
+- `email/text/password-reset.ftl`
 - `email/messages/messages.properties`
+- `email/messages/messages_en.properties`
 - `email/messages/messages_de.properties`
 
 ## Install
