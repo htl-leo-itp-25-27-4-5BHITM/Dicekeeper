@@ -82,6 +82,20 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Set up Node.js for Keycloak theme validation
+        if: ${{ steps.keycloak-changes.outputs.changed == 'true' && steps.deploy-target.outputs.environment == 'production' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate password-recovery theme
+        if: ${{ steps.keycloak-changes.outputs.changed == 'true' && steps.deploy-target.outputs.environment == 'production' }}
+        run: |
+          npm ci
+          npm run verify:password-recovery-theme
+          npm run test:password-recovery-theme-validator
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -161,7 +175,8 @@ jobs:
           kubectl -n "$NAMESPACE" apply -f k8s/keycloak-service.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/keycloak-deployment.yaml
           if [ "${{ steps.keycloak-changes.outputs.changed }}" = "true" ]; then
-            kubectl -n "$NAMESPACE" rollout restart deployment/keycloak
+            kubectl -n "$NAMESPACE" set image deployment/keycloak \
+              keycloak="$KEYCLOAK_IMAGE:${GITHUB_SHA}"
           fi
           kubectl -n "$NAMESPACE" apply -f k8s/pvc.yaml
           kubectl -n "$NAMESPACE" apply -f k8s/imagor-service.yaml

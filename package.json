@@ -8,9 +8,14 @@
     "test:js:watch": "vitest",
     "test:browser": "playwright test",
     "test:browser:smoke": "playwright test tests/e2e/smoke.spec.js",
+    "test:password-recovery-theme-validator": "node --test scripts/validate-password-recovery-theme.test.mjs",
+    "test:password-recovery-realm-verifier": "node --test scripts/verify-password-recovery-realm.test.mjs",
+    "smoke:keycloak-theme": "node scripts/smoke-keycloak-theme.mjs",
     "verify:oidc-boundary": "node scripts/verify-oidc-refresh-boundary.mjs",
     "verify:live-session-recovery": "node scripts/verify-live-session-recovery.mjs",
-    "verify:account-deletion-config": "node scripts/validate-account-deletion-config.mjs"
+    "verify:account-deletion-config": "node scripts/validate-account-deletion-config.mjs",
+    "verify:password-recovery-theme": "node scripts/validate-password-recovery-theme.mjs",
+    "verify:password-recovery-realm": "node scripts/verify-password-recovery-realm.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
