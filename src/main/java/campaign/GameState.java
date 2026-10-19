@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * Per-campaign live game state for real-time synchronization.
  *
  * <p>The state is kept in memory for fast access and written through to the database after every
- * change ({@link #save(Long)}), so a server restart or deployment restores running games. Only the
- * map undo history is memory-only.</p>
+ * change ({@link #save(Long)}), so a server restart or deployment restores running games, including
+ * the map undo history (its fog snapshots are stored compressed).</p>
  */
 @ApplicationScoped
 public class GameState {
@@ -99,6 +99,50 @@ public class GameState {
         public List<MapMarker> mapMarkers = new ArrayList<>();
         public long markerSeq = 1;
         public List<DmMessage> dmMessages = new ArrayList<>();
+        /** Undo history, newest first. */
+        public List<PersistedUndo> undo = new ArrayList<>();
+    }
+
+    /** One undo step: markers plus the fog alpha grid, deflated and Base64-encoded (a few KB). */
+    public static class PersistedUndo {
+        public List<MapMarker> markers = new ArrayList<>();
+        public String fog;
+
+        static String pack(byte[] alpha) {
+            java.util.zip.Deflater deflater = new java.util.zip.Deflater(java.util.zip.Deflater.BEST_COMPRESSION);
+            try {
+                deflater.setInput(alpha);
+                deflater.finish();
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[8192];
+                while (!deflater.finished()) {
+                    out.write(buffer, 0, deflater.deflate(buffer));
+                }
+                return Base64.getEncoder().encodeToString(out.toByteArray());
+            } finally {
+                deflater.end();
+            }
+        }
+
+        static byte[] unpack(String packed) {
+            if (packed == null) return FogOfWar.empty();
+            java.util.zip.Inflater inflater = new java.util.zip.Inflater();
+            try {
+                inflater.setInput(Base64.getDecoder().decode(packed));
+                byte[] alpha = new byte[FogOfWar.SIZE * FogOfWar.SIZE];
+                int read = 0;
+                while (read < alpha.length && !inflater.finished()) {
+                    int n = inflater.inflate(alpha, read, alpha.length - read);
+                    if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) break;
+                    read += n;
+                }
+                return alpha;
+            } catch (Exception e) {
+                return FogOfWar.empty();
+            } finally {
+                inflater.end();
+            }
+        }
     }
 
     public static class MapUndoSnapshot {
@@ -150,6 +194,18 @@ public class GameState {
             if (persisted.dmMessages != null) {
                 persisted.dmMessages.stream().filter(Objects::nonNull).forEach(state.dmMessages::addLast);
             }
+            if (persisted.undo != null) {
+                for (PersistedUndo undo : persisted.undo) {
+                    if (undo == null) continue;
+                    Map<String, MapMarker> markers = new HashMap<>();
+                    if (undo.markers != null) {
+                        for (MapMarker m : undo.markers) {
+                            if (m != null && m.id != null) markers.put(m.id, m);
+                        }
+                    }
+                    state.undoStack.addLast(new MapUndoSnapshot(markers, PersistedUndo.unpack(undo.fog)));
+                }
+            }
             state.fogAlpha = FogOfWar.fromDataUrl(persisted.fogExploration);
             state.fogExploration = FogOfWar.toDataUrl(state.fogAlpha);
             return state;
@@ -166,6 +222,12 @@ public class GameState {
             persisted.mapMarkers = new ArrayList<>(mapMarkers.values());
             persisted.markerSeq = markerSeq.get();
             persisted.dmMessages = new ArrayList<>(dmMessages);
+            for (MapUndoSnapshot snap : undoStack) {
+                PersistedUndo undo = new PersistedUndo();
+                undo.markers = new ArrayList<>(snap.markers.values());
+                undo.fog = PersistedUndo.pack(snap.fogAlpha);
+                persisted.undo.add(undo);
+            }
             return persisted;
         }
 

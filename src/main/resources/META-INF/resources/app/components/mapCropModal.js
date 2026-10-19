@@ -6,7 +6,7 @@ export function showMapCropModal(imageFile) {
       img.onload = () => openCropUI(img, resolve, reject);
       img.src = e.target.result;
     };
-    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden'));
     reader.readAsDataURL(imageFile);
   });
 }
@@ -311,7 +311,7 @@ function openCropUI(img, resolve, reject) {
 
   window.addEventListener('mouseup', () => { dragging = false; resizing = false; });
 
-  document.getElementById('mcCancel').onclick = () => { overlay.remove(); reject(new Error('Cancelled')); };
+  document.getElementById('mcCancel').onclick = () => { overlay.remove(); reject(new Error('Abgebrochen')); };
   document.getElementById('mcConfirm').onclick = () => {
     const srcX = Math.floor(cropX / scale);
     const srcY = Math.floor(cropY / scale);

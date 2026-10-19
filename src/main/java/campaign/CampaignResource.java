@@ -76,7 +76,7 @@ public class CampaignResource {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -99,7 +99,7 @@ public class CampaignResource {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -124,7 +124,7 @@ public class CampaignResource {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -158,7 +158,7 @@ public class CampaignResource {
         Player player = Player.findById(currentPlayerId);
         if (player == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Player with id " + currentPlayerId + " not found")
+                    .entity("Spieler nicht gefunden")
                     .build();
         }
 
@@ -186,13 +186,13 @@ public class CampaignResource {
     public Response update(@PathParam("id") Long id, CampaignWriteDTO updated) {
         if (updated == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Campaign update is required")
+                    .entity("Keine Änderungen übermittelt")
                     .build();
         }
         Campaign existing = Campaign.findById(id);
         if (existing == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -282,7 +282,7 @@ public class CampaignResource {
         Campaign existing = Campaign.findById(id);
         if (existing == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 
@@ -306,7 +306,7 @@ public class CampaignResource {
         Campaign campaign = Campaign.findById(id);
         if (campaign == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Campaign with id " + id + " not found")
+                    .entity("Kampagne nicht gefunden")
                     .build();
         }
 

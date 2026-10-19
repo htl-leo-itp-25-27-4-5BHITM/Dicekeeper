@@ -57,9 +57,67 @@ public class CharacterResource {
     public Response getAllCharacters() {
         List<Character> characters = Character.list("ownerPlayerId", currentPlayerId());
         List<CharacterDTO> dtos = characters.stream()
+            // Drafts of an aborted creation have no name and cannot be used.
+            .filter(c -> c.name != null && !c.name.isBlank())
             .map(this::toFullDTO)
             .collect(Collectors.toList());
         return Response.ok(dtos).build();
+    }
+
+    /**
+     * Shared templates ("Vorlagen"): characters without an owner, e.g. created before characters had
+     * owners. Nobody can change them; a player uses one by adopting a personal copy.
+     */
+    @GET
+    @Path("/presets")
+    public Response getPresets() {
+        List<CharacterDTO> dtos = Character.<Character>list("ownerPlayerId is null and classId <> 0 order by name").stream()
+            .filter(c -> c.name != null && !c.name.isBlank())
+            .map(c -> {
+                CharacterDTO dto = toFullDTO(c);
+                dto.preset = true;
+                return dto;
+            })
+            .collect(Collectors.toList());
+        return Response.ok(dtos).build();
+    }
+
+    /** Creates a copy of a template that belongs to the current player. */
+    @POST
+    @Path("/{id}/adopt")
+    @Consumes(MediaType.WILDCARD)
+    @Transactional
+    public Response adoptPreset(@PathParam("id") Long id) {
+        Character template = Character.findById(id);
+        if (template == null || template.ownerPlayerId != null
+                || template.name == null || template.name.isBlank() || template.classId == 0) {
+            return characterAccess.notFound();
+        }
+        Character copy = new Character();
+        copy.ownerPlayerId = currentPlayerId();
+        copy.name = template.name;
+        copy.classId = template.classId;
+        copy.backgroundId = template.backgroundId;
+        copy.level = Math.max(1, template.level);
+        copy.isCreated = true;
+        copy.info = template.info;
+        copy.race = template.race;
+        copy.alignment = template.alignment;
+        copy.persist();
+        for (CharacterAbility ability : CharacterAbility.<CharacterAbility>list("character", template)) {
+            CharacterAbility copied = new CharacterAbility();
+            copied.character = copy;
+            copied.ability = ability.ability;
+            copied.score = ability.score;
+            copied.persist();
+        }
+        for (character.skill.CharacterSkill skill : character.skill.CharacterSkill.<character.skill.CharacterSkill>list("characterId", template.id.intValue())) {
+            character.skill.CharacterSkill copied = new character.skill.CharacterSkill();
+            copied.characterId = copy.id.intValue();
+            copied.skillId = skill.skillId;
+            copied.persist();
+        }
+        return Response.status(Response.Status.CREATED).entity(toFullDTO(copy)).build();
     }
 
     /**
@@ -124,7 +182,7 @@ public class CharacterResource {
             return characterAccess.notFound();
         }
         if (updated == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Character update is required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Keine Änderungen übermittelt").build();
         }
         if (characterAccess.isLockedForEditing(existing)) {
             return characterAccess.locked();

@@ -32,7 +32,7 @@ public class BackgroundResource {
         Background background = Background.findById(id);
         if (background == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("Background not found").build();
+                .entity("Hintergrund nicht gefunden").build();
         }
         return Response.ok(BackgroundDTO.fromEntity(background)).build();
     }

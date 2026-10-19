@@ -34,7 +34,7 @@ public class GameSseResource {
                           @Context SseEventSink sink,
                           @Context Sse sse) {
         if (Campaign.findById(campaignId) == null) {
-            throw new NotFoundException("Campaign not found");
+            throw new NotFoundException("Kampagne nicht gefunden");
         }
 
         Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
@@ -44,7 +44,7 @@ public class GameSseResource {
                 currentPlayerId
         ).firstResult();
         if (membership == null) {
-            throw new ForbiddenException("You are not a member of this campaign");
+            throw new ForbiddenException("Du bist kein Mitglied dieser Kampagne");
         }
 
         // Browsers send Last-Event-ID on automatic reconnects; the client passes it as a

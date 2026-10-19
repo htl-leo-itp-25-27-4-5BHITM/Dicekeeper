@@ -45,7 +45,7 @@ public class ImagorSignedImageResource {
         String normalizedSource = normalizeUploadPath(src);
         if (normalizedSource == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Only /uploads/* images can be signed")
+                    .entity("Nur hochgeladene Bilder können angezeigt werden")
                     .build();
         }
         if (!uploadAccess.canRead(normalizedSource)) {
@@ -54,7 +54,7 @@ public class ImagorSignedImageResource {
 
         if (!imagorUrlSigner.isConfigured()) {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity("Imagor signing is not configured")
+                    .entity("Bildserver ist nicht konfiguriert")
                     .build();
         }
 

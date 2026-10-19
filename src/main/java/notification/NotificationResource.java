@@ -68,7 +68,7 @@ public class NotificationResource {
         Notification notification = Notification.findById(id);
         if (notification == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Notification not found")
+                    .entity("Benachrichtigung nicht gefunden")
                     .build();
         }
 
@@ -86,7 +86,7 @@ public class NotificationResource {
         Notification notification = Notification.findById(id);
         if (notification == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Notification not found")
+                    .entity("Benachrichtigung nicht gefunden")
                     .build();
         }
 
@@ -118,7 +118,7 @@ public class NotificationResource {
         Notification notification = Notification.findById(id);
         if (notification == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Notification not found")
+                    .entity("Benachrichtigung nicht gefunden")
                     .build();
         }
 

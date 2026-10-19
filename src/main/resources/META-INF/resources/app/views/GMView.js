@@ -659,7 +659,11 @@ export default async function GMView({ id }) {
       // Only init HP for players that don't have existing state
       for (const p of players) {
         if (existingHp[String(p.id)] === undefined) {
-          await fetch('/api/campaign/' + campaignId + '/game/init-hp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: p.id, hp: p.hp, maxHp: p.maxHp }) });
+          // The server calculates hit points (class hit die, level, constitution).
+          try {
+            const hpRes = await fetch('/api/campaign/' + campaignId + '/game/init-hp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: p.id }) });
+            if (hpRes.ok) { const hpData = await hpRes.json(); p.hp = hpData.hp; p.maxHp = hpData.maxHp; }
+          } catch (e) {}
         }
       }
 
@@ -686,7 +690,7 @@ export default async function GMView({ id }) {
           body: JSON.stringify({ type: 'player-group', label: 'Gruppe', x: 0.5, y: 0.5, playerIds: allPids, icon: '👥' })
         });
       }
-    } catch (e) { document.getElementById('gmPlayerList').innerHTML = '<div style="opacity:0.6">Failed to load players.</div>'; }
+    } catch (e) { document.getElementById('gmPlayerList').innerHTML = '<div style="opacity:0.6">Spieler konnten nicht geladen werden.</div>'; }
   }
 
   function renderPlayers() {

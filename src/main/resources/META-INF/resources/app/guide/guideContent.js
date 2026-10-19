@@ -25,7 +25,7 @@ const routeSources = [
     source: 'views/LoginView.js',
     audience: ['new'],
     purpose: 'Verbindet dich mit dem Keycloak-Login. Dort kannst du dich anmelden oder einen neuen Account registrieren.',
-    labels: ['Login', 'Register', 'Keycloak'],
+    labels: ['Anmelden', 'Registrieren', 'Passwort vergessen'],
     capabilities: ['Account erstellen', 'Anmelden', 'Sitzung wiederherstellen']
   },
   {
@@ -65,7 +65,7 @@ const routeSources = [
     source: 'views/CharacterSelectView.js',
     audience: ['player'],
     purpose: 'Lässt Spieler einen vorhandenen Charakter wählen oder einen neuen Charakter für die Kampagne erstellen.',
-    labels: ['Select Your Character', 'Your Characters', 'Create New Character', 'Submit Character'],
+    labels: ['Charakter auswählen', 'Deine Charaktere', 'Vorlagen', 'Neuen Charakter erstellen', 'Charakter einreichen'],
     capabilities: ['Vorhandenen Charakter auswählen', 'Neuen Charakter erstellen', 'Charakter zur DM-Prüfung einreichen']
   },
   {
@@ -75,7 +75,7 @@ const routeSources = [
     source: 'views/CharacterCreateView.js',
     audience: ['player'],
     purpose: 'Führt durch einen mehrstufigen Charakter-Wizard.',
-    labels: ['Basic Information', 'Choose Your Class', 'Choose Your Background', 'Assign Ability Scores', 'Create Character'],
+    labels: ['Grunddaten', 'Klasse wählen', 'Hintergrund wählen', 'Attributswerte verteilen', 'Charakter erstellen'],
     capabilities: ['Name, Volk und Ausrichtung setzen', 'Klasse wählen', 'Hintergrund und Backstory wählen', 'Ability Scores mit 27 Punkten verteilen', 'Charakter speichern']
   },
   {
@@ -85,7 +85,7 @@ const routeSources = [
     source: 'views/CharacterReviewView.js',
     audience: ['dm'],
     purpose: 'Gibt dem DM die Kontrolle, eingereichte Charaktere zu genehmigen oder mit Notizen zurückzugeben.',
-    labels: ['Approve', 'Reject', 'Add notes for the player'],
+    labels: ['Charakter freigeben', 'Ablehnen & Änderungen anfordern', 'Notizen für den Spieler'],
     capabilities: ['Charakterwerte prüfen', 'Charakter genehmigen', 'Änderungsnotizen senden', 'Spieler per Benachrichtigung informieren']
   },
   {
@@ -105,7 +105,7 @@ const routeSources = [
     source: 'views/GMView.js',
     audience: ['dm'],
     purpose: 'Ist der Live-Spielleitertisch für Karten, Marker, Gruppenentscheidungen, Chat, Würfel und Runden.',
-    labels: ['Gruppenentscheidungen', 'Dungeon Master Chat', 'Spieler', 'Würfel', 'Tischansicht', 'Zug beenden'],
+    labels: ['Gruppenentscheidungen', 'Dungeon Master Chat', 'Spieler', 'Würfel', 'Tischansicht', 'Zug beenden', 'Zug geben', 'Spiel beenden'],
     capabilities: ['Kartenmarker platzieren', 'Marker gruppieren und aufteilen', 'Fog of War steuern', 'HP verwalten', 'Nächsten Zug setzen', 'Würfeln oder manuelles Ergebnis setzen', 'Gruppenentscheidungen starten']
   },
   {
@@ -135,7 +135,7 @@ const routeSources = [
     source: 'views/ProfileView.js',
     audience: ['dm', 'player'],
     purpose: 'Verwaltet Namen, Avatar und Kontoeinstellungen.',
-    labels: ['Profile', 'Avatar', 'Delete account'],
+    labels: ['Profil', 'Profilbild', 'Änderungen speichern', 'Account endgültig löschen'],
     capabilities: ['Profilbild hochladen', 'Namen bearbeiten', 'Account verwalten']
   },
   {
@@ -145,7 +145,7 @@ const routeSources = [
     source: 'components/header.js',
     audience: ['dm', 'player'],
     purpose: 'Hält Spieler und DMs über Charaktereinreichungen, Genehmigungen und Ablehnungen auf dem Laufenden.',
-    labels: ['Notifications', 'Mark all as read'],
+    labels: ['Benachrichtigungen', 'Alle als gelesen markieren'],
     capabilities: ['Ungelesene Nachrichten sehen', 'Direkt zum Review springen', 'Alle als gelesen markieren']
   }
 ];

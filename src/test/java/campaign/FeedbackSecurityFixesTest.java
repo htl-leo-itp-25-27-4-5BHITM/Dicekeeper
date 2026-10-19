@@ -259,6 +259,11 @@ class FeedbackSecurityFixesTest {
         assertEquals(12, GameActionResource.calculateMaxHp(1, 15));
         assertEquals(12 + 8, GameActionResource.calculateMaxHp(2, 15));
         assertEquals(1, GameActionResource.calculateMaxHp(1, -40));
+        // Hit dice per class: barbarian d12, sorcerer d6
+        assertEquals(14, GameActionResource.calculateMaxHp(1, 14, characterclass.GermanContent.hitDie("Barbar")));
+        assertEquals(14 + 2 * 9, GameActionResource.calculateMaxHp(3, 14, characterclass.GermanContent.hitDie("Barbarian")));
+        assertEquals(5, GameActionResource.calculateMaxHp(1, 8, characterclass.GermanContent.hitDie("Zauberer")));
+        assertEquals(10, characterclass.GermanContent.hitDie("Kämpfer"));
     }
 
     private Path createVictimFile(String name) throws Exception {

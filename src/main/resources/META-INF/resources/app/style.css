@@ -3585,3 +3585,4 @@ body.table-view-active {
 .guide-class-item summary span { font-size: 12px; opacity: 0.7; }
 .guide-class-item[open] summary span { display: none; }
 .guide-class-desc { margin-top: 10px; font-size: 13px; line-height: 1.55; opacity: 0.9; }
+.character-preset-hint { font-size: 12px; opacity: 0.7; margin: -4px 0 8px; }

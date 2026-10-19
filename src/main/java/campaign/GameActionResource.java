@@ -77,7 +77,7 @@ public class GameActionResource {
 
         Long playerId = toLong(body.get("playerId"));
         if (playerId == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("playerId required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Spieler fehlt").build();
         }
         CampaignPlayer target = findMembership(campaignId, playerId);
         if (target == null) {
@@ -121,7 +121,7 @@ public class GameActionResource {
         Integer sides = diceType != null ? ALLOWED_DICE.get(diceType) : null;
         if (sides == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("diceType must be one of " + ALLOWED_DICE.keySet()).build();
+                    .entity("Würfeltyp muss einer von diesen sein: " + ALLOWED_DICE.keySet()).build();
         }
 
         int result;
@@ -130,7 +130,7 @@ public class GameActionResource {
             Integer manualResult = toStrictInt(body.get("result"));
             if (manualResult == null || manualResult < 1 || manualResult > sides) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("result must be between 1 and " + sides).build();
+                        .entity("Das Ergebnis muss zwischen 1 und " + sides + " liegen").build();
             }
             result = manualResult;
         } else {
@@ -169,7 +169,7 @@ public class GameActionResource {
         Integer delta = toInt(body.get("delta"));
 
         if (playerId == null || delta == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("playerId and delta required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Spieler und Änderung fehlen").build();
         }
         if (findMembership(campaignId, playerId) == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
@@ -202,7 +202,7 @@ public class GameActionResource {
                            Map<String, Object> body) {
         Long playerId = toLong(body != null ? body.get("playerId") : null);
         if (playerId == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("playerId required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Spieler fehlt").build();
         }
         CampaignPlayer target = findMembership(campaignId, playerId);
         if (target == null) {
@@ -229,11 +229,24 @@ public class GameActionResource {
         )).build();
     }
 
-    /** Level 1: 10 + CON modifier; every further level: 6 + CON modifier. At least 1. */
+    /** Same as {@link #calculateMaxHp(int, int, int)} with a d10 hit die. */
     static int calculateMaxHp(int level, int constitution) {
+        return calculateMaxHp(level, constitution, 10);
+    }
+
+    /**
+     * D&amp;D 5e hit points: level 1 = hit die maximum + CON modifier, every further level = average
+     * roll of the hit die (die / 2 + 1) + CON modifier. Each level adds at least 1 HP.
+     */
+    static int calculateMaxHp(int level, int constitution, int hitDie) {
         int conMod = Math.floorDiv(constitution - 10, 2);
         int lvl = Math.max(1, level);
-        return Math.max(1, 10 + conMod + (lvl - 1) * (6 + conMod));
+        int die = hitDie > 0 ? hitDie : 8;
+        int hp = Math.max(1, die + conMod);
+        for (int i = 2; i <= lvl; i++) {
+            hp += Math.max(1, die / 2 + 1 + conMod);
+        }
+        return hp;
     }
 
     private int calculateMaxHp(Long characterId) {
@@ -247,7 +260,10 @@ public class GameActionResource {
                 .mapToInt(ca -> ca.score)
                 .findFirst()
                 .orElse(10);
-        return calculateMaxHp(character.level, constitution);
+        characterclass.CharacterClass clazz = character.classId != 0
+                ? characterclass.CharacterClass.findById(character.classId) : null;
+        return calculateMaxHp(character.level, constitution,
+                characterclass.GermanContent.hitDie(clazz != null ? clazz.name : null));
     }
 
     // ===== DM MESSAGES =====
@@ -266,7 +282,7 @@ public class GameActionResource {
         String text = value instanceof String ? ((String) value).trim() : "";
         if (text.isEmpty() || text.length() > MAX_DM_MESSAGE_LENGTH) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("text must contain 1 to " + MAX_DM_MESSAGE_LENGTH + " characters").build();
+                    .entity("Die Nachricht muss 1 bis " + MAX_DM_MESSAGE_LENGTH + " Zeichen lang sein").build();
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
@@ -292,7 +308,7 @@ public class GameActionResource {
         Boolean active = body.get("active") instanceof Boolean ? (Boolean) body.get("active") : null;
 
         if (playerId == null || active == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("playerId and active required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Spieler und Status fehlen").build();
         }
         if (findMembership(campaignId, playerId) == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Spieler ist nicht in dieser Kampagne").build();
@@ -352,7 +368,7 @@ public class GameActionResource {
         String text = (String) body.get("text");
 
         if (title == null || text == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("title and text required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Titel und Text sind erforderlich").build();
         }
 
         // Electorate: players with an approved character (the DM does not vote)
@@ -401,7 +417,7 @@ public class GameActionResource {
         Object voteValue = body.get("vote");
         String voteType = voteValue instanceof String ? (String) voteValue : null; // "yes" or "no"
         if (decisionId == null || !("yes".equals(voteType) || "no".equals(voteType))) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("decisionId and vote ('yes' or 'no') required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Abstimmung und Stimme (Ja/Nein) fehlen").build();
         }
 
         DecisionVoteService.VoteOutcome outcome =
@@ -453,7 +469,7 @@ public class GameActionResource {
         String icon = (String) body.getOrDefault("icon", "📌");
 
         if (x == null || y == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("x and y required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Position (x und y) fehlt").build();
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
@@ -520,7 +536,7 @@ public class GameActionResource {
         List<String> markerIds = (List<String>) body.get("markerIds");
 
         if (action == null || markerIds == null || markerIds.isEmpty()) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("action and markerIds required").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Aktion und Marker fehlen").build();
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
@@ -560,7 +576,7 @@ public class GameActionResource {
             }
 
             if (count == 0) {
-                return Response.status(Response.Status.BAD_REQUEST).entity("No valid markers").build();
+                return Response.status(Response.Status.BAD_REQUEST).entity("Keine gültigen Marker").build();
             }
 
             avgX /= count;
@@ -595,13 +611,13 @@ public class GameActionResource {
         } else if ("split".equals(action)) {
             // Split a group marker into individual player markers
             if (markerIds.size() != 1) {
-                return Response.status(Response.Status.BAD_REQUEST).entity("split requires exactly one markerId").build();
+                return Response.status(Response.Status.BAD_REQUEST).entity("Zum Aufteilen genau einen Marker auswählen").build();
             }
 
             String groupId = markerIds.get(0);
             GameState.MapMarker group = state.mapMarkers.get(groupId);
             if (group == null || group.playerIds == null || group.playerIds.isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST).entity("Invalid group marker").build();
+                return Response.status(Response.Status.BAD_REQUEST).entity("Ungültiger Gruppen-Marker").build();
             }
 
             @SuppressWarnings("unchecked")
@@ -682,7 +698,7 @@ public class GameActionResource {
             return Response.ok(Map.of("markers", allMarkers)).build();
 
         } else {
-            return Response.status(Response.Status.BAD_REQUEST).entity("action must be 'group' or 'split'").build();
+            return Response.status(Response.Status.BAD_REQUEST).entity("Aktion muss „group“ oder „split“ sein").build();
         }
     }
 

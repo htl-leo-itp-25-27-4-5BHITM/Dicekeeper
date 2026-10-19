@@ -31,7 +31,7 @@ public class ClassResource {
         CharacterClass clazz = CharacterClass.findById(id);
         if (clazz == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                .entity("Class not found").build();
+                .entity("Klasse nicht gefunden").build();
         }
         return Response.ok(ClassDTO.fromEntity(clazz)).build();
     }

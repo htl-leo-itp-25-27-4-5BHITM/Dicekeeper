@@ -27,7 +27,7 @@ export function initials(name) {
     : parts[0].substring(0, 2).toUpperCase();
 }
 
-export function playerLoginName(player, fallback = 'Unknown') {
+export function playerLoginName(player, fallback = 'Unbekannt') {
   return player?.username || fallback;
 }
 

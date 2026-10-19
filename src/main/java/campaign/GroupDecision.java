@@ -47,6 +47,13 @@ public class GroupDecision extends PanacheEntity {
     @Column(name = "voted_player_ids", length = 2000)
     public String votedPlayerIds = "";
 
+    /**
+     * True when title/description are stored as plain text. Older clients stored them HTML-escaped
+     * ("&amp;amp;"); those rows have {@code null} here until {@link DecisionTextStartupRepair} decodes them.
+     */
+    @Column(name = "text_plain")
+    public Boolean textPlain = Boolean.TRUE;
+
     public GroupDecision() {}
 
     public GroupDecision(Long campaignId, String title, String description, int totalPlayers) {

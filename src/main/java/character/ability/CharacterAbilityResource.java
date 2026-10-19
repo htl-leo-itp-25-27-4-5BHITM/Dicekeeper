@@ -41,7 +41,7 @@ public class CharacterAbilityResource {
                                        AbilityScoreUpdateDTO update) {
         if (update == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Body must contain a score field").build();
+                    .entity("Bitte gib einen Wert (score) an").build();
         }
 
         Character character = Character.findById(characterId);
@@ -54,7 +54,7 @@ public class CharacterAbilityResource {
         }
         if (update.score < MIN_SCORE || update.score > MAX_SCORE) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("score must be between " + MIN_SCORE + " and " + MAX_SCORE).build();
+                    .entity("Der Wert muss zwischen " + MIN_SCORE + " und " + MAX_SCORE + " liegen").build();
         }
 
         Ability ability = Ability.findById(abilityId);

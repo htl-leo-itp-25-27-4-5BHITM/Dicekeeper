@@ -473,10 +473,11 @@ export default async function PlayerView({ id }) {
       }));
       characterMap[currentPlayer.id] = character;
 
-      const conMod = calcMod(getScore('Constitution'));
-      maxHP = 10 + conMod * (character.level || 1); if (maxHP < 1) maxHP = 1; currentHP = maxHP;
-
-      await fetch('/api/campaign/' + campaignId + '/game/init-hp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id, hp: currentHP, maxHp: maxHP }) });
+      // Hit points are calculated by the server (class hit die, level, constitution).
+      try {
+        const hpRes = await fetch('/api/campaign/' + campaignId + '/game/init-hp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: currentPlayer.id }) });
+        if (hpRes.ok) { const hpData = await hpRes.json(); currentHP = hpData.hp; maxHP = hpData.maxHp; }
+      } catch (e) {}
 
       try {
         const stateRes = await fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' });

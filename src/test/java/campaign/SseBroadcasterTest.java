@@ -68,6 +68,21 @@ class SseBroadcasterTest {
     }
 
     @Test
+    void lobbyClientsOnlyGetIdsOfChangedCampaigns() {
+        RecordingSink lobby = new RecordingSink();
+        RecordingSink campaign = new RecordingSink();
+        broadcaster.register(SseBroadcaster.LOBBY_CHANNEL, lobby, sse, null);
+        broadcaster.register(7L, campaign, sse, null);
+
+        broadcaster.broadcastLobby("created", 7L);
+
+        assertEquals(List.of("connected", "lobby_changed"), lobby.names());
+        assertEquals(List.of("connected"), campaign.names());
+        String data = lobby.events.get(1).get("data");
+        assertTrue(data.contains("\"campaignId\":7") && data.contains("\"reason\":\"created\""), data);
+    }
+
+    @Test
     void eventsAreBufferedEvenWithoutSubscribers() {
         broadcaster.broadcast(5L, "campaign_started", Map.of("id", 5));
 

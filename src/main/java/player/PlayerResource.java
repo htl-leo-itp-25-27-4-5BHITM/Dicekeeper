@@ -63,7 +63,7 @@ public class PlayerResource {
             Player player = Player.findById(id);
             if (player == null) {
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("Player with id " + id + " not found")
+                        .entity("Spieler nicht gefunden")
                         .build();
             }
             // Only the player themselves gets e-mail and name; everyone else sees the public profile.
@@ -90,7 +90,7 @@ public class PlayerResource {
         Player player = Player.findById(id);
         if (player == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player with id " + id + " not found")
+                    .entity("Spieler nicht gefunden")
                     .build();
         }
 
@@ -148,7 +148,7 @@ public class PlayerResource {
         Player existing = Player.findById(id);
         if (existing == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Player with id " + id + " not found")
+                    .entity("Spieler nicht gefunden")
                     .build();
         }
 
