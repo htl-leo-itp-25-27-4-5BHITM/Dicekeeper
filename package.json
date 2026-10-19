@@ -15,7 +15,8 @@
     "verify:live-session-recovery": "node scripts/verify-live-session-recovery.mjs",
     "verify:account-deletion-config": "node scripts/validate-account-deletion-config.mjs",
     "verify:password-recovery-theme": "node scripts/validate-password-recovery-theme.mjs",
-    "verify:password-recovery-realm": "node scripts/verify-password-recovery-realm.mjs"
+    "verify:password-recovery-realm": "node scripts/verify-password-recovery-realm.mjs",
+    "test:e2e:fullstack": "./mvnw test -P !dev -De2e=true -Dtest=BrowserFeedbackE2ETest"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

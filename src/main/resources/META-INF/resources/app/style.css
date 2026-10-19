@@ -1527,7 +1527,7 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 .gm-page .player:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .gm-page .player.active { background: rgba(var(--accent-green-rgb),0.08); color: var(--text); border-color: rgba(var(--accent-green-rgb),0.38); box-shadow: inset 3px 0 0 var(--accent-green), 0 0 0 1px rgba(var(--accent-green-rgb),0.08); }
 .gm-player-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
-.gm-player-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.gm-player-name { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.25; font-weight: 700; }
 .gm-turn-badge { flex-shrink: 0; padding: 3px 8px; border-radius: 999px; background: rgba(var(--accent-green-rgb),0.13); color: var(--accent-green); border: 1px solid rgba(var(--accent-green-rgb),0.24); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
 .hp-btn-gm { width: 28px; height: 28px; border-radius: 50%; padding: 0; margin: 0; font-size: 14px; cursor: pointer; border: 1px solid; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: white; }
 .hp-btn-gm.damage { border-color: rgba(255,82,82,0.4); color: #ff8a80; }
@@ -1590,8 +1590,8 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 
 /* GM: end game */
 .gm-end-section { flex-shrink: 0; padding: 12px !important; }
-.gm-end-btn { width: 100%; padding: 11px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font-weight: 800; font-size: 14px; cursor: pointer; transition: all var(--transition-smooth); }
-.gm-end-btn:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); transform: translateY(-1px); }
+.gm-main .gm-end-btn { width: 100%; margin-top: 0; padding: 11px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font-weight: 800; font-size: 14px; cursor: pointer; transition: all var(--transition-smooth); }
+.gm-main .gm-end-btn:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); transform: translateY(-1px); }
 .dk-btn-primary.gm-end-confirm { background: var(--danger); color: #fff; }
 .or-divider { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-shrink: 0; }
 .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
@@ -3586,3 +3586,8 @@ body.table-view-active {
 .guide-class-item[open] summary span { display: none; }
 .guide-class-desc { margin-top: 10px; font-size: 13px; line-height: 1.55; opacity: 0.9; }
 .character-preset-hint { font-size: 12px; opacity: 0.7; margin: -4px 0 8px; }
+
+/* Party list: room for character names, readable details */
+.pv2-party-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pv2-party-name .pv2-turn-badge { font-size: 9px; }
+.pv2-party-detail { color: var(--text-secondary, rgba(255,255,255,0.65)); line-height: 1.35; }

@@ -822,12 +822,11 @@ export default async function PlayerView({ id }) {
       return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''} ${sittingOut ? 'sitting-out' : ''}">
         <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(name)}</div>
         <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}</div>
+          <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}</div>
           <div class="pv2-party-detail">${esc(detail)}${!isDM && ch?.name ? ' · ' + esc(userName) : ''}${sittingOut ? ' · setzt aus' : ''}</div>
           ${hpHtml}
         </div>
-        ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
-        <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
+        ${isDM ? '<span class="pv2-party-role dm">DM</span>' : ''}
       </div>`;
     }).join('');
   }
