@@ -265,6 +265,18 @@ public class GameState {
             return true;
         }
 
+        /** Clears everything that belongs to a running session but keeps the prepared map markers. */
+        public synchronized void resetSession() {
+            clearFog();
+            currentTurnPlayerId = null;
+            playerHp.clear();
+            playerMaxHp.clear();
+            playerActive.clear();
+            lastDiceRoll = null;
+            clearDmMessages();
+            undoStack.clear();
+        }
+
         public synchronized void clearFog() {
             setFogAlpha(FogOfWar.empty());
         }

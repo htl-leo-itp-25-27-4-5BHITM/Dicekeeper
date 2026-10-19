@@ -22,6 +22,9 @@ public class CharacterDTO {
     public boolean isCreated;
     public String race;
     public String alignment;
+    public Long ownerPlayerId;
+    /** True for shared preset characters (no owner). */
+    public boolean preset;
 
     // Related entities - fully resolved
     public ClassDTO characterClass;
@@ -44,6 +47,8 @@ public class CharacterDTO {
         dto.isCreated = entity.isCreated;
         dto.race = entity.race;
         dto.alignment = entity.alignment;
+        dto.ownerPlayerId = entity.ownerPlayerId;
+        dto.preset = entity.ownerPlayerId == null;
         return dto;
     }
 

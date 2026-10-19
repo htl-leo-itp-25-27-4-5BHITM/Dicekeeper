@@ -19,8 +19,11 @@ export default async function CampaignsView() {
         <h1>Deine Kampagnen</h1>
         <div id="status" style="color:#98a2b3;text-align:center;margin-bottom:16px;font-size:0.9rem;"></div>
         <div class="top-bar">
-          <button id="newBtn" class="add-btn" title="Neue Kampagne erstellen">+</button>
-          <button id="backLogin" class="logout-btn">Abmelden</button>
+          <button id="newBtn" class="add-btn" type="button" title="Neue Kampagne erstellen" aria-label="Neue Kampagne erstellen">+</button>
+          <div style="display:flex;gap:8px;">
+            <button id="classesBtn" class="logout-btn" type="button" title="Alle Klassen ansehen">📚 Klassen</button>
+            <button id="backLogin" class="logout-btn">Abmelden</button>
+          </div>
         </div>
         <div id="myCampaignsList"></div>
         <div class="divider"><span>Öffentlich</span></div>
@@ -124,7 +127,20 @@ export default async function CampaignsView() {
     return card;
   }
 
+  let loading = false;
+  let reloadQueued = false;
   async function load() {
+    if (loading) { reloadQueued = true; return; }
+    loading = true;
+    try {
+      await loadOnce();
+    } finally {
+      loading = false;
+      if (reloadQueued && !disposed) { reloadQueued = false; load(); }
+    }
+  }
+
+  async function loadOnce() {
     setStatus('Lade Kampagnen...');
     try {
       const myCampaignsRes = await fetch('/api/campaign/player/' + encodeURIComponent(player.id), { cache: 'no-store' });
@@ -182,8 +198,57 @@ export default async function CampaignsView() {
 
   document.getElementById('newBtn').addEventListener('click', () => navigate('/campaign/new'));
   document.getElementById('backLogin').addEventListener('click', logout);
+  document.getElementById('classesBtn').addEventListener('click', () => navigate('/guide?section=classes'));
+
+  // ===== Live updates (new / started / deleted campaigns appear without reload) =====
+  let disposed = false;
+  let lobbySource = null;
+  let lobbyRetryTimer = null;
+  let lobbyRetryDelay = 2000;
+  let reloadTimer = null;
+  let connectedOnce = false;
+
+  function scheduleReload() {
+    if (disposed) return;
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(load, 300);
+  }
+
+  function connectLobby() {
+    if (disposed || typeof EventSource === 'undefined') return;
+    lobbySource = new EventSource('/api/lobby/sse');
+    lobbySource.addEventListener('connected', () => {
+      lobbyRetryDelay = 2000;
+      // After a reconnect we may have missed events
+      if (connectedOnce) scheduleReload();
+      connectedOnce = true;
+    });
+    lobbySource.addEventListener('lobby_changed', scheduleReload);
+    lobbySource.onerror = () => {
+      if (disposed) return;
+      lobbySource?.close();
+      lobbySource = null;
+      clearTimeout(lobbyRetryTimer);
+      lobbyRetryTimer = setTimeout(connectLobby, lobbyRetryDelay);
+      lobbyRetryDelay = Math.min(lobbyRetryDelay * 2, 30000);
+    };
+  }
+
+  // Fallback in case the live connection is blocked by a proxy
+  const pollTimer = setInterval(() => { if (!document.hidden) load(); }, 30000);
+  const onVisibility = () => { if (!document.hidden) scheduleReload(); };
+  document.addEventListener('visibilitychange', onVisibility);
 
   load();
+  connectLobby();
 
-  return () => { destroyHeader(); };
+  return () => {
+    disposed = true;
+    clearInterval(pollTimer);
+    clearTimeout(reloadTimer);
+    clearTimeout(lobbyRetryTimer);
+    document.removeEventListener('visibilitychange', onVisibility);
+    if (lobbySource) { lobbySource.close(); lobbySource = null; }
+    destroyHeader();
+  };
 }

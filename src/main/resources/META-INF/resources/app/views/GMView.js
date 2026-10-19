@@ -10,6 +10,7 @@ import { showToast } from '../components/toast.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { createHeadlessLiveStatus } from '../components/liveStatus.js';
 import { loadGMRecoverySnapshot } from '../services/liveSnapshots.js';
+import { navigate } from '../router.js';
 
 export default async function GMView({ id }) {
   const player = requirePlayer();
@@ -62,6 +63,9 @@ export default async function GMView({ id }) {
             <button class="roll-btn" id="gmRollBtn">🎲 Würfeln</button>
             <div class="or-divider"><span>oder</span></div>
             <div class="manual-row"><input type="number" id="gmManualInput" min="1" step="1" placeholder="Manuell…"><button class="manual-set-btn" id="gmManualSet">Setzen</button></div>
+          </div>
+          <div class="glass gm-end-section">
+            <button class="gm-end-btn" id="gmEndGame" type="button">🏁 Spiel beenden</button>
           </div>
         </div>
       </div>
@@ -128,6 +132,13 @@ export default async function GMView({ id }) {
       </div>
       <div class="dk-modal-actions"><button class="dk-btn-ghost" id="gmDecCancel">Abbrechen</button><button class="dk-btn-primary" id="gmDecSave">⚖️ Erstellen</button></div>
     </div></div>
+    <div id="gmEndModal" class="dk-modal"><div class="dk-modal-card">
+      <button class="dk-modal-close" data-dismiss="modal">✕</button>
+      <div class="dk-modal-icon-row"><span class="dk-modal-icon">🏁</span></div>
+      <h3 class="dk-modal-title">Spiel beenden?</h3>
+      <p class="dk-modal-desc">Die laufende Sitzung wird für alle Spieler beendet. Lebenspunkte, Züge und Würfelverlauf werden zurückgesetzt. Kampagne, Charaktere und Karten-Marker bleiben erhalten – du kannst später eine neue Sitzung starten.</p>
+      <div class="dk-modal-actions"><button class="dk-btn-ghost" id="gmEndCancel">Abbrechen</button><button class="dk-btn-primary gm-end-confirm" id="gmEndConfirm">🏁 Beenden</button></div>
+    </div></div>
     <div id="gmCharOverlay" class="char-modal-overlay"><div class="char-modal" id="gmCharContent"></div></div>
   `;
   initHeader();
@@ -161,6 +172,7 @@ export default async function GMView({ id }) {
     }
   } catch (e) {}
 
+  let gameEndedLocally = false;
   let players = [], currentIndex = 0, decisions = [], eventSource = null, selectedDiceSides = 20;
   const shownDmMessages = new Set();
   const liveStatus = createHeadlessLiveStatus({
@@ -238,7 +250,7 @@ export default async function GMView({ id }) {
       markers: mapMarkers,
       readOnly: false,
       isMaximized: false,
-      players: players.map(p => ({ id: p.id, name: p.name })),
+      players: players.map(p => ({ id: p.id, name: p.characterName || p.name })),
       onMarkerMove: (m) => {
         fetch('/api/campaign/' + campaignId + '/game/map-marker', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -256,7 +268,7 @@ export default async function GMView({ id }) {
       markers: mapMarkers,
       readOnly: false,
       isMaximized: true,
-      players: players.map(p => ({ id: p.id, name: p.name })),
+      players: players.map(p => ({ id: p.id, name: p.characterName || p.name })),
       onMarkerMove: (m) => {
         fetch('/api/campaign/' + campaignId + '/game/map-marker', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -575,6 +587,15 @@ export default async function GMView({ id }) {
       },
       dm_message: d => showDmMessage(d),
       campaign_updated: () => eventSource?.reconcile('campaign-updated'),
+      campaign_ended: () => {
+        if (gameEndedLocally) return;
+        showToast('Das Spiel wurde beendet', 'info');
+        navigate('/campaign/' + campaignId);
+      },
+      campaign_deleted: () => {
+        showToast('Die Kampagne wurde gelöscht', 'info');
+        navigate('/campaigns');
+      },
       roster_updated: () => loadPlayers(),
       state_reset: () => eventSource?.reconcile('state-reset')
     }, {
@@ -608,12 +629,13 @@ export default async function GMView({ id }) {
           const pRes = await fetch('/api/player/id/' + cp.playerId);
           if (!pRes.ok) continue;
           const pd = await pRes.json();
-          let hp = 10, maxHp = 10;
+          let hp = 10, maxHp = 10, characterName = null;
           if (cp.characterId) {
             try {
               const cRes = await fetch('/api/character/' + cp.characterId);
               if (cRes.ok) {
                 const ch = await cRes.json();
+                characterName = ch.name || null;
                 const conScore = ch.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'constitution');
                 const conMod = conScore ? Math.floor((conScore.score - 10) / 2) : 0;
                 const lvl = ch.level || 1;
@@ -629,7 +651,7 @@ export default async function GMView({ id }) {
           const restoredMaxHp = hasExisting ? existingMaxHp[String(pid)] : maxHp;
           const restoredActive = existingActive[String(pid)] !== undefined ? existingActive[String(pid)] : true;
 
-          loaded.push({ id: pid, name: playerLoginName(pd), characterId: cp.characterId, hp: restoredHp, maxHp: restoredMaxHp, active: restoredActive });
+          loaded.push({ id: pid, name: playerLoginName(pd), characterName, characterId: cp.characterId, hp: restoredHp, maxHp: restoredMaxHp, active: restoredActive });
         } catch (e) {}
       }
       players = loaded;
@@ -651,7 +673,7 @@ export default async function GMView({ id }) {
       renderPlayers();
 
       // Update player info in map canvases
-      const playerList = players.map(p => ({ id: p.id, name: p.name }));
+      const playerList = players.map(p => ({ id: p.id, name: p.characterName || p.name }));
       if (mapCanvas) mapCanvas.setPlayers(playerList);
       if (mapCanvasMax) mapCanvasMax.setPlayers(playerList);
 
@@ -676,7 +698,7 @@ export default async function GMView({ id }) {
       const pct = p.maxHp > 0 ? Math.round((p.hp / p.maxHp) * 100) : 0;
       let hpColor = 'var(--accent-green)'; if (pct <= 50) hpColor = 'var(--gold)'; if (pct <= 25) hpColor = 'var(--danger)';
       div.innerHTML = `<div class="gm-player-head">
-        <span class="gm-player-name">${esc(p.name)}</span>
+        <span class="gm-player-name">${esc(p.characterName || p.name)}${p.characterName ? ` <small style="opacity:0.6;font-weight:500;">(${esc(p.name)})</small>` : ''}</span>
         ${i === currentIndex ? '<span class="gm-turn-badge">Am Zug</span>' : ''}
         <button class="purple-btn" style="padding:6px 10px;font-size:12px;">${p.active ? 'Aussetzen' : 'Aktivieren'}</button>
       </div>
@@ -689,7 +711,11 @@ export default async function GMView({ id }) {
           <button class="hp-btn-gm heal" data-i="${i}" data-d="1">+</button>
         </div>
       </div></div>
-      ${i === currentIndex ? '<div style="margin-top:6px;"><button class="purple-btn next-turn-btn" style="width:100%;">Zug beenden</button></div>' : ''}`;
+      ${i === currentIndex
+        ? '<div style="margin-top:6px;"><button class="purple-btn next-turn-btn" style="width:100%;">Zug beenden → nächster Spieler</button></div>'
+        : (p.active && p.hp > 0 ? '<div style="margin-top:6px;"><button class="purple-btn give-turn-btn" style="width:100%;opacity:0.85;">▶ Zug geben</button></div>' : '')}
+      ${p.hp <= 0 ? '<div style="margin-top:4px;font-size:11px;color:var(--danger);">💀 Bewusstlos – wird beim Zugwechsel übersprungen</div>' : ''}
+      ${!p.active ? '<div style="margin-top:4px;font-size:11px;opacity:0.7;">⏸ Setzt aus – wird beim Zugwechsel übersprungen</div>' : ''}`;
 
       div.querySelectorAll('.hp-btn-gm').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -701,7 +727,7 @@ export default async function GMView({ id }) {
         });
       });
 
-      const toggleBtn = div.querySelector('.purple-btn:not(.next-turn-btn)');
+      const toggleBtn = div.querySelector('.purple-btn:not(.next-turn-btn):not(.give-turn-btn)');
       toggleBtn?.addEventListener('click', async (e) => {
         e.stopPropagation();
         p.active = !p.active;
@@ -712,16 +738,28 @@ export default async function GMView({ id }) {
 
       const ntBtn = div.querySelector('.next-turn-btn');
       ntBtn?.addEventListener('click', (e) => { e.stopPropagation(); nextTurn(); });
+      const gtBtn = div.querySelector('.give-turn-btn');
+      gtBtn?.addEventListener('click', (e) => { e.stopPropagation(); setTurnTo(i); });
 
       div.addEventListener('click', () => showCharModal(p));
       list.appendChild(div);
     });
   }
 
+  async function setTurnTo(index) {
+    if (index < 0 || index >= players.length) return;
+    currentIndex = index;
+    renderPlayers();
+    const p = players[currentIndex];
+    await fetch('/api/campaign/' + campaignId + '/game/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: p.id, playerName: p.name }) });
+  }
+
   async function nextTurn() {
     if (players.length === 0) return;
+    const canAct = pl => pl.active && pl.hp > 0;
+    if (!players.some(canAct)) { showToast('Kein Spieler kann gerade am Zug sein (alle setzen aus oder sind bewusstlos)', 'info'); return; }
     let tries = 0;
-    do { currentIndex = (currentIndex + 1) % players.length; tries++; } while (!players[currentIndex].active && tries < players.length);
+    do { currentIndex = (currentIndex + 1) % players.length; tries++; } while (!canAct(players[currentIndex]) && tries < players.length);
     renderPlayers();
     const p = players[currentIndex];
     await fetch('/api/campaign/' + campaignId + '/game/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerId: p.id, playerName: p.name }) });
@@ -954,6 +992,26 @@ export default async function GMView({ id }) {
     }
   });
   document.getElementById('gmChatInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('gmChatSend').click(); });
+
+  // End game
+  const endModal = document.getElementById('gmEndModal');
+  document.getElementById('gmEndGame').addEventListener('click', () => { endModal.style.display = 'flex'; });
+  document.getElementById('gmEndCancel').addEventListener('click', () => { endModal.style.display = 'none'; });
+  document.getElementById('gmEndConfirm').addEventListener('click', async () => {
+    const btn = document.getElementById('gmEndConfirm');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/campaign/' + campaignId + '/end', { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text() || 'Spiel konnte nicht beendet werden');
+      gameEndedLocally = true;
+      endModal.style.display = 'none';
+      showToast('Spiel beendet', 'success');
+      navigate('/campaign/' + campaignId);
+    } catch (err) {
+      showToast('Fehler: ' + (err.message || ''), 'error');
+      btn.disabled = false;
+    }
+  });
 
   // Load decisions
   async function loadDecisions() {

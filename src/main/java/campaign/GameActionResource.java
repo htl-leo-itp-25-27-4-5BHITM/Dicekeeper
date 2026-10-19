@@ -320,8 +320,10 @@ public class GameActionResource {
             return authorizationError;
         }
 
+        // Oldest first: clients append live decisions at the end, so the order stays stable
         List<GroupDecision> list = GroupDecision.find(
-                "campaignId = ?1 order by createdAt desc", campaignId).list();
+                "campaignId = ?1 order by createdAt asc, id asc", campaignId).list();
+        Long viewerId = currentPlayerId();
         return Response.ok(list.stream().map(d -> Map.of(
                 "id", d.id,
                 "title", d.title != null ? d.title : "",
@@ -330,7 +332,9 @@ public class GameActionResource {
                 "no", d.noVotes,
                 "totalPlayers", d.totalPlayers,
                 "status", d.status != null ? d.status : "PENDING",
-                "createdAt", d.createdAt != null ? d.createdAt : 0
+                "createdAt", d.createdAt != null ? d.createdAt : 0,
+                "decisionMade", d.decisionMade != null ? d.decisionMade : "",
+                "hasVoted", GroupDecisionVote.count("decisionId = ?1 and playerId = ?2", d.id, viewerId) > 0
         )).collect(Collectors.toList())).build();
     }
 
@@ -741,13 +745,7 @@ public class GameActionResource {
         }
 
         GameState.CampaignGameState state = gameState.getOrCreate(campaignId);
-        state.clearFog();
-        state.currentTurnPlayerId = null;
-        state.playerHp.clear();
-        state.playerMaxHp.clear();
-        state.playerActive.clear();
-        state.lastDiceRoll = null;
-        state.clearDmMessages();
+        state.resetSession();
         // Keep map markers (they are placed before the game starts)
         if (isCampaignStarted(campaignId)) {
             state.stampPlayerMarkers();

@@ -103,12 +103,13 @@ export default async function TableView({ id }) {
         const pRes = await fetch('/api/player/id/' + cp.playerId);
         if (!pRes.ok) continue;
         const pd = await pRes.json();
-        let hp = 10, maxHp = 10;
+        let hp = 10, maxHp = 10, characterName = null;
         if (cp.characterId) {
           try {
             const cRes = await fetch('/api/character/' + cp.characterId);
             if (cRes.ok) {
               const ch = await cRes.json();
+              characterName = ch.name || null;
               const conScore = ch.abilityScores?.find(a => a.abilityName?.toLowerCase() === 'constitution');
               const conMod = conScore ? Math.floor((conScore.score - 10) / 2) : 0;
               const lvl = ch.level || 1;
@@ -125,6 +126,7 @@ export default async function TableView({ id }) {
         players.push({
           id: pid,
           name: playerLoginName(pd),
+          characterName,
           characterId: cp.characterId,
           hp: restoredHp,
           maxHp: restoredMaxHp,
@@ -212,7 +214,7 @@ export default async function TableView({ id }) {
       markers: mapMarkers,
       readOnly: true,
       isMaximized: false,
-      players: players.map(p => ({ id: p.id, name: p.name })),
+      players: players.map(p => ({ id: p.id, name: p.characterName || p.name })),
       fogOfWar: true,
       fogSolid: true,
       fogPositions: getPlayerMarkerPositions(),
@@ -365,6 +367,8 @@ export default async function TableView({ id }) {
       },
 
       campaign_updated: () => eventSource?.reconcile('campaign-updated'),
+      campaign_ended: () => { window.location.hash = '#/campaign/' + campaignId; },
+      campaign_deleted: () => { window.location.hash = '#/campaigns'; },
       state_reset: () => eventSource?.reconcile('state-reset')
     }, {
       loadSnapshot: () => loadTableRecoverySnapshot(campaignId, player.id),

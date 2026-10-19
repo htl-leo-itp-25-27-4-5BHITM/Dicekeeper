@@ -103,13 +103,12 @@ public class PlayerResource {
         String originalFileName = fileUpload.fileName();
         if (!isValidImageType(originalFileName)) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Nur JPG-, PNG- oder SVG-Bilder sind erlaubt")
+                    .entity("Nur JPG-, PNG-, SVG-, WebP- oder GIF-Bilder sind erlaubt")
                     .build();
         }
 
         try {
-            // Delete old profile picture if exists
-            deleteOwnProfilePicture(player);
+            String previousPicture = player.profilePicture;
 
             java.nio.file.Path profilesDir = Paths.get(uploadDir, "profiles").toAbsolutePath();
             Files.createDirectories(profilesDir);
@@ -117,7 +116,7 @@ public class PlayerResource {
             String extension = "";
             int dot = originalFileName.lastIndexOf('.');
             if (dot >= 0) {
-                extension = originalFileName.substring(dot);
+                extension = originalFileName.substring(dot).toLowerCase(java.util.Locale.ROOT);
             }
             String newFileName = "player-" + id + "-" + UUID.randomUUID() + extension;
 
@@ -125,6 +124,8 @@ public class PlayerResource {
             Files.move(fileUpload.uploadedFile(), target, StandardCopyOption.REPLACE_EXISTING);
             UploadPermissionUtil.ensureSharedReadAccess(target);
 
+            // Remove the old picture only after the new one is stored, so a failed upload keeps it.
+            deleteOwnProfilePicture(player.id, previousPicture);
             player.profilePicture = UploadPaths.publicPath(UploadPaths.PROFILES, newFileName);
 
             return Response.ok(player).build();
@@ -168,17 +169,16 @@ public class PlayerResource {
         return accountDeletionResponses.toResponse(accountDeletionCoordinator.delete(securityIdentity, id));
     }
 
-    private void deleteOwnProfilePicture(Player player) {
+    private void deleteOwnProfilePicture(Long playerId, String picture) {
         // Only files this server created for this player are deleted (player-<id>-<uuid>.ext in uploads/profiles).
-        if (player.profilePicture == null
-                || !player.profilePicture.startsWith("/uploads/profiles/player-" + player.id + "-")) {
+        if (picture == null || !picture.startsWith("/uploads/profiles/player-" + playerId + "-")) {
             return;
         }
-        UploadPaths.resolveManagedFile(uploadDir, player.profilePicture, UploadPaths.PROFILES).ifPresent(file -> {
+        UploadPaths.resolveManagedFile(uploadDir, picture, UploadPaths.PROFILES).ifPresent(file -> {
             try {
                 Files.deleteIfExists(file);
             } catch (IOException e) {
-                System.err.println("Failed to delete old file " + player.profilePicture + ": " + e.getMessage());
+                System.err.println("Failed to delete old file " + picture + ": " + e.getMessage());
             }
         });
     }
@@ -187,6 +187,7 @@ public class PlayerResource {
         if (filename == null) return false;
         String lower = filename.toLowerCase();
         return lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
-                lower.endsWith(".png") || lower.endsWith(".svg");
+                lower.endsWith(".png") || lower.endsWith(".svg") ||
+                lower.endsWith(".webp") || lower.endsWith(".gif");
     }
 }

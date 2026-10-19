@@ -156,6 +156,21 @@ export default async function PlayerView({ id }) {
   let campaign = null, character = null, campaignPlayers = [], playerNameMap = {}, characterMap = {};
   let currentHP = 0, maxHP = 0, diceHistory = [], decisions = [], votedDecisions = {};
   let eventSource = null, currentTurnPlayerId = null, selectedDiceSides = 20;
+  let partyHp = {}, partyMaxHp = {}, partyActive = {};
+
+  /** Server tells us which decisions we already voted on (survives reloads). */
+  function syncVotedFromDecisions() {
+    for (const d of decisions) {
+      if (d.hasVoted && !votedDecisions[d.id]) votedDecisions[d.id] = true;
+    }
+  }
+
+  function applyPartyState(state) {
+    if (!state) return;
+    if (state.playerHp) partyHp = { ...state.playerHp };
+    if (state.playerMaxHp) partyMaxHp = { ...state.playerMaxHp };
+    if (state.playerActive) partyActive = { ...state.playerActive };
+  }
   const liveStatus = createHeadlessLiveStatus({
     onRetry: () => eventSource?.retry()
   });
@@ -222,10 +237,12 @@ export default async function PlayerView({ id }) {
   // ===== SSE =====
   function applyRecoverySnapshot(snapshot) {
     const nextTurn = snapshot.state.currentTurnPlayerId;
+    applyPartyState(snapshot.state);
     currentHP = snapshot.state.playerHp?.[currentPlayer.id] ?? currentHP;
     maxHP = snapshot.state.playerMaxHp?.[currentPlayer.id] ?? maxHP;
     if (nextTurn !== undefined && nextTurn !== -1) currentTurnPlayerId = nextTurn;
     decisions = snapshot.decisions;
+    syncVotedFromDecisions();
     playerMapMarkers = snapshot.markers;
     campaign = snapshot.campaign;
     activeMap = getActiveCampaignMap(campaign);
@@ -262,6 +279,9 @@ export default async function PlayerView({ id }) {
       if (addDmMessage(d)) showToast('📣 DM: ' + d.text, 'info', 6000);
       },
       hp: d => {
+      partyHp[d.playerId] = d.currentHp; partyMaxHp[d.playerId] = d.maxHp;
+      renderParty();
+      if (isMobile()) renderMobParty();
       if (d.playerId === currentPlayer.id) {
         currentHP = d.currentHp; maxHP = d.maxHp; renderCoreStats();
         if (d.delta < 0) showToast('Du hast ' + Math.abs(d.delta) + ' Schaden erhalten! ❤️ ' + currentHP + '/' + maxHP, 'error');
@@ -309,11 +329,26 @@ export default async function PlayerView({ id }) {
         if (playerMapCanvas && d.data) playerMapCanvas.loadExplorationData(d.data);
         if (mobileMapCanvas && d.data) mobileMapCanvas.loadExplorationData(d.data);
       },
-      player_active: () => {
+      player_active: d => {
+      if (d) partyActive[d.playerId] = d.active;
       renderParty();
       if (isMobile()) renderMobParty();
       },
       campaign_updated: () => eventSource?.reconcile('campaign-updated'),
+      campaign_ended: () => {
+        showToast('🏁 Der Dungeon Master hat das Spiel beendet', 'info', 5000);
+        navigate('/campaign/' + campaignId);
+      },
+      campaign_deleted: () => {
+        showToast('Die Kampagne wurde gelöscht', 'info');
+        navigate('/campaigns');
+      },
+      roster_updated: d => {
+        if (d && d.action === 'removed' && Number(d.playerId) === Number(currentPlayer.id)) {
+          showToast('Du wurdest aus der Kampagne entfernt', 'error');
+          navigate('/campaigns');
+        }
+      },
       state_reset: () => eventSource?.reconcile('state-reset')
     }, {
       loadSnapshot: () => loadPlayerRecoverySnapshot(campaignId, currentPlayer.id),
@@ -447,6 +482,7 @@ export default async function PlayerView({ id }) {
         const stateRes = await fetch('/api/campaign/' + campaignId + '/game/state', { cache: 'no-store' });
         if (stateRes.ok) {
           const state = await stateRes.json();
+          applyPartyState(state);
           if (state.playerHp?.[currentPlayer.id] !== undefined) currentHP = state.playerHp[currentPlayer.id];
           if (state.playerMaxHp?.[currentPlayer.id] !== undefined) maxHP = state.playerMaxHp[currentPlayer.id];
           setDmMessages(state.dmMessages);
@@ -465,7 +501,7 @@ export default async function PlayerView({ id }) {
         }
       } catch(e) {}
 
-      try { const r = await fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }); if (r.ok) decisions = await r.json(); } catch(e) {}
+      try { const r = await fetch('/api/campaign/' + campaignId + '/game/decisions', { cache: 'no-store' }); if (r.ok) { decisions = await r.json(); syncVotedFromDecisions(); } } catch(e) {}
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/map-markers', { cache: 'no-store' }); if (r.ok) playerMapMarkers = await r.json(); } catch(e) {}
       try { const r = await fetch('/api/campaign/' + campaignId + '/game/fog-exploration', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d.data) fogExplorationData = d.data; } } catch(e) {}
 
@@ -534,7 +570,7 @@ export default async function PlayerView({ id }) {
       </div>
 
       <div class="pv2-section pv2-scrollable">
-        <div class="pv2-section-title">Fertigkeiten</div>
+        <div class="pv2-section-title">Fertigkeiten <span class="pv2-skill-legend"><span class="pv2-skill-dot prof"></span> geübt</span></div>
         ${SKILLS.map(skill => {
           const m = calcMod(getScore(skill.ability));
           const prof = bgSkills.some(s => s === skill.name.toLowerCase());
@@ -542,6 +578,7 @@ export default async function PlayerView({ id }) {
           return `<div class="pv2-skill-row">
             <span class="pv2-skill-dot ${prof ? 'prof' : ''}"></span>
             <span class="pv2-skill-name">${skill.de}</span>
+              <span class="pv2-skill-abbr">${ABILITY_ABBR[skill.ability]}</span>
             <span class="pv2-skill-bonus ${bonus >= 0 ? 'pos' : 'neg'}">${fmtMod(bonus)}</span>
           </div>`;
         }).join('')}
@@ -587,7 +624,7 @@ export default async function PlayerView({ id }) {
     }
     const allPlayers = campaignPlayers
       .filter(cp => cp.role === 'PLAYER' && isInGame(cp))
-      .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
+      .map(cp => ({ id: cp.playerId, name: characterMap[cp.playerId]?.name || playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     playerMapCanvas = createMapCanvas(box, {
       mapImageUrl: resolveMapUrl(map.path, { variant: 'canvas' }),
@@ -764,17 +801,29 @@ export default async function PlayerView({ id }) {
 
   function buildPartyHtml() {
     return campaignPlayers.filter(isInGame).map(cp => {
-      const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
+      const userName = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
       const isDM = cp.role === 'DM';
       const ch = characterMap[cp.playerId];
-      const detail = isDM ? 'Spielleiter' : (ch ? [ch.race, ch.characterClass?.name].filter(Boolean).join(' · ') || 'Abenteurer' : 'Abenteurer');
+      const name = !isDM && ch?.name ? ch.name : userName;
+      const detailParts = isDM ? ['Spielleiter'] : [ch?.race, ch?.characterClass?.name, ch ? 'Stufe ' + (ch.level || 1) : null].filter(Boolean);
+      const detail = detailParts.join(' · ') || 'Abenteurer';
       const isTurn = currentTurnPlayerId === cp.playerId;
       const isMe = cp.playerId === currentPlayer.id;
-      return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
+      const hp = partyHp[cp.playerId] ?? (isMe ? currentHP : undefined);
+      const max = partyMaxHp[cp.playerId] ?? (isMe ? maxHP : undefined);
+      const sittingOut = partyActive[cp.playerId] === false;
+      let hpHtml = '';
+      if (!isDM && hp !== undefined && max) {
+        const pct = Math.max(0, Math.min(100, Math.round((hp / max) * 100)));
+        const color = pct <= 25 ? 'var(--danger)' : pct <= 50 ? 'var(--gold)' : 'var(--accent-green)';
+        hpHtml = `<div class="pv2-party-hp" title="Lebenspunkte"><span class="pv2-party-hp-text" style="color:${color}">❤️ ${hp}/${max}</span><div class="pv2-party-hp-bar"><div style="width:${pct}%;background:${color}"></div></div></div>`;
+      }
+      return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''} ${sittingOut ? 'sitting-out' : ''}">
         <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(name)}</div>
         <div class="pv2-party-info">
           <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}</div>
-          <div class="pv2-party-detail">${esc(detail)}</div>
+          <div class="pv2-party-detail">${esc(detail)}${!isDM && ch?.name ? ' · ' + esc(userName) : ''}${sittingOut ? ' · setzt aus' : ''}</div>
+          ${hpHtml}
         </div>
         ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
         <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
@@ -903,7 +952,7 @@ export default async function PlayerView({ id }) {
         </div>
       </div>
       <div class="pv2-mob-char-section">
-        <div class="pv2-section-title">Fertigkeiten</div>
+        <div class="pv2-section-title">Fertigkeiten <span class="pv2-skill-legend"><span class="pv2-skill-dot prof"></span> geübt</span></div>
         <div class="pv2-mob-skills-list">
           ${SKILLS.map(skill => {
             const m = calcMod(getScore(skill.ability));
@@ -912,6 +961,7 @@ export default async function PlayerView({ id }) {
             return `<div class="pv2-skill-row">
               <span class="pv2-skill-dot ${prof ? 'prof' : ''}"></span>
               <span class="pv2-skill-name">${skill.de}</span>
+              <span class="pv2-skill-abbr">${ABILITY_ABBR[skill.ability]}</span>
               <span class="pv2-skill-bonus ${bonus >= 0 ? 'pos' : 'neg'}">${fmtMod(bonus)}</span>
             </div>`;
           }).join('')}
@@ -935,7 +985,7 @@ export default async function PlayerView({ id }) {
     }
     const allPlayers = campaignPlayers
       .filter(cp => cp.role === 'PLAYER' && isInGame(cp))
-      .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
+      .map(cp => ({ id: cp.playerId, name: characterMap[cp.playerId]?.name || playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     mobileMapCanvas = createMapCanvas(box, {
       mapImageUrl: resolveMapUrl(map.path, { variant: 'canvas' }),
@@ -1058,23 +1108,7 @@ export default async function PlayerView({ id }) {
 
   function renderMobParty() {
     const list = document.getElementById('pvMobPartyList'); if (!list) return;
-    list.innerHTML = campaignPlayers.filter(isInGame).map(cp => {
-      const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
-      const isDM = cp.role === 'DM';
-      const ch = characterMap[cp.playerId];
-      const detail = isDM ? 'Spielleiter' : (ch ? [ch.race, ch.characterClass?.name].filter(Boolean).join(' · ') || 'Abenteurer' : 'Abenteurer');
-      const isTurn = currentTurnPlayerId === cp.playerId;
-      const isMe = cp.playerId === currentPlayer.id;
-      return `<div class="pv2-party-member ${isTurn ? 'on-turn' : ''} ${isMe ? 'is-me' : ''}">
-        <div class="pv2-party-avatar ${isDM ? 'dm' : ''}">${isDM ? '👑' : initials(name)}</div>
-        <div class="pv2-party-info">
-          <div class="pv2-party-name">${esc(name)}${isMe ? ' (Du)' : ''}</div>
-          <div class="pv2-party-detail">${esc(detail)}</div>
-        </div>
-        ${isTurn && !isDM ? '<span class="pv2-turn-badge">Am Zug</span>' : ''}
-        <span class="pv2-party-role ${isDM ? 'dm' : 'player'}">${cp.role}</span>
-      </div>`;
-    }).join('');
+    list.innerHTML = buildPartyHtml();
   }
 
   function renderMobNotes() {

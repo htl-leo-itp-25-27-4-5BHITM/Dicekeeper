@@ -29,6 +29,7 @@ public class CampaignDeletionService {
 
         Long campaignId = campaign.id;
         broadcaster.broadcast(campaignId, "campaign_deleted", Map.of("campaignId", campaignId));
+        broadcaster.broadcastLobby("deleted", campaignId);
 
         GroupDecisionVote.delete("campaignId", campaignId);
         GroupDecision.delete("campaignId", campaignId);

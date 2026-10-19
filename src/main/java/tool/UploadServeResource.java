@@ -43,6 +43,9 @@ public class UploadServeResource {
             }
             return Response.ok(file.toFile(), contentType)
                     .header("Cache-Control", "private, max-age=3600")
+                    // Uploaded SVGs may contain scripts: never let an upload run code in the app's origin.
+                    .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox")
+                    .header("X-Content-Type-Options", "nosniff")
                     .build();
         } catch (IOException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();

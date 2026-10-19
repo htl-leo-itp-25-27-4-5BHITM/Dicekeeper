@@ -6,6 +6,19 @@ export function esc(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 }
 
+/** Escapes text from the DB but keeps <br> line breaks (class/background descriptions). */
+export function richText(s) {
+  return esc(s).replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+}
+
+/** Plain-text teaser: strips <br> tags and returns the first sentence (max ~maxLen chars). */
+export function teaser(s, maxLen = 90) {
+  const plain = String(s || '').replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+  const firstSentence = plain.match(/^.*?[.!?](\s|$)/);
+  const text = firstSentence ? firstSentence[0].trim() : plain;
+  return text.length > maxLen ? text.slice(0, maxLen).replace(/\s+\S*$/, '') + ' …' : text;
+}
+
 export function initials(name) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);

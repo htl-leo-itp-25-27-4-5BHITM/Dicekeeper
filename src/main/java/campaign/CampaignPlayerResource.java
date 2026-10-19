@@ -428,6 +428,7 @@ public class CampaignPlayerResource {
                 "action", action,
                 "playerId", playerId
         ));
+        broadcaster.broadcastLobby("roster_" + action, campaignId);
     }
 
     private CampaignPlayer findMembership(Long campaignId, Long playerId) {

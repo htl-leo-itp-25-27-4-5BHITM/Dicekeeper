@@ -3,7 +3,7 @@
  */
 import { navigate } from '../router.js';
 import { getPlayer } from '../services/auth.js';
-import { esc } from '../services/utils.js';
+import { esc, richText, teaser } from '../services/utils.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { getGuideSections, getGuideStats, getLandingGuideSteps } from '../guide/guideContent.js';
 
@@ -93,9 +93,19 @@ export default async function GuideView() {
           <aside class="guide-toc">
             <div class="guide-toc-title">Inhalt</div>
             ${sections.map((section, index) => `<button data-guide-target="guide-${esc(section.id)}"><span>${index + 1}</span>${esc(section.title)}</button>`).join('')}
+            <button data-guide-target="guide-classes"><span>⚔️</span>Klassen</button>
           </aside>
           <div class="guide-content">
             ${sections.map(renderSection).join('')}
+            <article class="guide-section" id="guide-classes">
+              <div class="guide-section-marker">⚔️</div>
+              <div class="guide-section-body">
+                <div class="guide-section-kicker">Alle</div>
+                <h2>Klassen im Überblick</h2>
+                <p class="guide-section-summary">Alle Klassen, die du bei der Charaktererstellung wählen kannst – auch ohne Kampagne einsehbar. „Stufe“ ist das Level deines Charakters (Start: Stufe 1); höhere Stufen erhöhen Lebenspunkte und Übungsbonus.</p>
+                <div id="guideClassList" class="guide-class-list">${player ? '<div style="opacity:0.6">Lade Klassen…</div>' : '<div style="opacity:0.7">Melde dich an, um alle Klassen zu sehen.</div>'}</div>
+              </div>
+            </article>
           </div>
         </div>
       </main>
@@ -113,6 +123,27 @@ export default async function GuideView() {
       document.getElementById(button.dataset.guideTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
+
+  if (player) {
+    try {
+      const r = await fetch('/api/classes', { cache: 'no-store' });
+      const classes = r.ok ? await r.json() : [];
+      const listEl = document.getElementById('guideClassList');
+      if (listEl) {
+        listEl.innerHTML = classes.length === 0
+          ? '<div style="opacity:0.7">Keine Klassen gefunden.</div>'
+          : classes.map(c => `<details class="guide-class-item"><summary><strong>${esc(c.name)}</strong><span>${esc(teaser(c.description, 110))}</span></summary><div class="guide-class-desc">${richText(c.description || '')}</div></details>`).join('');
+      }
+    } catch (e) {
+      const listEl = document.getElementById('guideClassList');
+      if (listEl) listEl.innerHTML = '<div style="opacity:0.7">Klassen konnten nicht geladen werden.</div>';
+    }
+  }
+
+  const query = new URLSearchParams((window.location.hash.split('?')[1]) || '');
+  if (query.get('section')) {
+    document.getElementById('guide-' + query.get('section'))?.scrollIntoView({ block: 'start' });
+  }
 
   return () => {
     if (player) destroyHeader();

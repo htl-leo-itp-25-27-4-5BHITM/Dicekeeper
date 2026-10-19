@@ -353,51 +353,10 @@ export default async function CampaignDetailView({ id }) {
     };
   }
 
-  // --- DM View ---
-  function renderDMView() {
-    content.innerHTML = `
-      <div class="your-role" style="margin-bottom:16px;">Deine Rolle: <span class="player-role role-dm">DM</span></div>
-      <div class="form-group"><label>Titel</label><input type="text" id="cdTitle" value="${esc(campaign.name || '')}" /></div>
-      <div class="form-group"><label>Beschreibung</label><textarea id="cdDesc">${esc(campaign.description || '')}</textarea></div>
-      <div class="form-group"><label>Story (nur für dich)</label><textarea id="cdStory" class="story">${esc(campaign.story || '')}</textarea><div style="font-size:11px;opacity:0.6;margin-top:4px;">🔒 Nur für den DM sichtbar</div></div>
-      <div class="form-group"><label>Max. Spieler</label><input type="number" id="cdMaxPlayers" min="1" step="1" value="${campaign.maxPlayerCount ?? ''}" aria-describedby="cdMaxPlayersError" style="max-width:150px;" /><div id="cdMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div></div>
-      <div class="switch-wrapper">
-        <span class="switch-label-text">Sichtbarkeit</span>
-        <div class="switch ${campaign.isPublic ? 'public' : 'private'}" id="cdSwitch">
-          <div class="switch-thumb"></div>
-          <div class="switch-option option-public">Öffentlich</div>
-          <div class="switch-option option-private">Privat</div>
-        </div>
-      </div>
-      ${renderMapManager()}
-      <div class="players-section"><div class="players-title">Beigetretene Spieler</div><div class="players" id="cdPlayersList"></div></div>
-      <div class="footer">
-        <button class="btn btn-secondary" id="cdCancel">Abbrechen</button>
-        <button class="btn btn-danger" id="cdDelete">Löschen</button>
-        <button class="btn btn-primary" id="cdCockpit">🎮 Cockpit</button>
-        <button class="btn btn-primary" id="cdUpdate">Aktualisieren</button>
-      </div>
-    `;
-
-    isPublic = campaign.isPublic || false;
-    const switchEl = document.getElementById('cdSwitch');
-    switchEl.onclick = () => {
-      isPublic = !isPublic;
-      switchEl.classList.toggle('public', isPublic);
-      switchEl.classList.toggle('private', !isPublic);
-      updateDmDirtyState();
-    };
-
-    bindMapManagerEvents();
-    const maxPlayersInput = document.getElementById('cdMaxPlayers');
-    const validateMaxPlayers = bindMaxPlayerCountValidation(
-      maxPlayersInput,
-      document.getElementById('cdMaxPlayersError'),
-      updateDmDirtyState
-    );
-
-    // Render players for DM
+  function renderDmPlayersList() {
     const playersList = document.getElementById('cdPlayersList');
+    if (!playersList) return;
+    playersList.innerHTML = '';
     campaignPlayers.forEach(cp => {
       const name = playerNameMap[cp.playerId] || `Spieler ${cp.playerId}`;
       const div = document.createElement('div');
@@ -446,6 +405,52 @@ export default async function CampaignDetailView({ id }) {
 
       playersList.appendChild(div);
     });
+  }
+
+  // --- DM View ---
+  function renderDMView() {
+    content.innerHTML = `
+      <div class="your-role" style="margin-bottom:16px;">Deine Rolle: <span class="player-role role-dm">DM</span></div>
+      <div class="form-group"><label>Titel</label><input type="text" id="cdTitle" value="${esc(campaign.name || '')}" /></div>
+      <div class="form-group"><label>Beschreibung</label><textarea id="cdDesc">${esc(campaign.description || '')}</textarea></div>
+      <div class="form-group"><label>Story (nur für dich)</label><textarea id="cdStory" class="story">${esc(campaign.story || '')}</textarea><div style="font-size:11px;opacity:0.6;margin-top:4px;">🔒 Nur für den DM sichtbar</div></div>
+      <div class="form-group"><label>Max. Spieler</label><input type="number" id="cdMaxPlayers" min="1" step="1" value="${campaign.maxPlayerCount ?? ''}" aria-describedby="cdMaxPlayersError" style="max-width:150px;" /><div id="cdMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div></div>
+      <div class="switch-wrapper">
+        <span class="switch-label-text">Sichtbarkeit</span>
+        <div class="switch ${campaign.isPublic ? 'public' : 'private'}" id="cdSwitch">
+          <div class="switch-thumb"></div>
+          <div class="switch-option option-public">Öffentlich</div>
+          <div class="switch-option option-private">Privat</div>
+        </div>
+      </div>
+      ${renderMapManager()}
+      <div class="players-section"><div class="players-title">Beigetretene Spieler</div><div class="players" id="cdPlayersList"></div></div>
+      <div class="footer">
+        <button class="btn btn-secondary" id="cdCancel">Abbrechen</button>
+        <button class="btn btn-danger" id="cdDelete">Löschen</button>
+        <button class="btn btn-primary" id="cdCockpit">🎮 Cockpit</button>
+        <button class="btn btn-primary" id="cdUpdate">Aktualisieren</button>
+      </div>
+    `;
+
+    isPublic = campaign.isPublic || false;
+    const switchEl = document.getElementById('cdSwitch');
+    switchEl.onclick = () => {
+      isPublic = !isPublic;
+      switchEl.classList.toggle('public', isPublic);
+      switchEl.classList.toggle('private', !isPublic);
+      updateDmDirtyState();
+    };
+
+    bindMapManagerEvents();
+    const maxPlayersInput = document.getElementById('cdMaxPlayers');
+    const validateMaxPlayers = bindMaxPlayerCountValidation(
+      maxPlayersInput,
+      document.getElementById('cdMaxPlayersError'),
+      updateDmDirtyState
+    );
+
+    renderDmPlayersList();
 
     document.getElementById('cdCancel').onclick = () => navigate('/campaigns');
     document.getElementById('cdCockpit').onclick = () => navigate('/campaign/' + id + '/cockpit');
@@ -501,7 +506,7 @@ export default async function CampaignDetailView({ id }) {
     };
   }
 
-  async function loadCampaignData() {
+  async function loadCampaignData({ live = false } = {}) {
     try {
       const campRes = await fetch('/api/campaign/' + id + '?playerId=' + player.id, { cache: 'no-store' });
       if (!campRes.ok) { setStatus('Kampagne nicht gefunden', true); return; }
@@ -519,7 +524,15 @@ export default async function CampaignDetailView({ id }) {
 
       const roleRes = await fetch('/api/campaign-player/' + id + '/' + player.id + '/role', { cache: 'no-store' });
       let myCP = null;
+      const previousRole = playerRole;
+      playerRole = null;
       if (roleRes.ok) { myCP = await roleRes.json(); playerRole = myCP.role; }
+      if (live && previousRole === 'PLAYER' && !playerRole) {
+        stopLiveUpdates();
+        setStatus('Du wurdest aus der Kampagne entfernt', true);
+        navigate('/campaigns');
+        return;
+      }
 
       // Redirect to game UIs if campaign is started
       if (campaign.started) {
@@ -528,7 +541,12 @@ export default async function CampaignDetailView({ id }) {
       }
 
       if (disposed) return;
-      if (playerRole === 'DM') renderDMView();
+      if (playerRole === 'DM') {
+        // Live refresh keeps unsaved form edits of the DM and only redraws the roster
+        if (live && document.getElementById('cdPlayersList')) renderDmPlayersList();
+        else renderDMView();
+        watchForCampaignStart();
+      }
       else if (playerRole === 'PLAYER') { renderPlayerView(); watchForCampaignStart(); }
       else { stopLiveUpdates(); renderNotJoinedView(); }
     } catch (err) { setStatus('Fehler: ' + err.message, true); }
@@ -539,8 +557,12 @@ export default async function CampaignDetailView({ id }) {
     if (disposed) return;
     if (!closeEvents) {
       closeEvents = connectCampaignEvents(id, {
-        campaign_started: () => reloadLobby(),
+        campaign_started: () => {
+          if (playerRole === 'PLAYER') showToast('⚔️ Die Kampagne wurde gestartet!', 'info');
+          return reloadLobby();
+        },
         campaign_updated: () => reloadLobby(),
+        campaign_ended: () => reloadLobby(),
         roster_updated: () => reloadLobby(),
         campaign_deleted: () => {
           setStatus('Die Kampagne wurde gelöscht', true);
@@ -552,7 +574,7 @@ export default async function CampaignDetailView({ id }) {
       });
     }
     // Fallback in case the event stream is blocked or drops an event.
-    if (!startPollTimer) {
+    if (!startPollTimer && playerRole === 'PLAYER') {
       startPollTimer = setInterval(pollCampaignStarted, START_POLL_INTERVAL_MS);
     }
   }
@@ -576,7 +598,7 @@ export default async function CampaignDetailView({ id }) {
       try {
         do {
           reloadQueued = false;
-          await loadCampaignData();
+          await loadCampaignData({ live: true });
         } while (reloadQueued && !disposed);
       } finally {
         reloadInFlight = null;

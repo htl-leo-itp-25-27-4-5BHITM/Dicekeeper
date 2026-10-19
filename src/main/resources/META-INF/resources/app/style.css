@@ -1012,6 +1012,26 @@ body.has-header .guide-section { scroll-margin-top: 152px; }
   font-size: 26px; cursor: pointer; transition: background-color 0.2s;
 }
 .add-btn:hover { background-color: var(--green-primary-hover); }
+
+/* Plus icons drawn with CSS so they are exactly centred regardless of font metrics */
+.add-btn, .image-upload-icon, .map-upload-icon, .new-decision-btn {
+  position: relative; font-size: 0 !important; line-height: 0; padding: 0;
+  flex-shrink: 0; color: var(--text-primary);
+}
+.image-upload-icon, .map-upload-icon { color: var(--text-label); }
+.add-btn::before, .add-btn::after,
+.image-upload-icon::before, .image-upload-icon::after,
+.map-upload-icon::before, .map-upload-icon::after,
+.new-decision-btn::before, .new-decision-btn::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 40%; height: 2px; border-radius: 2px; background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.add-btn::before, .add-btn::after { height: 3px; }
+.add-btn::after, .image-upload-icon::after, .map-upload-icon::after, .new-decision-btn::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.new-decision-btn { color: white; }
 .logout-btn {
   background: transparent; color: var(--text-primary); border: 1px solid var(--border-light);
   padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background-color 0.2s;
@@ -1567,6 +1587,12 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 .roll-btn { width: 100%; padding: 12px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); color: rgba(var(--lp-dark-rgb),1); font-weight: 800; font-size: 15px; cursor: pointer; margin: 0 0 10px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; transition: all var(--transition-smooth); box-shadow: 0 2px 12px rgba(var(--gradient-start-rgb),0.2); }
 .roll-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(var(--gradient-start-rgb),0.3); }
 .roll-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* GM: end game */
+.gm-end-section { flex-shrink: 0; padding: 12px !important; }
+.gm-end-btn { width: 100%; padding: 11px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font-weight: 800; font-size: 14px; cursor: pointer; transition: all var(--transition-smooth); }
+.gm-end-btn:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); transform: translateY(-1px); }
+.dk-btn-primary.gm-end-confirm { background: var(--danger); color: #fff; }
 .or-divider { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-shrink: 0; }
 .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
 .or-divider span { font-size: 11px; opacity: 0.4; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
@@ -2404,7 +2430,7 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
   background: rgba(var(--glass-solid-rgb),0.6); border-radius: 16px; padding: 14px;
   border: 1px solid rgba(255,255,255,0.05);
 }
-.pv2-section.pv2-scrollable { max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
+.pv2-section.pv2-scrollable { max-height: 420px; overflow-y: auto; scrollbar-width: thin; }
 .pv2-section-title {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
   color: rgba(255,255,255,0.4); margin-bottom: 10px;
@@ -2425,17 +2451,20 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary); }
 
 .pv2-skill-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 5px 6px; border-radius: 8px; font-size: 13px;
+  padding: 7px 8px; border-radius: 8px; font-size: 14px; min-height: 32px;
   transition: background var(--transition-smooth);
 }
 .pv2-skill-row:hover { background: rgba(255,255,255,0.04); }
 .pv2-skill-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.2); flex-shrink: 0;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text-primary, #fff) 45%, transparent); flex-shrink: 0;
 }
 .pv2-skill-dot.prof { background: var(--accent-green); border-color: var(--accent-green); }
-.pv2-skill-name { flex: 1; color: rgba(255,255,255,0.6); }
-.pv2-skill-bonus { font-weight: 700; min-width: 28px; text-align: right; }
+.pv2-skill-name { flex: 1; color: var(--text-primary, #fff); opacity: 0.9; }
+.pv2-skill-abbr { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--text-secondary, rgba(255,255,255,0.6)); }
+.pv2-skill-bonus { font-weight: 800; font-size: 15px; min-width: 34px; text-align: right; }
+.pv2-skill-legend { float: right; display: inline-flex; align-items: center; gap: 5px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.pv2-section-title { color: var(--text-secondary, rgba(255,255,255,0.6)) !important; }
 .pv2-skill-bonus.pos { color: var(--accent-green); }
 .pv2-skill-bonus.neg { color: #ff8a80; }
 
@@ -3527,3 +3556,32 @@ body.table-view-active {
 .pv2-message-time { font-size: 10px; color: rgba(255, 255, 255, 0.45); margin-bottom: 2px; }
 .pv2-message-text { font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pv2-messages-empty { font-size: 12px; color: rgba(255, 255, 255, 0.4); padding: 4px 0; }
+/* Profile: avatar change feedback */
+.profile-avatar-hint { font-size: 12px; color: var(--text-secondary); text-align: center; margin: -6px 0 10px; max-width: 320px; line-height: 1.4; }
+.profile-avatar-hint.pending { color: var(--gold, #f5c451); font-weight: 600; }
+.profile-avatar-hint.success { color: var(--green-success); font-weight: 600; }
+.profile-avatar-hint.error { color: var(--status-error, var(--danger)); font-weight: 600; }
+#pvSave.has-pending { box-shadow: 0 0 0 2px var(--gold, #f5c451); }
+.character-preset-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: rgba(var(--accent-rgb, 74,222,128),0.15); color: var(--green-accent); vertical-align: middle; }
+
+/* =====================================================
+   Unified scrollbars (same look on every screen/browser)
+   ===================================================== */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb, rgba(var(--accent-rgb),0.35)) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb, rgba(var(--accent-rgb),0.35)); border-radius: 10px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(var(--accent-rgb),0.55); }
+*::-webkit-scrollbar-corner { background: transparent; }
+.pv2-party-hp { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.pv2-party-hp-text { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.pv2-party-hp-bar { flex: 1; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; min-width: 40px; }
+.pv2-party-hp-bar > div { height: 100%; border-radius: 999px; transition: width .3s ease; }
+.pv2-party-member.sitting-out { opacity: 0.55; }
+.guide-class-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.guide-class-item { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 14px; }
+.guide-class-item summary { cursor: pointer; display: flex; flex-direction: column; gap: 2px; list-style: none; }
+.guide-class-item summary::-webkit-details-marker { display: none; }
+.guide-class-item summary span { font-size: 12px; opacity: 0.7; }
+.guide-class-item[open] summary span { display: none; }
+.guide-class-desc { margin-top: 10px; font-size: 13px; line-height: 1.55; opacity: 0.9; }

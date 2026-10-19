@@ -51,6 +51,9 @@ public class SseBroadcaster {
     TransactionSynchronizationRegistry transactionRegistry;
 
     private final ConcurrentHashMap<Long, CampaignChannel> channels = new ConcurrentHashMap<>();
+
+    /** Pseudo campaign id of the lobby channel (campaign list on the start page). */
+    public static final Long LOBBY_CHANNEL = -1L;
     private long heartbeatTimerId;
 
     record BufferedEvent(long id, String name, String json) {
@@ -168,6 +171,17 @@ public class SseBroadcaster {
                 send(campaignId, channel, conn, toEvent(conn.sse, buffered));
             }
         }
+    }
+
+    /**
+     * Tells every client on the campaign list that campaigns changed (created, updated, started,
+     * ended, deleted, roster). The payload only carries ids; clients re-fetch what they may see.
+     */
+    public void broadcastLobby(String reason, Long campaignId) {
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("reason", reason);
+        payload.put("campaignId", campaignId);
+        broadcast(LOBBY_CHANNEL, "lobby_changed", payload);
     }
 
     private OutboundSseEvent toEvent(Sse sse, BufferedEvent buffered) {

@@ -174,6 +174,7 @@ public class CampaignResource {
 
         CampaignPlayer dm = new CampaignPlayer(campaign.id, campaign.playerId, "DM");
         dm.persist();
+        broadcaster.broadcastLobby("created", campaign.id);
 
         return Response.status(Response.Status.CREATED).entity(new CampaignDTO(campaign, true)).build();
     }
@@ -234,8 +235,44 @@ public class CampaignResource {
         if (Boolean.TRUE.equals(updated.started)) {
             broadcaster.broadcast(id, "campaign_started", new CampaignDTO(existing, false));
         }
+        broadcaster.broadcastLobby(Boolean.TRUE.equals(updated.started) ? "started" : "updated", id);
 
         return Response.ok(dto).build();
+    }
+
+    /**
+     * Ends a running game: the campaign returns to the lobby state, the live game state
+     * (turn, HP, dice, decisions in memory) is cleared and every connected client is told
+     * to leave the game view.
+     */
+    @POST
+    @Path("{id}/end")
+    @Transactional
+    public Response endGame(@PathParam("id") Long id) {
+        Campaign existing = Campaign.findById(id);
+        if (existing == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Kampagne nicht gefunden")
+                    .build();
+        }
+
+        Long currentPlayerId = securityIdentityService.getCurrentPlayerId(securityIdentity);
+        if (existing.playerId == null || !existing.playerId.equals(currentPlayerId)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("Nur der DM kann das Spiel beenden")
+                    .build();
+        }
+
+        existing.started = false;
+        gameState.getOrCreate(id).resetSession();
+        gameState.save(id);
+        // Close votes that were still open so they don't reappear in the next session.
+        GroupDecision.update("status = ?1, resolvedAt = ?2 where campaignId = ?3 and status = ?4",
+                "RESOLVED", System.currentTimeMillis(), id, "PENDING");
+
+        broadcaster.broadcast(id, "campaign_ended", Map.of("campaignId", id));
+        broadcaster.broadcastLobby("ended", id);
+        return Response.ok(new CampaignDTO(existing, true)).build();
     }
 
     @DELETE
