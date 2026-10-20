@@ -39,6 +39,8 @@ The deployed names are `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_CLIENT_SECRET`; develo
 
 Keep `ACCOUNT_DELETION_ENABLED=false` during the first deployment. Check `/q/health/ready`, verify the `account_deletion_marker` table exists, and exercise ordinary login, profile edits, campaign access, uploads, and Keycloak health. Set the environment-specific repository variable to `true` only after these checks pass and the configured client's service-account role inspection is clean.
 
+Production activation on 2026-10-20 uses the repository variable `ACCOUNT_DELETION_ENABLED=true`. The production readiness check was `UP`, the deletion-marker table held ten completed markers and no pending markers, and the configured Keycloak client obtained a token with `manage-users`. The production deployment workflow now requires this variable to be explicitly `true` or `false`; an unset value fails the deployment before it replaces any Secrets. Development remains disabled because its configured client's token request returned HTTP 401. Repair and verify that client before setting `DEV_ACCOUNT_DELETION_ENABLED=true`.
+
 To disable new attempts in an emergency, set `ACCOUNT_DELETION_ENABLED=false` and redeploy. Keep the coordinator and deletion-marker guard deployed: removing the guard can recreate players for identities whose local data is already gone.
 
 ## Inspect pending markers
