@@ -78,8 +78,8 @@ export default async function CampaignCreateView({ id }) {
             <div class="switch-wrapper">
               <div class="switch public" id="ccVisibilitySwitch">
                 <div class="switch-thumb"></div>
-                <div class="switch-option option-public">Public</div>
-                <div class="switch-option option-private">Private</div>
+                <div class="switch-option option-public">Öffentlich</div>
+                <div class="switch-option option-private">Privat</div>
               </div>
               <span id="ccVisibilityText" style="font-size:12px;color:#fff;font-weight:bold">Kampagne ist öffentlich</span>
             </div>

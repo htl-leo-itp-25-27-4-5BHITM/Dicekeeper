@@ -5,11 +5,11 @@ import { requirePlayer } from '../services/auth.js';
 import { navigate } from '../router.js';
 import { esc, initials, calcMod, fmtMod, getActiveCampaignMap, playerLoginName, renderAvatarPicture, resolveMapUrl, resolveOriginalImageUrl } from '../services/utils.js';
 import { connectCampaignEvents } from '../services/campaignEvents.js';
-import { createDiceRollTracker, submitDiceRoll } from '../services/diceRolls.js';
+import { createDiceRollTracker, rollOnServer, submitDiceRoll } from '../services/diceRolls.js';
 import { renderHeader, initHeader, destroyHeader } from '../components/header.js';
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { showToast } from '../components/toast.js';
-import { createLiveStatus } from '../components/liveStatus.js';
+import { createHeadlessLiveStatus } from '../components/liveStatus.js';
 import { loadPlayerRecoverySnapshot } from '../services/liveSnapshots.js';
 
 const SKILLS = [
@@ -38,7 +38,6 @@ export default async function PlayerView({ id }) {
 
   app.innerHTML = renderHeader() + `
     <div id="pvTurnBanner" class="pv2-turn-banner"></div>
-    <div id="pvLiveStatus" class="live-status-slot"></div>
     <div class="pv2-loading" id="pvLoading"><span class="loading-spinner"></span> Spiel wird geladen...</div>
 
     <!-- ===== MOBILE: compact top bar + tab panels ===== -->
@@ -82,6 +81,10 @@ export default async function PlayerView({ id }) {
           <div class="pv2-party-card pv2-mob-party-card">
             <div class="pv2-card-header"><span>👥</span><h3>Gruppe</h3></div>
             <div class="pv2-party-list" id="pvMobPartyList"></div>
+          </div>
+          <div class="pv2-messages-card pv2-mob-messages-card">
+            <div class="pv2-card-header"><span>📣</span><h3>Nachrichten vom DM</h3></div>
+            <div class="pv2-messages-list" id="pvMobMessages"><div class="pv2-messages-empty">Noch keine Nachrichten</div></div>
           </div>
           <div class="pv2-notes-card pv2-mob-notes-card">
             <div class="pv2-card-header"><span>📝</span><h3>Notizen</h3></div>
@@ -136,6 +139,10 @@ export default async function PlayerView({ id }) {
           <div class="pv2-card-header"><span>👥</span><h3>Gruppe</h3></div>
           <div class="pv2-party-list" id="pvPartyList"></div>
         </div>
+        <div class="pv2-messages-card">
+          <div class="pv2-card-header"><span>📣</span><h3>Nachrichten vom DM</h3></div>
+          <div class="pv2-messages-list" id="pvMessages"><div class="pv2-messages-empty">Noch keine Nachrichten</div></div>
+        </div>
         <div class="pv2-notes-card">
           <div class="pv2-card-header"><span>📝</span><h3>Notizen</h3></div>
           <textarea class="pv2-notes-area" id="pvNotesArea" placeholder="NPCs, Orte, Questziele…"></textarea>
@@ -149,7 +156,7 @@ export default async function PlayerView({ id }) {
   let campaign = null, character = null, campaignPlayers = [], playerNameMap = {}, characterMap = {};
   let currentHP = 0, maxHP = 0, diceHistory = [], decisions = [], votedDecisions = {};
   let eventSource = null, currentTurnPlayerId = null, selectedDiceSides = 20;
-  const liveStatus = createLiveStatus('pvLiveStatus', {
+  const liveStatus = createHeadlessLiveStatus({
     onRetry: () => eventSource?.retry()
   });
   let playerMapCanvas = null, playerMapMarkers = [];
@@ -158,7 +165,15 @@ export default async function PlayerView({ id }) {
   const diceTracker = createDiceRollTracker();
   let fogExplorationData = null;
   let activeMap = null;
-  const isMobile = () => window.innerWidth <= 768;
+  // Must match the CSS breakpoint in style.css (.pv2-mobile-wrapper / .pv2-shell, max-width: 900px).
+  // A different value left tablets in portrait (e.g. iPad, 810–834 px) with an empty page.
+  const mobileQuery = window.matchMedia('(max-width: 900px)');
+  const isMobile = () => mobileQuery.matches;
+  let gameLoaded = false;
+  let mobileTabBarReady = false;
+  // Rotating a tablet can cross the breakpoint: render the layout that is now visible.
+  const onLayoutChange = () => { if (gameLoaded && !disposed) renderAll(); };
+  mobileQuery.addEventListener('change', onLayoutChange);
 
   function getScore(name) {
     if (!character?.abilityScores) return 10;
@@ -176,6 +191,34 @@ export default async function PlayerView({ id }) {
     });
   }
 
+  /** The DM and players with an approved character; players still waiting for approval are not in the game. */
+  function isInGame(cp) { return cp.role === 'DM' || cp.characterStatus === 'APPROVED'; }
+
+  // ===== DM MESSAGES =====
+  let dmMessages = [];
+  function dmMessageKey(m) { return m.timestamp + ':' + m.text; }
+  function setDmMessages(list) {
+    if (!Array.isArray(list)) return;
+    dmMessages = list.filter(m => m && m.text);
+    renderDmMessages();
+  }
+  /** Returns true if the message is new. */
+  function addDmMessage(m) {
+    if (!m || !m.text || dmMessages.some(x => dmMessageKey(x) === dmMessageKey(m))) return false;
+    dmMessages.push(m);
+    if (dmMessages.length > 50) dmMessages.shift();
+    renderDmMessages();
+    return true;
+  }
+  function renderDmMessages() {
+    const html = dmMessages.length === 0
+      ? '<div class="pv2-messages-empty">Noch keine Nachrichten</div>'
+      : dmMessages.slice().reverse().map(m =>
+          '<div class="pv2-message"><div class="pv2-message-time">' + esc(new Date(m.timestamp).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })) + '</div>'
+          + '<div class="pv2-message-text">' + esc(m.text) + '</div></div>').join('');
+    ['pvMessages', 'pvMobMessages'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+  }
+
   // ===== SSE =====
   function applyRecoverySnapshot(snapshot) {
     const nextTurn = snapshot.state.currentTurnPlayerId;
@@ -188,6 +231,7 @@ export default async function PlayerView({ id }) {
     activeMap = getActiveCampaignMap(campaign);
     // Shows a roll that happened while this client was not connected.
     if (snapshot.state.lastDiceRoll) handleDiceEvent(snapshot.state.lastDiceRoll);
+    setDmMessages(snapshot.state.dmMessages);
 
     if (currentTurnPlayerId !== null) {
       updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
@@ -213,6 +257,9 @@ export default async function PlayerView({ id }) {
       updateTurnBanner(d.playerId, resolveEventPlayerName(d));
       renderParty();
       if (isMobile()) renderMobParty();
+      },
+      dm_message: d => {
+      if (addDmMessage(d)) showToast('📣 DM: ' + d.text, 'info', 6000);
       },
       hp: d => {
       if (d.playerId === currentPlayer.id) {
@@ -402,6 +449,7 @@ export default async function PlayerView({ id }) {
           const state = await stateRes.json();
           if (state.playerHp?.[currentPlayer.id] !== undefined) currentHP = state.playerHp[currentPlayer.id];
           if (state.playerMaxHp?.[currentPlayer.id] !== undefined) maxHP = state.playerMaxHp[currentPlayer.id];
+          setDmMessages(state.dmMessages);
           if (state.currentTurnPlayerId && state.currentTurnPlayerId !== -1) {
             currentTurnPlayerId = state.currentTurnPlayerId;
             updateTurnBanner(currentTurnPlayerId, playerNameMap[currentTurnPlayerId] || 'Ein Spieler');
@@ -425,17 +473,16 @@ export default async function PlayerView({ id }) {
       renderAll();
       connectSSE();
       document.getElementById('pvLoading').style.display = 'none';
-      if (isMobile()) {
-        document.getElementById('pvMobile').style.display = 'flex';
-        initMobileTabBar();
-      } else {
-        document.getElementById('pvDesktop').style.display = 'grid';
-      }
+      // CSS shows exactly one of the two layouts depending on the screen width.
+      document.getElementById('pvMobile').style.display = 'flex';
+      document.getElementById('pvDesktop').style.display = 'grid';
+      gameLoaded = true;
     } catch (err) { document.getElementById('pvLoading').innerHTML = 'Fehler beim Laden.'; }
   }
 
   function renderAll() {
     if (isMobile()) {
+      initMobileTabBar();
       renderMobHero();
       renderMobCharFull();
       renderMobMap();
@@ -531,6 +578,7 @@ export default async function PlayerView({ id }) {
 
   // ===== MAP =====
   function renderMap() {
+    if (playerMapCanvas) { playerMapCanvas.resize(); return; }
     const box = document.getElementById('pvMapCanvasBox');
     const map = activeMap || getActiveCampaignMap(campaign);
     if (!map) {
@@ -538,7 +586,7 @@ export default async function PlayerView({ id }) {
       return;
     }
     const allPlayers = campaignPlayers
-      .filter(cp => cp.role === 'PLAYER')
+      .filter(cp => cp.role === 'PLAYER' && isInGame(cp))
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     playerMapCanvas = createMapCanvas(box, {
@@ -551,14 +599,7 @@ export default async function PlayerView({ id }) {
       fogOfWar: true,
       fogSolid: true,
       initialExplorationData: fogExplorationData,
-      gameStarted: true,
-      onExplorationChange: (dataUrl) => {
-        fetch('/api/campaign/' + campaignId + '/game/fog-exploration', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: dataUrl })
-        }).catch(() => {});
-      }
+      gameStarted: true
     });
 
     document.getElementById('pvMapZoomIn').addEventListener('click', () => { if (playerMapCanvas) playerMapCanvas.setZoom(Math.min(5, playerMapCanvas.getZoom() + 0.3)); });
@@ -679,21 +720,22 @@ export default async function PlayerView({ id }) {
       const manIn = document.getElementById('pvManualIn');
       if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', 'var(--gold)'); return; }
       const rollBtn = document.getElementById('pvRollBtn'); rollBtn.disabled = true;
-      let ticks = 0;
-      const iv = setInterval(() => {
-        document.getElementById('pvDiceVal').textContent = Math.floor(Math.random() * selectedDiceSides) + 1; ticks++;
-        if (ticks >= 12) {
-          clearInterval(iv); const f = Math.floor(Math.random() * selectedDiceSides) + 1;
+      const sides = selectedDiceSides;
+      rollOnServer(campaignId, sides, v => { document.getElementById('pvDiceVal').textContent = v; })
+        .then(f => {
           const r = document.getElementById('pvDiceVal');
           r.textContent = f; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
           rollBtn.disabled = false;
-          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
-          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+          if (f === sides && sides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+          else if (f === 1 && sides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-          sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }, showFb);
-        }
-      }, 55);
+        })
+        .catch(err => {
+          console.error('[dice] roll failed', err);
+          document.getElementById('pvDiceVal').textContent = '—';
+          rollBtn.disabled = false;
+          showFb('⚠️ Wurf fehlgeschlagen – bitte erneut würfeln', 'var(--danger)');
+        });
     });
     const manIn = document.getElementById('pvManualIn');
     manIn.addEventListener('input', () => { document.getElementById('pvRollBtn').disabled = manIn.value.trim() !== ''; });
@@ -705,8 +747,8 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvRollBtn').disabled = false;
-      const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-      sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }, showFb);
+      // Physical table die: the server checks the range before accepting it.
+      sendRoll({ diceType: 'd' + selectedDiceSides, result: val, manual: true }, showFb);
     });
     renderHist();
   }
@@ -721,7 +763,7 @@ export default async function PlayerView({ id }) {
   }
 
   function buildPartyHtml() {
-    return campaignPlayers.map(cp => {
+    return campaignPlayers.filter(isInGame).map(cp => {
       const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
       const isDM = cp.role === 'DM';
       const ch = characterMap[cp.playerId];
@@ -758,7 +800,8 @@ export default async function PlayerView({ id }) {
 
   function initMobileTabBar() {
     const bar = document.getElementById('pvMobTabBar');
-    if (!bar) return;
+    if (!bar || mobileTabBarReady) return;
+    mobileTabBarReady = true;
     bar.addEventListener('click', e => {
       const tab = e.target.closest('.pv2-mob-tab');
       if (!tab) return;
@@ -878,6 +921,7 @@ export default async function PlayerView({ id }) {
   }
 
   function renderMobMap() {
+    if (mobileMapCanvas) { mobileMapCanvas.resize(); return; }
     const box = document.getElementById('pvMobMapCanvasBox');
     if (!box) return;
     const map = activeMap || getActiveCampaignMap(campaign);
@@ -890,7 +934,7 @@ export default async function PlayerView({ id }) {
       return;
     }
     const allPlayers = campaignPlayers
-      .filter(cp => cp.role === 'PLAYER')
+      .filter(cp => cp.role === 'PLAYER' && isInGame(cp))
       .map(cp => ({ id: cp.playerId, name: playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId }));
 
     mobileMapCanvas = createMapCanvas(box, {
@@ -903,14 +947,7 @@ export default async function PlayerView({ id }) {
       fogOfWar: true,
       fogSolid: true,
       initialExplorationData: fogExplorationData,
-      gameStarted: true,
-      onExplorationChange: (dataUrl) => {
-        fetch('/api/campaign/' + campaignId + '/game/fog-exploration', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: dataUrl })
-        }).catch(() => {});
-      }
+      gameStarted: true
     });
 
     const zoomIn = document.getElementById('pvMobMapZoomIn');
@@ -986,21 +1023,22 @@ export default async function PlayerView({ id }) {
       const manIn = document.getElementById('pvMobManualIn');
       if (manIn.value.trim() !== '') { showFb('Manuelles Ergebnis aktiv', 'var(--gold)'); return; }
       const rollBtn = document.getElementById('pvMobRollBtn'); rollBtn.disabled = true;
-      let ticks = 0;
-      const iv = setInterval(() => {
-        document.getElementById('pvMobDiceVal').textContent = Math.floor(Math.random() * selectedDiceSides) + 1; ticks++;
-        if (ticks >= 12) {
-          clearInterval(iv); const f = Math.floor(Math.random() * selectedDiceSides) + 1;
+      const sides = selectedDiceSides;
+      rollOnServer(campaignId, sides, v => { document.getElementById('pvMobDiceVal').textContent = v; })
+        .then(f => {
           const r = document.getElementById('pvMobDiceVal');
           r.textContent = f; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
           rollBtn.disabled = false;
-          if (f === selectedDiceSides && selectedDiceSides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
-          else if (f === 1 && selectedDiceSides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
+          if (f === sides && sides === 20) showFb('🔥 Kritischer Treffer!', 'var(--accent-green)');
+          else if (f === 1 && sides === 20) showFb('💀 Kritischer Fehlschlag!', 'var(--danger)');
           else showFb('🎲 Gewürfelt: ' + f, 'var(--accent-green)');
-          const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-          sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: f }, showFb);
-        }
-      }, 55);
+        })
+        .catch(err => {
+          console.error('[dice] roll failed', err);
+          document.getElementById('pvMobDiceVal').textContent = '—';
+          rollBtn.disabled = false;
+          showFb('⚠️ Wurf fehlgeschlagen – bitte erneut würfeln', 'var(--danger)');
+        });
     });
     const manIn = document.getElementById('pvMobManualIn');
     manIn.addEventListener('input', () => { document.getElementById('pvMobRollBtn').disabled = manIn.value.trim() !== ''; });
@@ -1012,15 +1050,15 @@ export default async function PlayerView({ id }) {
       r.textContent = val; r.classList.remove('rolling'); void r.offsetWidth; r.classList.add('rolling');
       showFb('✓ Manuell: ' + val, 'var(--accent-green)'); manIn.value = '';
       document.getElementById('pvMobRollBtn').disabled = false;
-      const myName = playerNameMap[currentPlayer.id] || playerLoginName(currentPlayer, 'Spieler');
-      sendRoll({ playerId: currentPlayer.id, playerName: myName, diceType: 'd' + selectedDiceSides, result: val }, showFb);
+      // Physical table die: the server checks the range before accepting it.
+      sendRoll({ diceType: 'd' + selectedDiceSides, result: val, manual: true }, showFb);
     });
     renderHist();
   }
 
   function renderMobParty() {
     const list = document.getElementById('pvMobPartyList'); if (!list) return;
-    list.innerHTML = campaignPlayers.map(cp => {
+    list.innerHTML = campaignPlayers.filter(isInGame).map(cp => {
       const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
       const isDM = cp.role === 'DM';
       const ch = characterMap[cp.playerId];
@@ -1054,6 +1092,7 @@ export default async function PlayerView({ id }) {
 
   return () => {
     disposed = true;
+    mobileQuery.removeEventListener('change', onLayoutChange);
     destroyHeader();
     liveStatus.destroy();
     if (eventSource) { eventSource.close(); eventSource = null; }

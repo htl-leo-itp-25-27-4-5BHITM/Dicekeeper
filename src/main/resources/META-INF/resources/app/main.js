@@ -36,7 +36,7 @@ addRoute('/campaigns', () => CampaignsView());
 
 // Character (non-campaign)
 addRoute('/character/create', () => CharacterCreateView());
-addRoute('/character/edit/:id', () => CharacterCreateView());
+addRoute('/character/edit/:id', (p) => CharacterCreateView(p));
 
 // Campaign – specific sub-routes FIRST (before generic /campaign/:id)
 addRoute('/campaign/new', () => CampaignCreateView({ id: 'new' }));

@@ -85,7 +85,7 @@ export default async function CampaignDetailView({ id }) {
 
   function getDMName() {
     const dm = campaignPlayers.find(cp => cp.role === 'DM');
-    return dm ? (playerNameMap[dm.playerId] || `Player ${dm.playerId}`) : 'Unbekannt';
+    return dm ? (playerNameMap[dm.playerId] || `Spieler ${dm.playerId}`) : 'Unbekannt';
   }
 
   function renderPreviewMap(mapImagePath, imgId = '') {
@@ -164,7 +164,7 @@ export default async function CampaignDetailView({ id }) {
     const fd = new FormData();
     fd.append('file', croppedBlob || file, croppedBlob ? 'map-cropped.png' : file.name);
     const uploadRes = await fetch('/api/campaign/' + id + '/upload-map', { method: 'POST', body: fd });
-    if (!uploadRes.ok) throw new Error(await uploadRes.text() || 'Map upload failed');
+    if (!uploadRes.ok) throw new Error(await uploadRes.text() || 'Karten-Upload fehlgeschlagen');
     return uploadRes.json();
   }
 
@@ -240,14 +240,35 @@ export default async function CampaignDetailView({ id }) {
   function renderPlayersCompact() {
     if (campaignPlayers.length === 0) return '<span class="empty-players">Noch keine Spieler beigetreten</span>';
     return campaignPlayers.map(cp => {
-      const name = playerNameMap[cp.playerId] || `Player ${cp.playerId}`;
+      const name = playerNameMap[cp.playerId] || `Spieler ${cp.playerId}`;
       const roleClass = cp.role === 'DM' ? 'role-dm' : 'role-player';
       return `<div class="player-compact">
         <span class="player-avatar">${initials(name)}</span>
         <span>${esc(name)}</span>
-        <span class="player-role ${roleClass}">${cp.role}</span>
+        <span class="player-role ${roleClass}">${cp.role === 'DM' ? 'DM' : 'Spieler'}</span>
       </div>`;
     }).join('');
+  }
+
+  /** Status of the player's own character; a rejected character can be corrected and submitted again. */
+  function renderOwnCharacterStatus() {
+    const ownCp = campaignPlayers.find(cp => cp.playerId === player.id);
+    if (!ownCp) return '';
+    if (ownCp.characterStatus === 'REJECTED' && ownCp.characterId) {
+      return `<div class="status-message error show" style="margin-top:12px">
+          <strong>Dein Charakter wurde abgelehnt.</strong>
+          ${ownCp.dmNotes ? `<div style="white-space:pre-wrap;margin-top:6px">${esc(ownCp.dmNotes)}</div>` : ''}
+          <button class="btn btn-primary" id="cdEditCharacter" style="margin-top:10px">Charakter überarbeiten</button>
+        </div>`;
+    }
+    if (ownCp.characterStatus === 'PENDING') {
+      return '<div class="status-message show" style="margin-top:12px">⏳ Dein Charakter wartet auf die Freigabe durch den DM.</div>';
+    }
+    if (!ownCp.characterId || ownCp.characterStatus === 'NONE') {
+      return `<div class="status-message show" style="margin-top:12px">Du hast noch keinen Charakter eingereicht.
+          <button class="btn btn-primary" id="cdSelectCharacter" style="margin-top:10px">Charakter auswählen</button></div>`;
+    }
+    return '';
   }
 
   // --- Not Joined View ---
@@ -255,7 +276,7 @@ export default async function CampaignDetailView({ id }) {
     content.innerHTML = `
       <div class="preview">
         <div class="preview-title">${esc(campaign.name)}</div>
-        ${campaign.isPublic ? '<span class="badge-public">Public</span>' : ''}
+        ${campaign.isPublic ? '<span class="badge-public">Öffentlich</span>' : ''}
         <div class="preview-desc">${esc(campaign.description || 'Keine Beschreibung')}</div>
         <div class="preview-divider"></div>
         <div class="preview-info">
@@ -293,8 +314,9 @@ export default async function CampaignDetailView({ id }) {
     content.innerHTML = `
       <div class="preview">
         <div class="preview-title">${esc(campaign.name)}</div>
-        ${campaign.isPublic ? '<span class="badge-public">Public</span>' : ''}
-        <div class="your-role">Deine Rolle: <span class="player-role role-player">PLAYER</span></div>
+        ${campaign.isPublic ? '<span class="badge-public">Öffentlich</span>' : ''}
+        <div class="your-role">Deine Rolle: <span class="player-role role-player">Spieler</span></div>
+        ${renderOwnCharacterStatus()}
         <div class="preview-desc" style="margin-top:12px">${esc(campaign.description || 'Keine Beschreibung')}</div>
         <div class="preview-divider"></div>
         <div class="preview-info">
@@ -313,6 +335,13 @@ export default async function CampaignDetailView({ id }) {
       </div>
     `;
     document.getElementById('cdBack').onclick = () => navigate('/campaigns');
+    const ownCp = campaignPlayers.find(cp => cp.playerId === player.id);
+    const editBtn = document.getElementById('cdEditCharacter');
+    if (editBtn && ownCp?.characterId) {
+      editBtn.onclick = () => navigate('/character/edit/' + ownCp.characterId + '?campaignId=' + id);
+    }
+    const selectBtn = document.getElementById('cdSelectCharacter');
+    if (selectBtn) selectBtn.onclick = () => navigate('/campaign/' + id + '/select-character');
     document.getElementById('cdLeave').onclick = async () => {
       const btn = document.getElementById('cdLeave');
       btn.disabled = true;
@@ -336,8 +365,8 @@ export default async function CampaignDetailView({ id }) {
         <span class="switch-label-text">Sichtbarkeit</span>
         <div class="switch ${campaign.isPublic ? 'public' : 'private'}" id="cdSwitch">
           <div class="switch-thumb"></div>
-          <div class="switch-option option-public">Public</div>
-          <div class="switch-option option-private">Private</div>
+          <div class="switch-option option-public">Öffentlich</div>
+          <div class="switch-option option-private">Privat</div>
         </div>
       </div>
       ${renderMapManager()}
@@ -370,17 +399,17 @@ export default async function CampaignDetailView({ id }) {
     // Render players for DM
     const playersList = document.getElementById('cdPlayersList');
     campaignPlayers.forEach(cp => {
-      const name = playerNameMap[cp.playerId] || `Player ${cp.playerId}`;
+      const name = playerNameMap[cp.playerId] || `Spieler ${cp.playerId}`;
       const div = document.createElement('div');
       div.className = 'player' + (cp.role !== 'DM' && (cp.characterStatus === 'PENDING' || cp.characterStatus === 'REJECTED') ? ' clickable' : '');
       const roleClass = cp.role === 'DM' ? 'role-dm' : 'role-player';
 
       let statusBadge = '';
       if (cp.role !== 'DM') {
-        if (cp.characterStatus === 'PENDING') statusBadge = '<span class="character-status status-pending">⏳ Pending</span>';
-        else if (cp.characterStatus === 'APPROVED') statusBadge = '<span class="character-status status-approved">✓ Approved</span>';
-        else if (cp.characterStatus === 'REJECTED') statusBadge = '<span class="character-status status-rejected">✗ Rejected</span>';
-        else statusBadge = '<span class="character-status status-none">No Character</span>';
+        if (cp.characterStatus === 'PENDING') statusBadge = '<span class="character-status status-pending">⏳ Ausstehend</span>';
+        else if (cp.characterStatus === 'APPROVED') statusBadge = '<span class="character-status status-approved">✓ Freigegeben</span>';
+        else if (cp.characterStatus === 'REJECTED') statusBadge = '<span class="character-status status-rejected">✗ Abgelehnt</span>';
+        else statusBadge = '<span class="character-status status-none">Kein Charakter</span>';
       }
 
       div.innerHTML = `
@@ -390,8 +419,8 @@ export default async function CampaignDetailView({ id }) {
           ${statusBadge}
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span class="player-role ${roleClass}">${cp.role}</span>
-          ${cp.role !== 'DM' ? `<button class="kick-btn" data-pid="${cp.playerId}">KICK</button>` : ''}
+          <span class="player-role ${roleClass}">${cp.role === 'DM' ? 'DM' : 'Spieler'}</span>
+          ${cp.role !== 'DM' ? `<button class="kick-btn" data-pid="${cp.playerId}">Entfernen</button>` : ''}
         </div>
       `;
 
@@ -447,7 +476,7 @@ export default async function CampaignDetailView({ id }) {
         const res = await fetch('/api/campaign/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!res.ok) {
           const errText = await res.text();
-          throw new Error(errText || 'Update failed');
+          throw new Error(errText || 'Speichern fehlgeschlagen');
         }
         campaign = await res.json();
         setStatus('Kampagne aktualisiert');
@@ -484,8 +513,8 @@ export default async function CampaignDetailView({ id }) {
       for (const cp of campaignPlayers) {
         try {
           const pRes = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' });
-          if (pRes.ok) { const p = await pRes.json(); playerNameMap[cp.playerId] = playerLoginName(p, `Player ${cp.playerId}`); }
-        } catch (e) { playerNameMap[cp.playerId] = `Player ${cp.playerId}`; }
+          if (pRes.ok) { const p = await pRes.json(); playerNameMap[cp.playerId] = playerLoginName(p, `Spieler ${cp.playerId}`); }
+        } catch (e) { playerNameMap[cp.playerId] = `Spieler ${cp.playerId}`; }
       }
 
       const roleRes = await fetch('/api/campaign-player/' + id + '/' + player.id + '/role', { cache: 'no-store' });

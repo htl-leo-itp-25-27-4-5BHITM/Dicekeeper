@@ -52,7 +52,10 @@ class PlayerDeletionServiceTest {
     @Test
     void deletesCompleteAffectedSetAndRetainsUnrelatedReferences() throws Exception {
         Fixture fixture = createFixture();
-        for (String relative : List.of("profiles/delete.png", "maps/one.png", "maps/two.png")) {
+        String profile = "profiles/player-" + fixture.deletedPlayerId() + "-delete.png";
+        String mapOne = "maps/campaign-" + fixture.ownedCampaignId() + "-one.png";
+        String mapTwo = "maps/campaign-" + fixture.ownedCampaignId() + "-two.png";
+        for (String relative : List.of(profile, mapOne, mapTwo)) {
             Path file = uploadRoot.resolve(relative);
             Files.createDirectories(file.getParent());
             Files.writeString(file, "data");
@@ -61,7 +64,8 @@ class PlayerDeletionServiceTest {
         AccountDeletionMarker marker = deletionService.deleteLocalPlayerAccount("a".repeat(64), fixture.deletedPlayerId());
 
         assertEquals(AccountDeletionState.LOCAL_DELETED, marker.state);
-        assertEquals(List.of("profiles/delete.png", "maps/one.png", "maps/two.png"), marker.cleanupPaths());
+        // Foreign and manipulated paths stored in the campaign are not part of the cleanup.
+        assertEquals(List.of(profile, mapOne, mapTwo), marker.cleanupPaths());
         assertNull(Player.findById(fixture.deletedPlayerId()));
         assertNull(Campaign.findById(fixture.ownedCampaignId()));
         assertNotNull(Campaign.findById(fixture.joinedCampaignId()));
@@ -73,7 +77,7 @@ class PlayerDeletionServiceTest {
         assertNotNull(character.Character.findById(fixture.sharedCharacterId()));
         assertEquals(1, CampaignPlayer.count("characterId", fixture.sharedCharacterId()));
         assertEquals(0, Notification.count("playerId", fixture.deletedPlayerId()));
-        assertTrue(Files.exists(uploadRoot.resolve("profiles/delete.png")), "files are not deleted inside the DB transaction");
+        assertTrue(Files.exists(uploadRoot.resolve(profile)), "files are not deleted inside the DB transaction");
     }
 
     @Test
@@ -123,14 +127,16 @@ class PlayerDeletionServiceTest {
         AtomicReference<Fixture> reference = new AtomicReference<>();
         QuarkusTransaction.requiringNew().run(() -> {
             Player deleting = player("delete@example.test");
-            deleting.profilePicture = "/uploads/profiles/delete.png";
             deleting.persist();
+            deleting.profilePicture = "/uploads/profiles/player-" + deleting.id + "-delete.png";
             Player other = player("other@example.test");
             other.persist();
 
             Campaign owned = campaign("Owned", deleting.id);
-            owned.mapImagePaths = "/uploads/maps/one.png\n/uploads/maps/two.png\n/uploads/maps/one.png";
             owned.persist();
+            String prefix = "/uploads/maps/campaign-" + owned.id + "-";
+            owned.mapImagePaths = prefix + "one.png\n" + prefix + "two.png\n" + prefix + "one.png\n"
+                    + "/uploads/maps/campaign-999999-foreign.png\n/uploads/../evil.txt";
             Campaign joined = campaign("Joined", other.id);
             joined.persist();
             Campaign unrelated = campaign("Unrelated", other.id);

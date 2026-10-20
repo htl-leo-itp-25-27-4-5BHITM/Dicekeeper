@@ -1,5 +1,6 @@
 package tool;
 
+import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -18,10 +19,17 @@ import java.util.List;
 import java.util.Locale;
 
 @Path("/img")
+@Authenticated
 public class ImagorSignedImageResource {
+
+    /** Signed Imagor links are valid for 1–2 hours (rounded so browsers can still cache them). */
+    private static final long LINK_BUCKET_MS = 60 * 60 * 1000L;
 
     @Inject
     ImagorUrlSigner imagorUrlSigner;
+
+    @Inject
+    UploadAccess uploadAccess;
 
     @GET
     @Produces(MediaType.WILDCARD)
@@ -39,6 +47,9 @@ public class ImagorSignedImageResource {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Only /uploads/* images can be signed")
                     .build();
+        }
+        if (!uploadAccess.canRead(normalizedSource)) {
+            return Response.status(Response.Status.NOT_FOUND).build();
         }
 
         if (!imagorUrlSigner.isConfigured()) {
@@ -70,6 +81,8 @@ public class ImagorSignedImageResource {
         if (safeQuality > 0) {
             filters.add("quality(" + safeQuality + ")");
         }
+        // Part of the signed path: Imagor answers 410 Gone afterwards, so a leaked link stops working.
+        filters.add("expire(" + linkExpiry(System.currentTimeMillis()) + ")");
         if (!filters.isEmpty()) {
             parts.add("filters:" + String.join(":", filters));
         }
@@ -79,8 +92,12 @@ public class ImagorSignedImageResource {
         URI location = URI.create(imagorUrlSigner.buildSignedUrl(imagorPath));
 
         return Response.temporaryRedirect(location)
-                .header("Cache-Control", "public, max-age=86400")
+                .header("Cache-Control", "private, max-age=1800")
                 .build();
+    }
+
+    static long linkExpiry(long nowMs) {
+        return (nowMs / LINK_BUCKET_MS + 2) * LINK_BUCKET_MS;
     }
 
     private String normalizeUploadPath(String src) {

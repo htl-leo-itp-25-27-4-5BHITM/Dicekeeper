@@ -38,7 +38,7 @@ export default async function CockpitView({ id }) {
     campaignPlayers = await cpRes.json();
 
     for (const cp of campaignPlayers) {
-      try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = playerLoginName(p, 'Player ' + cp.playerId); } } catch(e) {}
+      try { const r = await fetch('/api/player/id/' + cp.playerId, { cache: 'no-store' }); if (r.ok) { const p = await r.json(); playerNameMap[cp.playerId] = playerLoginName(p, 'Spieler ' + cp.playerId); } } catch(e) {}
     }
 
     const content = document.getElementById('ckContent');
@@ -136,7 +136,7 @@ export default async function CockpitView({ id }) {
     // Render players
     const playersList = document.getElementById('ckPlayers');
     campaignPlayers.forEach(cp => {
-      const name = playerNameMap[cp.playerId] || 'Player ' + cp.playerId;
+      const name = playerNameMap[cp.playerId] || 'Spieler ' + cp.playerId;
       const isDM = cp.role === 'DM';
       const isClickable = !isDM && (cp.characterStatus === 'PENDING' || cp.characterStatus === 'REJECTED');
 
