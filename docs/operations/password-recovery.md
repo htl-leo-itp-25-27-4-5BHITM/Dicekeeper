@@ -32,10 +32,14 @@ Run these from the repository root:
 npm run verify:password-recovery-theme
 npm run test:password-recovery-theme-validator
 npm run smoke:keycloak-theme
+npm run smoke:keycloak-theme -- --skip-build --expiry-test
 ```
 
 The smoke test creates only a disposable local realm, keeps Forgot password disabled, confirms
 the running 26.8.1 version, exercises the ordinary theme paths, and removes the container.
+The opt-in expiry test temporarily enables recovery only in that disposable realm, checks a
+short-lived action link, a nonempty replacement rejected by a temporary length policy, and OTP
+preservation, then restores the realm settings before removing the container.
 
 ## Realm preparation while recovery is disabled
 
@@ -117,7 +121,7 @@ Invalid/valid replacement behavior: PASS|FAIL
 OTP preservation and fresh login: PASS|FAIL
 Reuse and expiry rejection: PASS|FAIL
 Disposable-data cleanup: PASS|FAIL
-Rollback state (Forgot password off): PASS|FAIL
+Rollback status (not invoked, or Forgot password off after failure): PASS|FAIL
 ```
 
 ## Rollback

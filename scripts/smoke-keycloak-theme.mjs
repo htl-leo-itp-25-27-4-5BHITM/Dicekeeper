@@ -13,12 +13,21 @@ const repositoryRoot = resolve(scriptDirectory, "..");
 const expectedKeycloakVersion = "26.8.1";
 const image = process.env.KEYCLOAK_SMOKE_IMAGE ?? "dicekeeper-keycloak-theme:smoke";
 const skipBuild = process.argv.includes("--skip-build");
+const runExpiryTest = process.argv.includes("--expiry-test");
 const suffix = randomBytes(6).toString("hex");
 const container = `dicekeeper-keycloak-smoke-${suffix}`;
 const realmName = `dicekeeper-smoke-${suffix}`;
 const clientId = "dicekeeper-smoke-client";
 const username = `smoke-${suffix}`;
 const password = randomBytes(24).toString("base64url");
+const expiryUsername = `expiry-${suffix}`;
+const expiryPassword = randomBytes(24).toString("base64url");
+const otpUsername = `otp-${suffix}`;
+const otpPassword = randomBytes(24).toString("base64url");
+const otpNewPassword = randomBytes(24).toString("base64url");
+const otpSecret = [...randomBytes(32)]
+  .map((byte) => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[byte & 31])
+  .join("");
 const adminUsername = `smoke-admin-${suffix}`;
 const adminPassword = randomBytes(24).toString("base64url");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "dicekeeper-keycloak-smoke-"));
@@ -95,8 +104,12 @@ class BrowserSession {
       }
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get("location");
-        if (!location) throw new Error(`Redirect from ${currentUrl} did not include a location`);
-        currentUrl = new URL(location, currentUrl).href;
+        if (!location) throw new Error("Redirect did not include a location");
+        const nextUrl = new URL(location, currentUrl);
+        if (options.stopAtCallback && nextUrl.hostname === "127.0.0.1" && nextUrl.pathname === "/callback") {
+          return { html: "", status: response.status, url: currentUrl, redirectUrl: nextUrl.href };
+        }
+        currentUrl = nextUrl.href;
         if ([301, 302, 303].includes(response.status)) {
           method = "GET";
           body = undefined;
@@ -105,7 +118,7 @@ class BrowserSession {
       }
       return { html: await response.text(), status: response.status, url: currentUrl };
     }
-    throw new Error(`Too many redirects from ${url}`);
+    throw new Error("Too many redirects");
   }
 }
 
@@ -139,17 +152,29 @@ async function startDiscardingSmtpServer() {
           if (line === ".") {
             receivingData = false;
             messageCount += 1;
-            const decodedMessage = messageBuffer
-              .replaceAll(/=\r?\n/gu, "")
-              .replaceAll(/=([0-9A-F]{2})/giu, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
-              .replaceAll("&amp;", "&");
-            for (const match of decodedMessage.matchAll(/https?:\/\/[^\s<>"']+/giu)) {
-              if (match[0].includes("/login-actions/action-token")) offerActionLink(match[0]);
-            }
+            const parser = [
+              "import email, html, json, re, sys",
+              "from email import policy",
+              "message = email.message_from_bytes(sys.stdin.buffer.read(), policy=policy.default)",
+              "links = []",
+              "for part in message.walk():",
+              "    if part.get_content_type() not in ('text/plain', 'text/html'): continue",
+              "    content = html.unescape(part.get_content())",
+              "    links += [m.group(0).rstrip('.,;)') for m in re.finditer(r'''https?://[^\\s<>\\\"']+''', content)]",
+              "print(json.dumps(links))",
+            ].join("\n");
+            const parsed = spawnSync("python3", ["-c", parser], {
+              input: messageBuffer,
+              encoding: "utf8",
+            });
+            const links = parsed.status === 0
+              ? JSON.parse(parsed.stdout).filter((link) => link.includes("/login-actions/action-token"))
+              : [];
+            for (const link of links) offerActionLink(link);
             messageBuffer = "";
             socket.write("250 2.0.0 discarded\r\n");
           } else {
-            messageBuffer += `${line}\n`;
+            messageBuffer += `${line.startsWith("..") ? line.slice(1) : line}\n`;
           }
           continue;
         }
@@ -242,6 +267,7 @@ const realm = {
   duplicateEmailsAllowed: false,
   // Recovery stays disabled until the live SMTP, flow, force-login, OTP, and lifetime gates pass.
   resetPasswordAllowed: false,
+  actionTokenGeneratedByUserLifespan: 300,
   verifyEmail: false,
   internationalizationEnabled: true,
   supportedLocales: ["en", "de"],
@@ -276,6 +302,38 @@ const realm = {
       email: `${username}@example.invalid`,
       requiredActions: ["VERIFY_EMAIL"],
       credentials: [{ type: "password", value: password, temporary: false }],
+    },
+    {
+      username: expiryUsername,
+      enabled: true,
+      emailVerified: true,
+      email: `${expiryUsername}@example.invalid`,
+      firstName: "Expiry",
+      lastName: "Smoke",
+      credentials: [{ type: "password", value: expiryPassword, temporary: false }],
+    },
+    {
+      username: otpUsername,
+      enabled: true,
+      emailVerified: true,
+      email: `${otpUsername}@example.invalid`,
+      firstName: "Otp",
+      lastName: "Smoke",
+      credentials: [
+        { type: "password", value: otpPassword, temporary: false },
+        {
+          type: "otp",
+          secretData: JSON.stringify({ value: otpSecret }),
+          credentialData: JSON.stringify({
+            subType: "totp",
+            digits: 6,
+            counter: 0,
+            period: 30,
+            algorithm: "HmacSHA1",
+            secretEncoding: "BASE32",
+          }),
+        },
+      ],
     },
   ],
 };
@@ -434,6 +492,200 @@ try {
     authorizationUrl(baseUrl, "en", "https://invalid.example/callback"),
   );
   assertPage(errorPage.html, "dk-auth-alert-error", "error page");
+
+  if (runExpiryTest) {
+    const { chromium } = await import("@playwright/test");
+    const localBrowser = await chromium.launch({ channel: "chrome", headless: true });
+    const localContext = await localBrowser.newContext();
+    const openAuthorizationPage = async (page) => {
+      try {
+        await page.goto(authorizationUrl(baseUrl, "en"), {
+          waitUntil: "domcontentloaded",
+          timeout: 20_000,
+        });
+      } catch {
+        throw new Error("Local authorization navigation failed");
+      }
+    };
+    const openActionLink = async (page, link, label) => {
+      try {
+        await page.goto(link, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      } catch {
+        throw new Error(`${label} navigation failed`);
+      }
+    };
+    const realmAdminUrl = `${baseUrl}/admin/realms/${encodeURIComponent(realmName)}`;
+    const updateRealm = async (settings) => {
+      const response = await fetch(realmAdminUrl, {
+        method: "PUT",
+        headers: { ...adminHeaders, "content-type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error(`Local expiry realm update failed with HTTP ${response.status}`);
+    };
+    const fetchAdminJson = async (path) => {
+      const response = await fetch(`${realmAdminUrl}${path}`, { headers: adminHeaders });
+      if (!response.ok) throw new Error(`Local Admin API read failed with HTTP ${response.status}`);
+      return await response.json();
+    };
+    const otpUsers = await fetchAdminJson(`/users?username=${encodeURIComponent(otpUsername)}&exact=true`);
+    if (!Array.isArray(otpUsers) || otpUsers.length !== 1) throw new Error("Local OTP test user missing");
+    const otpUserId = otpUsers[0].id;
+    const getOtpCredentials = async () => {
+      const credentials = await fetchAdminJson(`/users/${encodeURIComponent(otpUserId)}/credentials`);
+      if (!Array.isArray(credentials)) throw new Error("Local OTP credentials were not readable");
+      return credentials;
+    };
+    const otpBefore = (await getOtpCredentials()).filter((credential) => credential.type === "otp");
+    if (otpBefore.length !== 1) throw new Error("Local OTP credential was not imported");
+    const authenticateExpiryUser = async () => {
+      const session = new BrowserSession();
+      const loginPage = await session.request(authorizationUrl(baseUrl, "en"));
+      const action = new URL(attributeForId(loginPage.html, "kc-form-login", "action"), loginPage.url).href;
+      const result = await session.request(action, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ username: expiryUsername, password: expiryPassword, credentialId: "" }),
+        stopAtCallback: true,
+      });
+      if (result.redirectUrl && new URL(result.redirectUrl).searchParams.has("code")) return true;
+      const ids = [...result.html.matchAll(/\bid=["']([^"']+)["']/giu)]
+        .map((match) => match[1])
+        .filter((id) => id.startsWith("kc-") || id.startsWith("dk-"));
+      console.log("Local login state:", `HTTP ${result.status}`, `path=${new URL(result.url).pathname}`, `ids=${[...new Set(ids)].join(",")}`);
+      return false;
+    };
+
+    try {
+      if (!await authenticateExpiryUser()) throw new Error("Original credential failed before the expiry test");
+      await updateRealm({ resetPasswordAllowed: true, actionTokenGeneratedByUserLifespan: 2 });
+      const expirySession = new BrowserSession();
+      const expiryLogin = await expirySession.request(authorizationUrl(baseUrl, "en"));
+      const forgotUrl = new URL(
+        attributeForId(expiryLogin.html, "dk-forgot-password-link", "href"),
+        expiryLogin.url,
+      ).href;
+      const requestPage = await expirySession.request(forgotUrl);
+      assertPage(requestPage.html, 'id="kc-reset-password-form"', "local expiry request form");
+      const requestAction = new URL(
+        attributeForId(requestPage.html, "kc-reset-password-form", "action"),
+        requestPage.url,
+      ).href;
+      smtpSink.clearActionLinks();
+      await expirySession.request(requestAction, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ username: expiryUsername }),
+      });
+      const expiredActionLink = await smtpSink.nextActionLink();
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 3500));
+      let expiredAt;
+      try {
+        const actionKey = new URL(expiredActionLink).searchParams.get("key") ?? "";
+        expiredAt = JSON.parse(Buffer.from(actionKey.split(".")[1], "base64url").toString("utf8")).exp;
+      } catch {
+        throw new Error("Local expiry action token was malformed");
+      }
+      if (!Number.isInteger(expiredAt) || expiredAt > Math.floor(Date.now() / 1000)) {
+        throw new Error("Local expiry action token was not yet expired");
+      }
+      const expiredPage = await expirySession.request(expiredActionLink);
+      if (expiredPage.html.includes('id="kc-passwd-update-form"')) {
+        throw new Error("Expired link exposed the password-update form");
+      }
+      if (!/dk-auth-alert-error|kc-error-message|expired|abgelaufen/iu.test(expiredPage.html)) {
+        throw new Error("Expired link did not render a recognizable safe error state");
+      }
+      assertPage(expiredPage.html, 'class="dk-auth-actions"', "local expired-link restart path");
+
+      if (!await authenticateExpiryUser()) throw new Error("Original credential failed after opening an expired link");
+
+      const realmConfig = await fetchAdminJson("");
+      const flowAlias = realmConfig.resetCredentialsFlow;
+      if (!flowAlias) throw new Error("Local Reset Credentials flow is unbound");
+      const flowPath = `/authentication/flows/${encodeURIComponent(flowAlias)}/executions`;
+      const flowExecutions = await fetchAdminJson(flowPath);
+      const resetOtpIndex = flowExecutions.findIndex((execution) => execution.providerId === "reset-otp");
+      const resetOtp = flowExecutions[resetOtpIndex];
+      const otpParent = resetOtp
+        ? flowExecutions.slice(0, resetOtpIndex).reverse().find(
+            (execution) => Number(execution.level ?? 0) < Number(resetOtp.level ?? 0),
+          )
+        : null;
+      if (resetOtp && !otpParent) throw new Error("Local OTP reset sub-flow was not found");
+      if (otpParent && otpParent.requirement !== "DISABLED") {
+        const disableOtpResponse = await fetch(`${realmAdminUrl}${flowPath}`, {
+          method: "PUT",
+          headers: { ...adminHeaders, "content-type": "application/json" },
+          body: JSON.stringify({ id: otpParent.id, requirement: "DISABLED" }),
+        });
+        if (!disableOtpResponse.ok) throw new Error(`Local OTP-reset disable failed with HTTP ${disableOtpResponse.status}`);
+      }
+      const afterFlow = await fetchAdminJson(flowPath);
+      if (otpParent && afterFlow.find((execution) => execution.id === otpParent.id)?.requirement !== "DISABLED") {
+        throw new Error("Local OTP-reset sub-flow remains enabled");
+      }
+
+      await updateRealm({
+        resetPasswordAllowed: true,
+        actionTokenGeneratedByUserLifespan: 300,
+        passwordPolicy: "length(12)",
+      });
+      const otpRealmConfig = await fetchAdminJson("");
+      if (otpRealmConfig.actionTokenGeneratedByUserLifespan !== 300 || otpRealmConfig.passwordPolicy !== "length(12)") {
+        throw new Error("Local policy test did not apply the intended settings");
+      }
+      const freshControlPage = await localContext.newPage();
+      await openAuthorizationPage(freshControlPage);
+      await freshControlPage.locator("#dk-forgot-password-link").click();
+      await freshControlPage.locator("#kc-reset-password-form").waitFor();
+      smtpSink.clearActionLinks();
+      await freshControlPage.locator("#username").fill(expiryUsername);
+      await freshControlPage.locator("#kc-reset-password-submit").click();
+      const freshControlLink = await smtpSink.nextActionLink();
+      const freshControlAction = await localContext.newPage();
+      await openActionLink(freshControlAction, freshControlLink, "Fresh local control link");
+      if (await freshControlAction.locator("#kc-passwd-update-form").count() !== 1) {
+        throw new Error("Fresh local control link did not open the update form");
+      }
+      await freshControlAction.locator("#password-new").fill("short");
+      await freshControlAction.locator("#password-confirm").fill("short");
+      await freshControlAction.locator("#kc-password-update-submit").click();
+      if (await freshControlAction.locator("#kc-passwd-update-form").count() !== 1 ||
+          await freshControlAction.locator("#input-error-password, .dk-auth-alert-error").count() === 0) {
+        throw new Error("Local policy-invalid replacement was not rejected with a usable link");
+      }
+      const otpRequestPage = await localContext.newPage();
+      await openAuthorizationPage(otpRequestPage);
+      await otpRequestPage.locator("#dk-forgot-password-link").click();
+      await otpRequestPage.locator("#kc-reset-password-form").waitFor();
+      smtpSink.clearActionLinks();
+      await otpRequestPage.locator("#username").fill(otpUsername);
+      await otpRequestPage.locator("#kc-reset-password-submit").click();
+      const otpResetLink = await smtpSink.nextActionLink();
+      const otpActionPage = await localContext.newPage();
+      await openActionLink(otpActionPage, otpResetLink, "Local OTP reset link");
+      const otpUpdateForm = otpActionPage.locator("#kc-passwd-update-form");
+      if (await otpUpdateForm.count() !== 1) throw new Error("Local OTP-preserving update form did not render");
+      await otpActionPage.locator("#password-new").fill(otpNewPassword);
+      await otpActionPage.locator("#password-confirm").fill(otpNewPassword);
+      await otpActionPage.locator("#kc-password-update-submit").click();
+      const otpAfter = (await getOtpCredentials()).filter((credential) => credential.type === "otp");
+      if (otpAfter.length !== 1 || otpAfter[0].id !== otpBefore[0].id) {
+        throw new Error("Non-password OTP credential changed during local recovery");
+      }
+    } finally {
+      await localBrowser.close();
+      await updateRealm({ resetPasswordAllowed: false, actionTokenGeneratedByUserLifespan: 300, passwordPolicy: "" });
+      const restoredResponse = await fetch(realmAdminUrl, { headers: adminHeaders });
+      if (!restoredResponse.ok) throw new Error("Could not read restored local realm lifetime");
+      const restoredRealm = await restoredResponse.json();
+      if (restoredRealm.actionTokenGeneratedByUserLifespan !== 300 || restoredRealm.resetPasswordAllowed || restoredRealm.passwordPolicy) {
+        throw new Error("Local expiry-test realm settings were not restored");
+      }
+    }
+    console.log("Controlled recovery test passed (expired link refused; old password valid; invalid policy rejected; OTP preserved; settings restored).");
+  }
 
   const logs = command("docker", ["logs", container]);
   if (/FreeMarkerException|Failed to process template|Can't find resource for bundle|Missing message/iu.test(logs)) {
