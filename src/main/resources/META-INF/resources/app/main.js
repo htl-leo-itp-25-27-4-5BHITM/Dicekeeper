@@ -51,5 +51,8 @@ addRoute('/campaign/:id/play', (p) => PlayerView(p));
 // Campaign – generic detail LAST
 addRoute('/campaign/:id', (p) => CampaignDetailView(p));
 
+// DEV-ONLY: versteckte KI-Testseite. Zum Entfernen diese Route und den Ordner app/dev/ löschen.
+addRoute('/dev/ki-test', async () => (await import('./dev/AiPlaygroundView.js')).default());
+
 // Start
 startRouter();
