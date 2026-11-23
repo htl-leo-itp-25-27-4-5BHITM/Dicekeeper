@@ -359,7 +359,7 @@ export default async function CampaignDetailView({ id }) {
       <div class="your-role" style="margin-bottom:16px;">Deine Rolle: <span class="player-role role-dm">DM</span></div>
       <div class="form-group"><label>Titel</label><input type="text" id="cdTitle" value="${esc(campaign.name || '')}" /></div>
       <div class="form-group"><label>Beschreibung</label><textarea id="cdDesc">${esc(campaign.description || '')}</textarea></div>
-      <div class="form-group"><label>Story (nur für dich)</label><textarea id="cdStory" class="story">${esc(campaign.story || '')}</textarea><div style="font-size:11px;opacity:0.6;margin-top:4px;">🔒 Nur für den DM sichtbar</div></div>
+      <div class="form-group"><label>Story (nur für dich)</label><textarea id="cdStory" class="story" maxlength="5000">${esc(campaign.story || '')}</textarea><div style="font-size:11px;opacity:0.6;margin-top:4px;">🔒 Nur für den DM sichtbar</div></div>
       <div class="form-group"><label>Max. Spieler</label><input type="number" id="cdMaxPlayers" min="1" step="1" value="${campaign.maxPlayerCount ?? ''}" aria-describedby="cdMaxPlayersError" style="max-width:150px;" /><div id="cdMaxPlayersError" role="alert" style="display:none;color:var(--danger);font-size:12px;margin-top:4px;"></div></div>
       <div class="switch-wrapper">
         <span class="switch-label-text">Sichtbarkeit</span>

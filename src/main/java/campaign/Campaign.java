@@ -8,10 +8,13 @@ import jakarta.persistence.PreUpdate;
 
 @Entity
 public class Campaign extends PanacheEntity {
+    /** Longest DM story the database column accepts; see CampaignStoryColumnMigration. */
+    public static final int STORY_MAX_LENGTH = 5000;
+
     public String name;
     @Column(length = 1000)
     public String description;
-    @Column(length = 1000)
+    @Column(length = STORY_MAX_LENGTH)
     public String story;
 
     @Column(name = "player_id", nullable = true)
@@ -39,6 +42,9 @@ public class Campaign extends PanacheEntity {
     @PreUpdate
     void validate() {
         String validationError = CampaignValidation.validateMaxPlayerCount(maxPlayerCount);
+        if (validationError == null) {
+            validationError = CampaignValidation.validateStory(story);
+        }
         if (validationError != null) {
             throw new IllegalArgumentException(validationError);
         }

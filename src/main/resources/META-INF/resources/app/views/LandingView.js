@@ -4,6 +4,7 @@
 import { navigate } from '../router.js';
 import { getPlayer } from '../services/auth.js';
 import { getTheme, toggleTheme } from '../services/theme.js';
+import { renderAgentSkillsSection, bindAgentSkillsSection } from '../components/agentSkills.js';
 
 export default async function LandingView() {
   const app = document.getElementById('app');
@@ -30,6 +31,7 @@ export default async function LandingView() {
               <span class="lp-a11y-label">Barrierefreie Farben</span>
             </button>
             <button class="lp-nav-guide" id="lpNavGuide">Erste Schritte</button>
+            <a class="lp-nav-guide lp-nav-agent" id="lpNavAgent" href="#agent-skills">KI-Skills</a>
             <button class="lp-nav-login" id="lpNavLogin">Anmelden</button>
           </div>
         </div>
@@ -114,6 +116,9 @@ export default async function LandingView() {
         </div>
       </section>
 
+      <!-- Prompt for Agent Skills (llms.txt) -->
+${renderAgentSkillsSection()}
+
       <!-- Final CTA -->
       <section class="lp-section lp-cta-section">
         <div class="lp-container lp-cta-inner">
@@ -144,6 +149,12 @@ export default async function LandingView() {
   document.getElementById('lpNavGuide').addEventListener('click', () => navigate('/guide'));
   document.getElementById('lpHeroGuide').addEventListener('click', () => navigate('/guide'));
   document.getElementById('lpBottomGuide').addEventListener('click', () => navigate('/guide'));
+  document.getElementById('lpNavAgent').addEventListener('click', (e) => {
+    // Hash routing owns location.hash, so scroll instead of following the anchor.
+    e.preventDefault();
+    document.getElementById('agent-skills')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  const unbindAgentSkills = bindAgentSkillsSection(app);
 
   // Theme toggle
   const themeBtn = document.getElementById('lpThemeToggle');
@@ -164,5 +175,8 @@ export default async function LandingView() {
   document.addEventListener('theme:changed', onThemeChanged);
 
   // Cleanup handler on view destroy if needed
-  return () => { document.removeEventListener('theme:changed', onThemeChanged); };
+  return () => {
+    document.removeEventListener('theme:changed', onThemeChanged);
+    unbindAgentSkills();
+  };
 }
