@@ -121,7 +121,12 @@ public class CampaignResource {
                     .build();
         }
 
-        campaign.story = storyUpdate.story;
+        String storyError = CampaignValidation.validateStory(storyUpdate == null ? null : storyUpdate.story);
+        if (storyError != null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(storyError).build();
+        }
+
+        campaign.story = storyUpdate == null ? null : storyUpdate.story;
         return Response.ok(campaign).build();
     }
 
@@ -135,6 +140,9 @@ public class CampaignResource {
                     .build();
         }
         Response validationError = validateMaxPlayerCount(campaign.maxPlayerCount);
+        if (validationError == null) {
+            validationError = validateStory(campaign.story);
+        }
         if (validationError != null) {
             return validationError;
         }
@@ -181,6 +189,9 @@ public class CampaignResource {
                     .build();
         }
         Response validationError = validateMaxPlayerCount(updated.maxPlayerCount);
+        if (validationError == null) {
+            validationError = validateStory(updated.story);
+        }
         if (validationError != null) {
             return validationError;
         }
@@ -410,6 +421,13 @@ public class CampaignResource {
 
     private Response validateMaxPlayerCount(Integer maxPlayerCount) {
         String validationError = CampaignValidation.validateMaxPlayerCount(maxPlayerCount);
+        return validationError == null
+                ? null
+                : Response.status(Response.Status.BAD_REQUEST).entity(validationError).build();
+    }
+
+    private Response validateStory(String story) {
+        String validationError = CampaignValidation.validateStory(story);
         return validationError == null
                 ? null
                 : Response.status(Response.Status.BAD_REQUEST).entity(validationError).build();
