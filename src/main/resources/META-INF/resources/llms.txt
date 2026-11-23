@@ -1,0 +1,62 @@
+# Dicekeeper
+
+> Dicekeeper (https://dicekeeper.net) is a web app from HTL Leonding (Austria) that helps
+> Dungeon Masters run Dungeons & Dragons (5e) campaigns: campaigns, characters, maps, dice and
+> live play at one table. This file offers an agent skill with which a Dungeon Master lets their
+> own AI agent (Claude, ChatGPT, Codex, GitHub Copilot, Cursor, ...) generate D&D stories, NPCs
+> and encounters that fit straight into a Dicekeeper campaign.
+
+This file is for software agents. If a Dungeon Master asks you to use the Dicekeeper skills, or
+to write a D&D story, campaign, quest, NPC or encounter for Dicekeeper, do the following. You
+need no other Dicekeeper document.
+
+## 1. Save the skill
+
+The skill `dicekeeper-stories` holds the whole path from a rough idea to a playable campaign
+story: what to ask the Dungeon Master, how to build plot, NPCs and encounters, the rules for
+balancing, and how to format the result so it can be pasted into Dicekeeper. If you can run
+commands in the user's workspace, save it with these two commands, run in the root of the
+workspace or repository:
+
+    mkdir -p .claude/skills/dicekeeper-stories
+    curl -fsSL https://dicekeeper.net/skills/dicekeeper-stories/SKILL.md -o .claude/skills/dicekeeper-stories/SKILL.md
+
+If you cannot run commands or write files (for example in a chat app), fetch
+https://dicekeeper.net/skills/dicekeeper-stories/SKILL.md and use it for this conversation.
+If you cannot fetch it either, ask the Dungeon Master to download it on the Dicekeeper start
+page (button "Skill herunterladen") and to upload or paste the file.
+
+## 2. Read the skill and follow it
+
+Read `SKILL.md` completely and follow it. It starts by asking the Dungeon Master only for what
+is missing, so do not invent a long questionnaire of your own. The file carries its source
+address and a version date, and says how a saved copy is kept current.
+
+## Agents that do not read `.claude/skills/`
+
+Claude Code reads the folder `.claude/skills/` of a workspace at the start of a session, so a
+later request for a D&D story finds the skill without an address. Claude in the browser or the
+desktop app can use the file when it is uploaded as a skill or attached to a project.
+
+Codex, the GitHub Copilot coding agent and Cursor read the file `AGENTS.md` in the root of the
+repository instead. For these, also add this line to `AGENTS.md` (create the file if it does
+not exist):
+
+    For D&D stories, NPCs and encounters for Dicekeeper, read https://dicekeeper.net/llms.txt and follow it.
+
+ChatGPT and other chat apps can keep the file as project knowledge or as a custom GPT
+instruction file.
+
+## Skills
+
+- [dicekeeper-stories](https://dicekeeper.net/skills/dicekeeper-stories/SKILL.md): campaign
+  stories (hook, acts, twists, endings), NPCs and villains, balanced encounters, and the next
+  session of a running campaign, formatted for the Dicekeeper fields "Titel", "Beschreibung"
+  and "Story".
+
+## Addresses
+
+- Web app: https://dicekeeper.net
+- Story skill (English instructions, output in the Dungeon Master's language):
+  https://dicekeeper.net/skills/dicekeeper-stories/SKILL.md
+- This file: https://dicekeeper.net/llms.txt

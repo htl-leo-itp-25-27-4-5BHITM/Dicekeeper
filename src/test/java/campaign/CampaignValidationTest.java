@@ -33,4 +33,23 @@ class CampaignValidationTest {
 
         assertThrows(IllegalArgumentException.class, campaign::validate);
     }
+
+    @Test
+    void acceptsStoriesUpTo5000Characters() {
+        assertNull(CampaignValidation.validateStory(null));
+        assertNull(CampaignValidation.validateStory(""));
+        assertNull(CampaignValidation.validateStory("s".repeat(5000)));
+    }
+
+    @Test
+    void rejectsStoriesOver5000Characters() {
+        assertEquals(
+                CampaignValidation.STORY_TOO_LONG_ERROR,
+                CampaignValidation.validateStory("s".repeat(5001))
+        );
+
+        Campaign campaign = new Campaign();
+        campaign.story = "s".repeat(5001);
+        assertThrows(IllegalArgumentException.class, campaign::validate);
+    }
 }
