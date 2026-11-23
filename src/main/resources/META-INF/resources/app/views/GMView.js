@@ -8,6 +8,7 @@ import { renderHeader, initHeader, destroyHeader } from '../components/header.js
 import { createMapCanvas } from '../components/mapCanvas.js';
 import { createLiveStatus } from '../components/liveStatus.js';
 import { loadGMRecoverySnapshot } from '../services/liveSnapshots.js';
+import { createDMWorkspace } from '../components/dmWorkspace.js';
 
 export default async function GMView({ id }) {
   const player = requirePlayer();
@@ -129,6 +130,7 @@ export default async function GMView({ id }) {
     <div id="gmCharOverlay" class="char-modal-overlay"><div class="char-modal" id="gmCharContent"></div></div>
   `;
   initHeader();
+  const workspace = createDMWorkspace(app.querySelector('.gm-main'), { playerId: player.id });
 
   // Wire up dk-modal close buttons
   document.querySelectorAll('.dk-modal-close').forEach(btn => {
@@ -291,7 +293,8 @@ export default async function GMView({ id }) {
     const select = document.getElementById(selectId);
     if (select) select.addEventListener('change', () => selectCampaignMap(select.value));
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isMaximized) closeMaximized(); });
+  const onMapEscape = e => { if (e.key === 'Escape' && isMaximized) closeMaximized(); };
+  document.addEventListener('keydown', onMapEscape);
 
   document.getElementById('gmMapZoomIn').addEventListener('click', () => { if (mapCanvas) mapCanvas.setZoom(Math.min(5, mapCanvas.getZoom() + 0.3)); });
   document.getElementById('gmMapZoomOut').addEventListener('click', () => { if (mapCanvas) mapCanvas.setZoom(Math.max(0.5, mapCanvas.getZoom() - 0.3)); });
@@ -931,6 +934,8 @@ export default async function GMView({ id }) {
   connectSSE();
 
   return () => {
+    workspace.destroy();
+    document.removeEventListener('keydown', onMapEscape);
     destroyHeader();
     liveStatus.destroy();
     if (eventSource) { eventSource.close(); eventSource = null; }

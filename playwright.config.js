@@ -6,13 +6,13 @@ export default defineConfig({
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: process.env.PLAYWRIGHT_OFFLINE ? 'http://dicekeeper.test' : 'http://127.0.0.1:4173',
     trace: 'retain-on-failure'
   },
-  webServer: {
-    command: 'python3 -m http.server 4173 --bind 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
+  webServer: process.env.PLAYWRIGHT_OFFLINE ? undefined : {
+    command: 'node scripts/serve-client.mjs',
+    url: 'http://127.0.0.1:4173/src/main/resources/META-INF/resources/index.html',
     reuseExistingServer: false
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }]
+  projects: [{ name: 'chromium', use: { browserName: 'chromium', ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) } }]
 });
