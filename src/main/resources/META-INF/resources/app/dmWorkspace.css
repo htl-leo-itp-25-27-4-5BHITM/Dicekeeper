@@ -74,3 +74,22 @@
   .dm-layout-select { max-width: 145px; }
   .dm-panel-options { left: auto; right: -60px; }
 }
+
+.dm-workspace-toolbar, .dm-dock-group {
+  background: var(--glass);
+  border: var(--glass-border);
+}
+.dm-workspace select option, .dm-panel-options, .dm-group-options,
+.dm-floating .dm-dock-group {
+  background: rgb(var(--glass-solid-rgb));
+  color: var(--text);
+}
+.dm-group-options select {
+  background: rgb(var(--glass-dark-rgb));
+  border: var(--glass-border);
+  color: var(--text);
+}
+.dm-dock-preview {
+  background: color-mix(in srgb, rgb(var(--glass-solid-rgb)) 76%, var(--accent-green));
+  color: var(--text);
+}
